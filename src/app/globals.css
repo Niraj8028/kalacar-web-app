@@ -2,135 +2,342 @@
 
 :root {
   color-scheme: light;
-  --page: #f7f4ed; --surface: #fffdf8; --surface-soft: #eee9df;
-  --ink: #28241f; --muted: #777168; --line: #ded8cd;
-  --accent: #a85b36; --accent-strong: #79402a; --highlight: #d8b77a;
-  --placeholder: #dfd4c2; --shadow: 0 22px 70px rgb(61 45 29 / 9%);
+  --page: #f8f5ef;
+  --surface: #fffdfa;
+  --surface-soft: #eee8dc;
+  --ink: #28211c;
+  --muted: #756d63;
+  --line: #ded6c9;
+  --accent: #8d3e2e;
+  --accent-dark: #642b22;
+  --gold: #b88b42;
+  --disabled: #d8d0c4;
+  --shadow: 0 14px 40px rgb(54 39 25 / 9%);
 }
+
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #191816; --surface: #211f1c; --surface-soft: #2b2824;
-  --ink: #f1ece3; --muted: #b6aea2; --line: #403b34;
-  --accent: #d99a68; --accent-strong: #edb27f; --highlight: #9c7a4d;
-  --placeholder: #393229; --shadow: 0 22px 70px rgb(0 0 0 / 24%);
+  --page: #191714;
+  --surface: #211e1a;
+  --surface-soft: #2b2722;
+  --ink: #f4eee4;
+  --muted: #b7ac9d;
+  --line: #413a32;
+  --accent: #d28a63;
+  --accent-dark: #e8a47b;
+  --gold: #d2ad6c;
+  --disabled: #494139;
+  --shadow: 0 14px 40px rgb(0 0 0 / 22%);
 }
+
 @theme inline { --color-background: var(--page); --color-foreground: var(--ink); }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--page); color: var(--ink); font-family: Arial, Helvetica, sans-serif; transition: background-color 180ms ease, color 180ms ease; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
 a { color: inherit; text-decoration: none; }
-button { font: inherit; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
-::selection { background: var(--highlight); color: #211b15; }
-.announcement { min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px 16px; background: var(--ink); color: var(--page); font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
-.announcement-dot { color: var(--highlight); }
-.site-header { min-height: 84px; padding: 0 clamp(20px, 6vw, 88px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 1px solid var(--line); }
-.wordmark { width: fit-content; display: grid; color: var(--ink); font: 25px/.92 Georgia, "Times New Roman", serif; letter-spacing: -.08em; }
-.wordmark i { color: var(--accent); font-style: normal; }
-.wordmark small { margin-top: 7px; font: 7px Arial, Helvetica, sans-serif; letter-spacing: .2em; color: var(--muted); }
-.main-nav, .header-actions { display: flex; align-items: center; gap: 28px; }
-.main-nav a, .account-link { font-size: 12px; color: var(--muted); transition: color 160ms ease; }
-.main-nav a:hover, .account-link:hover { color: var(--accent); }
-.header-actions { justify-content: flex-end; gap: 18px; }
-.account-link { color: var(--ink); }
-.theme-toggle { min-width: 84px; min-height: 36px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 11px; }
+button, input { font: inherit; }
+button { color: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+::selection { background: var(--gold); color: #211b15; }
+
+.top-note { min-height: 34px; display: grid; place-items: center; padding: 6px 14px; background: var(--ink); color: var(--page); font-size: 10px; letter-spacing: .08em; text-align: center; }
+.shop-header { min-height: 88px; padding: 0 clamp(18px, 5vw, 76px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 26px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.shop-header .wordmark { width: 100%; min-width: 0; }
+.brand-logo { display: block; max-width: 100%; height: auto; object-fit: contain; }
+.shop-header .brand-logo { width: clamp(110px, 14vw, 184px); }
+.wordmark { width: fit-content; display: grid; font: 27px/.9 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; letter-spacing: -.07em; }
+.wordmark > span { color: var(--accent); }
+.wordmark small { margin-top: 7px; color: var(--muted); font: 7px Arial, sans-serif; letter-spacing: .18em; }
+.header-nav { display: flex; align-items: center; gap: clamp(14px, 2.5vw, 32px); white-space: nowrap; }
+.header-nav a { color: var(--muted); font-size: 11px; transition: color 160ms ease; }
+.header-nav a:hover { color: var(--accent); }
+.account-link { color: var(--accent); font-size: 10px; white-space: nowrap; }
+.header-tools { display: flex; align-items: center; justify-content: flex-end; gap: 13px; }
+.header-search { height: 36px; width: min(190px, 18vw); display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--page); color: var(--muted); }
+.header-search > span { font-size: 21px; line-height: 1; }
+.header-search input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 10px; }
+.header-search input::placeholder { color: var(--muted); }
+.header-search:focus-within { border-color: var(--accent); }
+.theme-toggle { min-width: 68px; height: 35px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 10px; }
 .theme-toggle:hover { border-color: var(--accent); }
-.hero { width: min(1320px, 88vw); margin: 56px auto 100px; display: grid; grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr); gap: clamp(34px, 7vw, 104px); align-items: center; }
-.hero-copy { padding: 30px 0; }
-.eyebrow { margin: 0 0 19px; color: var(--accent); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
-.eyebrow-mark { display: inline-block; width: 7px; height: 7px; margin-right: 9px; border-radius: 50%; background: var(--accent); vertical-align: 1px; }
-.hero h1, .approach-section h2 { margin: 0; font: 400 clamp(44px, 6.2vw, 82px)/.99 Georgia, "Times New Roman", serif; letter-spacing: -.055em; }
-.hero h1 em, .approach-section h2 em { color: var(--accent); font-weight: 400; }
-.hero-description { max-width: 440px; margin: 25px 0 30px; color: var(--muted); font: 17px/1.7 Georgia, "Times New Roman", serif; }
-.primary-link { display: inline-flex; align-items: center; gap: 28px; min-height: 49px; padding: 0 19px; background: var(--accent); color: #fffaf3; font-size: 12px; transition: background-color 160ms ease, transform 160ms ease; }
-.primary-link:hover { background: var(--accent-strong); transform: translateY(-1px); }
-.primary-link span { font-size: 16px; }
-.hero-footnote { margin: 17px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
-.hero-art { min-height: 500px; position: relative; display: grid; place-items: center; overflow: hidden; background: radial-gradient(ellipse at 52% 40%, #f3e7d2 0, var(--placeholder) 58%, #cbbba4 100%); box-shadow: var(--shadow); }
-:root[data-theme="dark"] .hero-art { background: radial-gradient(ellipse at 52% 40%, #514538 0, #393229 58%, #2c2721 100%); }
-.art-label, .art-caption { position: absolute; z-index: 2; left: 22px; right: 22px; display: flex; justify-content: space-between; color: var(--ink); font-size: 8px; letter-spacing: .13em; text-transform: uppercase; }
-.art-label { top: 20px; }
-.art-caption { bottom: 20px; align-items: flex-end; letter-spacing: .03em; text-transform: none; }
-.art-halo { position: absolute; width: min(57%, 290px); aspect-ratio: 1; top: 12%; border: 1px solid rgb(255 255 255 / 48%); border-radius: 50%; }
-.art-form { position: relative; width: 160px; height: 235px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; filter: drop-shadow(0 22px 18px rgb(58 38 19 / 22%)); }
-.art-form-head { width: 74px; height: 78px; border-radius: 48% 48% 43% 43%; background: linear-gradient(130deg, #9a6143, #54382c 70%); }
-.art-form-body { width: 130px; height: 114px; margin-top: -5px; border-radius: 48% 48% 28% 28%; background: linear-gradient(100deg, #c18b5b, #916344 58%, #5f4432); }
-.art-form-base { width: 168px; height: 30px; margin-top: 1px; background: linear-gradient(180deg, #c7a775, #8d704b); border-radius: 50% 50% 9px 9px; }
-.collection-section, .featured-section { padding: 68px max(6vw, 20px) 84px; border-top: 1px solid var(--line); }
-.section-heading { width: min(1240px, 100%); margin: 0 auto 34px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
-.section-heading .eyebrow { margin-bottom: 12px; }
-.section-heading h2 { margin: 0; font: 400 clamp(28px, 3.5vw, 45px)/1.08 Georgia, "Times New Roman", serif; letter-spacing: -.04em; }
-.section-note { max-width: 230px; margin: 0 0 3px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.collection-grid, .product-grid { width: min(1240px, 100%); margin: auto; display: grid; gap: 16px; }
-.collection-grid { grid-template-columns: repeat(3, 1fr); }
-.collection-card { min-height: 185px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); transition: border-color 160ms ease, transform 160ms ease; }
-.collection-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.collection-number { position: absolute; top: 18px; left: 20px; color: var(--muted); font-size: 9px; letter-spacing: .12em; }
-.collection-symbol { position: absolute; top: 20px; right: 25px; color: var(--accent); font: clamp(30px, 4vw, 46px) Georgia, "Times New Roman", serif; opacity: .62; }
-.collection-name { font: 400 25px Georgia, "Times New Roman", serif; }
-.collection-note { margin-top: 7px; color: var(--muted); font-size: 11px; }
-.collection-arrow { position: absolute; right: 21px; bottom: 22px; color: var(--accent); }
-.featured-section { background: var(--surface-soft); }
-.preview-tag { padding: 8px 11px; border: 1px solid var(--line); color: var(--muted); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
-.product-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.product-card { min-width: 0; }
-.product-placeholder { min-height: 290px; position: relative; display: grid; place-items: center; background: var(--placeholder); color: var(--muted); }
-.product-placeholder-2 { background: color-mix(in srgb, var(--placeholder), var(--accent) 13%); }
-.product-placeholder-3 { background: color-mix(in srgb, var(--placeholder), #687260 20%); }
-.product-placeholder > span:first-child { padding: 8px 11px; border: 1px solid rgb(255 255 255 / 50%); color: var(--ink); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
-.placeholder-index { position: absolute; top: 14px; left: 15px; color: var(--ink); font: 14px Georgia, "Times New Roman", serif; }
-.product-meta { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 15px; }
-.product-meta h3 { margin: 0; font: 400 22px Georgia, "Times New Roman", serif; }
-.product-meta p, .product-price-note { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
-.product-arrow { color: var(--accent); }
-.product-price-note { padding-top: 11px; border-top: 1px solid var(--line); margin-top: 14px; }
-.approach-section { padding: 92px 24px 100px; text-align: center; }
-.approach-section h2 { font-size: clamp(42px, 6vw, 70px); }
-.approach-section > p:not(.eyebrow) { max-width: 470px; margin: 22px auto 27px; color: var(--muted); font: 16px/1.7 Georgia, "Times New Roman", serif; }
-.text-link { color: var(--accent); font-size: 11px; border-bottom: 1px solid var(--accent); padding-bottom: 5px; }
-.text-link span { margin-left: 7px; }
-.site-footer { min-height: 170px; padding: 34px max(6vw, 20px); display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 18px 30px; border-top: 1px solid var(--line); }
-.footer-wordmark { font-size: 21px; }
-.site-footer > p { margin: 0; color: var(--muted); font: 14px Georgia, "Times New Roman", serif; }
-.footer-links { display: flex; flex-wrap: wrap; gap: 19px; color: var(--muted); font-size: 10px; }
-.footer-links a:hover { color: var(--accent); }
-.footer-links span { flex-basis: 100%; font-size: 9px; }
-.copyright { justify-self: end; color: var(--muted); font-size: 9px; }
-@media (max-width: 760px) {
-  .announcement { min-height: 31px; gap: 7px; font-size: 8px; }
-  .site-header { min-height: 70px; padding: 0 18px; grid-template-columns: 1fr auto; }
-  .main-nav { display: none; }
-  .header-actions { gap: 12px; }
-  .wordmark { font-size: 23px; }
-  .theme-toggle { min-width: 72px; min-height: 34px; font-size: 10px; }
-  .account-link { font-size: 10px; }
-  .hero { width: auto; margin: 25px 16px 60px; grid-template-columns: 1fr; gap: 27px; }
-  .hero-copy { padding: 18px 3px 0; }
-  .hero h1 { font-size: clamp(44px, 12vw, 61px); }
-  .hero-description { margin: 17px 0 22px; font-size: 15px; }
-  .hero-art { min-height: 360px; }
-  .art-form { transform: scale(.82); }
-  .collection-section, .featured-section { padding: 48px 16px 56px; }
-  .section-heading { align-items: flex-start; flex-direction: column; margin-bottom: 22px; gap: 12px; }
-  .section-note { max-width: none; }
-  .collection-grid { grid-template-columns: 1fr; gap: 10px; }
-  .collection-card { min-height: 116px; padding: 17px; }
-  .collection-number { top: 13px; left: 16px; }
-  .collection-symbol { top: 21px; right: 22px; font-size: 33px; }
-  .collection-name { font-size: 22px; }
-  .collection-arrow { right: 16px; bottom: 17px; }
-  .product-grid { grid-template-columns: 1fr; gap: 28px; }
-  .product-placeholder { min-height: 300px; }
-  .approach-section { padding: 62px 20px 68px; }
-  .approach-section > p:not(.eyebrow) { font-size: 15px; }
-  .site-footer { padding: 28px 18px; grid-template-columns: 1fr; gap: 18px; }
-  .copyright { justify-self: start; }
+.bag-link { min-width: 40px; display: flex; flex-direction: column; align-items: center; gap: 1px; color: var(--ink); font-size: 9px; }
+.bag-link svg { color: var(--accent); }
+
+.shop-intro { padding: 24px clamp(20px, 7vw, 100px) 25px; background: var(--page); }
+.breadcrumb { display: flex; gap: 9px; color: var(--muted); font-size: 10px; }
+.breadcrumb a:hover { color: var(--accent); }
+.intro-row { max-width: 1250px; margin: 20px auto 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
+.eyebrow { margin: 0 0 10px; color: var(--accent); font-size: 9px; letter-spacing: .17em; text-transform: uppercase; }
+.intro-row h1 { margin: 0; font: 400 clamp(39px, 5vw, 62px)/.97 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; letter-spacing: -.045em; }
+.intro-row h1 em { color: var(--accent); font-weight: 400; }
+.intro-copy { max-width: 340px; margin: 0 0 4px; color: var(--muted); font: 16px/1.6 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+
+.catalogue-section { padding: 27px clamp(18px, 5vw, 76px) 78px; background: var(--surface); border-top: 1px solid var(--line); }
+.catalogue-heading { max-width: 1320px; margin: 0 auto 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.catalogue-heading .eyebrow { margin-bottom: 6px; }
+.catalogue-heading h2 { margin: 0; font: 400 clamp(24px, 3vw, 34px)/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.result-count { margin: 0 0 2px; color: var(--muted); font-size: 10px; }
+.catalogue-controls { max-width: 1320px; margin: 0 auto 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.filter-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter-chip { min-height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-size: 10px; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+.filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+.filter-chip.active { border-color: var(--ink); background: var(--ink); color: var(--page); }
+.reference-note { margin: 0; color: var(--muted); font-size: 9px; text-align: right; }
+.product-grid { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.product-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); transition: box-shadow 160ms ease, transform 160ms ease; }
+.product-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.product-image-wrap { position: relative; aspect-ratio: 1.06 / 1; overflow: hidden; background: var(--surface-soft); }
+.product-image-link { position: absolute; inset: 0; display: block; }
+.product-image { object-fit: cover; transition: transform 250ms ease; }
+.product-card:hover .product-image { transform: scale(1.025); }
+.image-tag { position: absolute; top: 12px; left: 12px; padding: 6px 8px; background: rgb(255 253 250 / 88%); color: #51453b; font-size: 8px; letter-spacing: .11em; }
+.discount-tag { position: absolute; right: 12px; top: 12px; padding: 6px 8px; background: var(--accent); color: #fffdfa; font-size: 8px; letter-spacing: .09em; }
+.product-info { padding: 16px 16px 17px; }
+.product-deity { margin: 0 0 6px; color: var(--accent); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.product-info h3 { margin: 0; font: 400 23px/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.product-placement { margin: 8px 0 15px; color: var(--muted); font-size: 10px; }
+.details-link { display: inline-flex; align-items: center; gap: 6px; margin: -5px 0 12px; color: var(--accent); font-size: 10px; font-weight: 600; }
+.details-link:hover { color: var(--accent-dark); text-decoration: underline; }
+.product-buy-row { min-height: 41px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 11px; }
+.product-price-block { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
+.product-price-block strong { font-size: 15px; }
+.product-price-block del { color: var(--muted); font-size: 10px; }
+.product-price-block small { width: 100%; color: var(--muted); font-size: 8px; }
+.add-button { min-height: 35px; padding: 0 13px; border: 1px solid var(--accent); border-radius: 3px; background: var(--accent); color: #fffdfa; cursor: pointer; font-size: 10px; transition: background-color 150ms ease; }
+.add-button:hover { background: var(--accent-dark); }
+.empty-results { max-width: 1320px; margin: auto; padding: 40px; background: var(--page); text-align: center; color: var(--muted); }
+.empty-results p { margin-top: 0; }
+.empty-results button { padding: 9px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+
+.placement-note { padding: 45px clamp(20px, 7vw, 100px); display: flex; align-items: center; justify-content: center; gap: 27px; background: var(--surface-soft); text-align: left; }
+.placement-mark { color: var(--gold); font: 50px/1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.placement-note .eyebrow { margin-bottom: 7px; }
+.placement-note h2 { margin: 0; font: 400 clamp(21px, 3vw, 31px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.placement-note div > p:last-child { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.shop-footer { min-height: 145px; padding: 28px clamp(20px, 5vw, 76px); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 26px; border-top: 1px solid var(--line); background: var(--ink); color: var(--page); }
+.footer-wordmark { padding: 4px; border-radius: 3px; background: #fffdfa; }
+.footer-wordmark .brand-logo { width: clamp(140px, 13vw, 180px); }
+.shop-footer > p { max-width: 530px; margin: 0 auto; color: #c5bbae; font-size: 9px; line-height: 1.6; }
+.shop-footer > small { color: #c5bbae; font-size: 9px; }
+
+.product-page { min-height: 100vh; background: var(--surface); }
+.detail-header { min-height: 82px; padding: 0 clamp(18px, 5vw, 76px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); }
+.back-to-shop { color: var(--muted); font-size: 12px; }
+.back-to-shop:hover, .detail-breadcrumb a:hover { color: var(--accent); }
+.detail-breadcrumb { display: flex; gap: 10px; padding: 20px clamp(18px, 7vw, 100px); color: var(--muted); font-size: 11px; }
+.detail-layout { max-width: 1320px; margin: 0 auto; padding: 12px clamp(18px, 5vw, 76px) 80px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); align-items: start; gap: clamp(32px, 6vw, 84px); }
+.detail-gallery { min-width: 0; }
+.detail-main-image { position: relative; aspect-ratio: 1 / .88; overflow: hidden; background: var(--surface-soft); }
+.detail-main-image img, .detail-thumbnail img { object-fit: cover; }
+.detail-thumbnails { margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.detail-thumbnail { position: relative; aspect-ratio: 1.15 / 1; overflow: hidden; background: var(--surface-soft); }
+.detail-image-note { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.detail-copy { position: sticky; top: 24px; padding-top: 13px; }
+.detail-copy h1 { margin: 0; font: 400 clamp(34px, 4vw, 48px)/1.08 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.detail-placement { margin: 13px 0 24px; color: var(--muted); font-size: 13px; }
+.detail-price { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
+.detail-add-button { width: 100%; min-height: 48px; border: 0; background: var(--disabled); color: var(--muted); cursor: not-allowed; font-size: 12px; }
+.detail-rule { margin: 28px 0 22px; border-top: 1px solid var(--line); }
+.detail-copy h2 { margin: 0 0 9px; font: 400 24px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.detail-copy > p:not(.eyebrow):not(.detail-placement):not(.detail-price) { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.product-facts { margin: 23px 0 0; border-top: 1px solid var(--line); }
+.product-facts > div { padding: 11px 0; display: flex; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); font-size: 11px; }
+.product-facts dt { color: var(--muted); }
+.product-facts dd { margin: 0; text-align: right; }
+.detail-demo-offer { display: inline-block; margin: 20px 0 8px; padding: 7px 9px; background: var(--surface-soft); color: var(--accent); font-size: 9px; letter-spacing: .09em; }
+.detail-price { display: flex; align-items: baseline; gap: 11px; margin: 0 0 2px; font-size: 25px; font-weight: 600; }
+.detail-price del { color: var(--muted); font-size: 15px; font-weight: 400; }
+.detail-demo-caption { margin: 0 0 14px; color: var(--muted); font-size: 9px; }
+.detail-add-button { display: grid; place-items: center; width: 100%; min-height: 49px; border: 0; border-radius: 3px; background: var(--accent); color: #fffdfa; cursor: pointer; font-size: 12px; }
+.detail-add-button:hover { background: var(--accent-dark); }
+
+.cart-page { min-height: 100vh; background: var(--page); }
+.cart-content { max-width: 1180px; margin: 0 auto; padding: 50px clamp(18px, 5vw, 70px) 80px; }
+.cart-content > h1 { margin: 0 0 18px; font: 400 clamp(36px, 5vw, 52px)/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.cart-demo-banner { margin: 0 0 25px; padding: 12px 15px; border: 1px solid var(--gold); background: var(--surface-soft); color: var(--ink); font-size: 11px; line-height: 1.55; }
+.cart-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
+.cart-lines { border-top: 1px solid var(--line); }
+.cart-line { min-height: 150px; padding: 17px 0; display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 17px; align-items: start; border-bottom: 1px solid var(--line); }
+.cart-line-image { position: relative; display: block; width: 112px; aspect-ratio: 1; background: var(--surface-soft); }
+.cart-line-image img { object-fit: cover; }
+.cart-line-info .product-deity { margin: 1px 0 5px; }
+.cart-line-info h2 { margin: 0; font: 400 21px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.cart-unit-price { margin: 6px 0 10px; font-size: 12px; }
+.cart-unit-price span { color: var(--muted); font-size: 9px; }
+.cart-line-total { padding-top: 4px; font-size: 13px; white-space: nowrap; }
+.cart-line-controls { display: flex; align-items: center; gap: 15px; }
+.quantity-control { min-height: 32px; display: inline-flex; align-items: center; border: 1px solid var(--line); background: var(--surface); }
+.quantity-control button { width: 33px; height: 30px; border: 0; background: transparent; cursor: pointer; }
+.quantity-control span { min-width: 24px; text-align: center; font-size: 11px; }
+.remove-button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 10px; text-decoration: underline; }
+.cart-summary { padding: 20px; border: 1px solid var(--line); background: var(--surface); }
+.cart-summary h2 { margin: 0 0 17px; font: 400 23px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.cart-summary > div { margin: 11px 0; display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
+.cart-summary > p { color: var(--muted); font-size: 9px; line-height: 1.6; }
+.checkout-demo-button, .continue-button { min-height: 42px; padding: 0 15px; display: grid; place-items: center; border: 1px solid var(--accent); background: var(--accent); color: #fffdfa; cursor: pointer; font-size: 11px; }
+.checkout-demo-button { width: 100%; margin-top: 15px; }
+.demo-checkout-message { padding: 10px; background: var(--surface-soft); color: var(--ink) !important; }
+.checkout-form { display: grid; gap: 10px; margin-top: 20px; }
+.checkout-form h3 { margin: 5px 0; font: 400 20px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.checkout-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
+.checkout-form input, .checkout-form textarea { width: 100%; min-height: 39px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; }
+.checkout-form textarea { min-height: 68px; resize: vertical; }
+.checkout-demo-button:disabled { opacity: .5; cursor: not-allowed; }
+.cart-add-another { display: grid; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cart-add-another h3 { margin: 0 0 2px; color: var(--muted); font-size: 10px; font-weight: 400; }
+.cart-add-another button { min-height: 36px; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--accent); cursor: pointer; font-size: 10px; overflow-wrap: anywhere; text-align: left; }
+.cart-add-another button:hover:not(:disabled) { border-color: var(--accent); }
+.cart-add-another button:disabled { color: var(--muted); cursor: not-allowed; opacity: .65; }
+.cart-success { padding: 13px 16px; border: 1px solid #bed0b8; background: #eef4eb; color: #3d5b37; font-size: 12px; }
+.saved-checkout-banner { margin: 16px 0; padding: 13px 15px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--gold); background: var(--surface-soft); }
+.saved-checkout-banner strong { font-size: 11px; }
+.saved-checkout-banner p { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.saved-checkout-banner > div:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 10px; }
+.saved-checkout-banner a { color: var(--accent); text-decoration: underline; }
+.checkout-retry-button { border: 0; padding: 9px 0; background: transparent; color: var(--accent); text-align: left; text-decoration: underline; cursor: pointer; font-size: 10px; }
+.empty-orders { padding: 20px 2px; color: var(--muted); font-size: 12px; }
+.cart-empty { padding: 38px 24px; border: 1px solid var(--line); background: var(--surface); text-align: center; }
+.detail-header-links { display: flex; align-items: center; gap: 20px; }
+.account-checkout-gate { padding: 13px; border: 1px solid var(--line); background: var(--page); }
+.account-checkout-gate p, .account-checkout-note { color: var(--muted); font-size: 10px; line-height: 1.6; }
+.account-checkout-gate .checkout-demo-button { width: 100%; }
+.account-contact { display: block; margin: 22px 0 0; color: var(--accent); font-size: 11px; line-height: 1.6; text-decoration: underline; text-underline-offset: 3px; }
+.footer-whatsapp { justify-self: end; color: #e5d8c6; font-size: 10px; line-height: 1.5; }
+.account-page { min-height: 100vh; background: var(--page); }
+.account-content { max-width: 880px; margin: 0 auto; padding: 50px clamp(18px, 5vw, 64px) 80px; }
+.account-content > h1 { margin: 0 0 10px; font: 400 clamp(36px, 5vw, 54px)/1.08 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.account-lede { max-width: 560px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.account-demo-banner { margin: 20px 0; padding: 11px 13px; border: 1px solid var(--gold); background: var(--surface-soft); font-size: 10px; line-height: 1.5; }
+.account-card { margin-top: 20px; padding: clamp(18px, 4vw, 32px); border: 1px solid var(--line); background: var(--surface); }
+.account-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); }
+.account-tabs button { padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; }
+.account-tabs button.selected { border-color: var(--accent); color: var(--ink); }
+.account-form { max-width: 480px; display: grid; gap: 14px; padding-top: 22px; }
+.account-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; }
+.account-form input { min-height: 42px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 2px; background: var(--page); color: var(--ink); font-size: 13px; }
+.account-form .checkout-demo-button { width: 100%; margin-top: 3px; }
+.demo-accounts { margin-top: 22px; padding: 12px; background: var(--page); color: var(--muted); font-size: 10px; line-height: 1.6; }
+.demo-accounts summary { color: var(--ink); cursor: pointer; }
+.demo-accounts ul { margin: 7px 0; padding-left: 20px; }
+.demo-accounts code { color: var(--accent); }
+.account-profile { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.account-profile > div { display: grid; gap: 5px; }
+.account-profile strong { font-size: 14px; }
+.account-profile span { color: var(--muted); font-size: 10px; }
+.account-signout, .sync-order-button { padding: 8px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; font-size: 10px; }
+.account-card > h2 { margin: 23px 0 12px; font: 400 22px "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.account-order { padding: 17px 0; border-top: 1px solid var(--line); }
+.order-heading, .order-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.order-heading > div { display: grid; gap: 5px; font-size: 11px; }
+.order-heading small { color: var(--muted); font-size: 9px; }
+.order-heading > strong { font-size: 13px; }
+.account-order > p { color: var(--muted); font-size: 10px; line-height: 1.6; }
+.order-status-row > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.order-status { padding: 6px 8px; border-radius: 999px; font-size: 9px; text-transform: capitalize; }
+.order-status.paid { background: #e5efe2; color: #315b35; }
+.order-status.pending { background: #f4ecdc; color: #765b24; }
+.order-whatsapp { align-self: center; color: var(--accent); font-size: 10px; text-decoration: underline; }
+.order-delivery { margin: 10px 0; color: var(--muted); font-size: 10px; }
+.order-delivery summary { color: var(--accent); cursor: pointer; }
+.order-delivery p { line-height: 1.6; }
+.sync-order-button:disabled { opacity: .55; }
+.account-message { margin: 14px 0; padding: 11px 13px; background: #e5efe2; color: #315b35; font-size: 11px; line-height: 1.5; }
+.account-message.error { background: #f8e9e3; color: #8b3225; }
+.cart-empty p { margin: 0 0 16px; color: var(--muted); }
+.continue-button { width: fit-content; margin: auto; }
+
+@media (max-width: 980px) {
+  .shop-header { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 0 22px; }
+  .header-nav { grid-column: 1 / -1; grid-row: 2; justify-content: center; padding: 0 0 13px; }
+  .header-tools { grid-column: 2; grid-row: 1; }
+  .header-search { width: 190px; }
+  .shop-intro { padding-left: 26px; padding-right: 26px; }
+  .catalogue-section { padding-left: 24px; padding-right: 24px; }
+  .product-grid { gap: 15px; }
 }
-@media (min-width: 761px) and (max-width: 1020px) {
-  .hero { width: 90vw; grid-template-columns: 1fr 1fr; gap: 35px; }
-  .hero-art { min-height: 420px; }
-  .product-placeholder { min-height: 230px; }
+
+@media (max-width: 620px) {
+  .top-note { min-height: 32px; font-size: 8px; letter-spacing: .04em; }
+  .shop-header { min-height: 70px; grid-template-columns: minmax(0, 1fr) auto; padding: 0 16px; }
+  .shop-header .brand-logo { width: clamp(88px, 29vw, 112px); }
+  .wordmark { font-size: 24px; }
+  .wordmark small { font-size: 6px; }
+  .header-nav { justify-content: flex-start; gap: 19px; overflow-x: auto; padding: 0 0 12px; scrollbar-width: none; }
+  .header-nav::-webkit-scrollbar { display: none; }
+  .header-nav a { font-size: 10px; }
+  .header-tools { gap: 8px; }
+  .header-search { width: 37px; height: 34px; justify-content: center; padding: 0; border-radius: 50%; }
+  .header-search > span { font-size: 20px; }
+  .header-search input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .header-search:focus-within { position: absolute; z-index: 5; right: 100px; width: min(55vw, 220px); padding: 0 10px; border-radius: 3px; }
+  .header-search:focus-within input { position: static; width: 100%; height: auto; opacity: 1; pointer-events: auto; }
+  .theme-toggle { min-width: 59px; height: 32px; padding: 0 7px; font-size: 9px; }
+  .bag-link { min-width: 27px; font-size: 8px; }
+  .bag-link svg { width: 17px; height: 17px; }
+  .shop-intro { padding: 17px 16px 22px; }
+  .intro-row { margin-top: 17px; align-items: flex-start; flex-direction: column; gap: 11px; }
+  .intro-row h1 { font-size: clamp(39px, 12vw, 54px); }
+  .intro-copy { max-width: 360px; font-size: 14px; }
+  .catalogue-section { padding: 23px 13px 48px; }
+  .catalogue-heading { padding: 0 3px; margin-bottom: 15px; }
+  .catalogue-heading h2 { font-size: 23px; }
+  .result-count { font-size: 9px; }
+  .catalogue-controls { align-items: flex-start; flex-direction: column; margin-bottom: 14px; gap: 9px; }
+  .filter-list { flex-wrap: nowrap; width: 100%; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .filter-list::-webkit-scrollbar { display: none; }
+  .filter-chip { min-height: 32px; flex: 0 0 auto; padding: 0 12px; font-size: 9px; }
+  .reference-note { padding-left: 3px; text-align: left; font-size: 8px; }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .product-card { border-radius: 4px; }
+  .product-image-wrap { aspect-ratio: .88 / 1; }
+  .image-tag { top: 7px; left: 7px; padding: 5px 6px; font-size: 6px; }
+  .product-info { padding: 10px 9px 10px; }
+  .product-deity { margin-bottom: 4px; font-size: 7px; letter-spacing: .08em; }
+  .product-info h3 { font-size: 17px; }
+  .product-placement { min-height: 24px; margin: 6px 0 9px; font-size: 8px; line-height: 1.35; }
+  .details-link { margin: -4px 0 9px; font-size: 9px; }
+  .product-buy-row { min-height: 35px; align-items: stretch; flex-direction: column; gap: 8px; padding-top: 8px; }
+  .product-price-block { gap: 4px; }
+  .product-price-block strong { font-size: 13px; }
+  .product-price-block del { font-size: 9px; }
+  .product-price-block small { font-size: 7px; }
+  .add-button { width: 100%; min-height: 31px; font-size: 9px; }
+  .discount-tag { top: 7px; right: 7px; padding: 5px 6px; font-size: 6px; }
+  .placement-note { justify-content: flex-start; gap: 15px; padding: 30px 19px; }
+  .placement-mark { font-size: 38px; }
+  .placement-note h2 { font-size: 22px; }
+  .placement-note div > p:last-child { font-size: 9px; line-height: 1.5; }
+  .shop-footer { grid-template-columns: 1fr auto; gap: 16px; padding: 25px 18px; }
+  .shop-footer > p { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+  .shop-footer > small { grid-column: 2; grid-row: 1; }
+  .footer-whatsapp { grid-column: 1 / -1; justify-self: start; }
+  .detail-header-links { gap: 10px; flex-direction: column; align-items: flex-end; }
+  .order-status-row { align-items: flex-start; flex-direction: column; }
+  .order-status-row > div { justify-content: flex-start; }
+  .account-profile { align-items: flex-start; }
+  .detail-header { min-height: 68px; padding: 0 16px; }
+  .back-to-shop { font-size: 10px; }
+  .detail-breadcrumb { padding: 15px 17px; gap: 7px; font-size: 9px; }
+  .detail-layout { padding: 4px 16px 45px; grid-template-columns: 1fr; gap: 25px; }
+  .detail-main-image { aspect-ratio: 1 / .9; }
+  .detail-thumbnails { gap: 8px; }
+  .detail-copy { position: static; padding-top: 0; }
+  .detail-copy h1 { font-size: 37px; }
+  .detail-placement { margin: 10px 0 20px; font-size: 12px; }
+  .detail-rule { margin: 23px 0 18px; }
+  .detail-copy h2 { font-size: 22px; }
+  .cart-content { padding: 29px 16px 50px; }
+  .cart-layout { grid-template-columns: 1fr; gap: 22px; }
+  .cart-line { min-height: 0; grid-template-columns: 82px minmax(0, 1fr); gap: 11px; }
+  .cart-line-image { width: 82px; }
+  .cart-line-info h2 { font-size: 17px; }
+  .cart-line-total { grid-column: 2; grid-row: 1; align-self: end; margin-bottom: 2px; justify-self: end; font-size: 11px; }
+  .cart-unit-price { font-size: 10px; }
+  .cart-line-controls { gap: 10px; }
+  .quantity-control button { width: 29px; }
+  .cart-summary { padding: 17px; }
 }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
