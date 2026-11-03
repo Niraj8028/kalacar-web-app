@@ -211,6 +211,28 @@ export async function findOrder(id: string) {
   return { id: order.id, userId: order.user_id, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, amount: Number(order.amount), status: order.status, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
 }
 
+export async function getAdminOrderDetails(id: string) {
+  await ensureCatalogue();
+  const [rows] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE id=?", [id]);
+  const order = rows[0];
+  if (!order) return null;
+  const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=? ORDER BY id", [id]);
+  const status = order.status === "payment_pending" ? "Awaiting payment" : order.status === "paid" ? "Paid" : order.status.replaceAll("_", " ");
+  return {
+    id: order.id,
+    date: order.created_at,
+    customer: order.customer_name,
+    email: order.email,
+    phone: order.phone,
+    address: order.address,
+    pincode: order.pincode,
+    total: Number(order.amount),
+    status,
+    fulfillmentStatus: order.fulfillment_status,
+    items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })),
+  };
+}
+
 export async function createCustomer(name: string, email: string, phone: string, password: string) {
   await ensureCatalogue();
   const salt = randomBytes(16);

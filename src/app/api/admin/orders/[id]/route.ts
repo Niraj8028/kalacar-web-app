@@ -1,7 +1,21 @@
 import { NextResponse } from "next/server";
-import { updateOrderFulfillment } from "@/lib/catalogue-db";
+import { getAdminOrderDetails, updateOrderFulfillment } from "@/lib/catalogue-db";
 
 const allowed = new Set(["processing", "dispatched", "completed"]);
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  try {
+    const order = await getAdminOrderDetails(id);
+    if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    return NextResponse.json({ order }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("Order details unavailable:", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "Order details are temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
