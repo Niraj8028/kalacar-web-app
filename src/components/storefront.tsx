@@ -5,42 +5,48 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/theme-toggle";
 import { AddToBagButton, CartLink } from "@/components/cart-provider";
-import { deityFilters, storeItems, type Deity } from "@/data/catalogue";
+import type { StoreItem } from "@/data/catalogue";
 
 export default function Storefront() {
-  const [products, setProducts] = useState(storeItems);
-  const [activeFilter, setActiveFilter] = useState<"All murtis" | Deity>("All murtis");
+  const [products, setProducts] = useState<StoreItem[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All murtis");
   const [search, setSearch] = useState("");
+  const [catalogueLoading, setCatalogueLoading] = useState(true);
+  const [catalogueError, setCatalogueError] = useState("");
 
   useEffect(() => {
     let alive = true;
     const refresh = async () => {
       try {
         const response = await fetch("/api/products", { cache: "no-store" });
-        if (!response.ok) return;
-        const data = await response.json() as { products: Array<(typeof storeItems)[number] & { stock: number }> };
-        if (alive && data.products.length) setProducts(data.products);
-      } catch { /* Keep the clearly labeled local preview catalogue if the API is unavailable. */ }
+        if (!response.ok) throw new Error("Catalogue is temporarily unavailable.");
+        const data = await response.json() as { products: StoreItem[] };
+        if (alive) { setProducts(data.products); setCatalogueError(""); }
+      } catch (error) { if (alive) { setProducts([]); setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); } }
+      finally { if (alive) setCatalogueLoading(false); }
     };
     void refresh();
     const timer = window.setInterval(refresh, 2500);
     return () => { alive = false; window.clearInterval(timer); };
   }, []);
 
+  const deityFilters = useMemo(() => ["All murtis", ...new Set(products.map(item => item.deity))], [products]);
+  const categories = useMemo(() => [...new Set(products.map(item => item.deity))], [products]);
+  const selectedFilter = deityFilters.includes(activeFilter) ? activeFilter : "All murtis";
+
   const visibleItems = useMemo(() => {
     const query = search.trim().toLowerCase();
     return products.filter((item) => {
-      const matchesFilter = activeFilter === "All murtis" || item.deity === activeFilter;
+      const matchesFilter = selectedFilter === "All murtis" || item.deity === selectedFilter;
       const matchesSearch = !query || `${item.name} ${item.deity}`.toLowerCase().includes(query);
       return matchesFilter && matchesSearch;
     });
-  }, [products, activeFilter, search]);
+  }, [products, selectedFilter, search]);
 
   return (
     <main className="storefront" id="top">
-      <div className="top-note">
-        Small murtis for car dashboards, Devghars, and personal mandirs
-      </div>
+      {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Catalogue values come from the temporary database. Confirm product facts, prices, and stock before launch. Payments remain in test mode.</p>}
+      <div className="top-note">Small devotional murtis</div>
 
       <header className="shop-header">
         <Link className="wordmark" href="/" aria-label="Kalacar home">
@@ -56,9 +62,7 @@ export default function Storefront() {
 
         <nav className="header-nav" aria-label="Shop categories">
           <a href="#catalogue" onClick={() => setActiveFilter("All murtis")}>Shop all</a>
-          <a href="#catalogue" onClick={() => setActiveFilter("Ganpati")}>Ganpati</a>
-          <a href="#catalogue" onClick={() => setActiveFilter("Sri Krishna")}>Sri Krishna</a>
-          <a href="#catalogue" onClick={() => setActiveFilter("Swami Samarth")}>Swami Samarth</a>
+          {categories.map(category => <a key={category} href="#catalogue" onClick={() => setActiveFilter(category)}>{category}</a>)}
         </nav>
 
         <div className="header-tools">
@@ -97,27 +101,27 @@ export default function Storefront() {
             <p className="eyebrow">SHOP BY DEITY</p>
             <h2 id="catalogue-title">Murtis for everyday spaces</h2>
           </div>
-          <p className="result-count">{visibleItems.length} {visibleItems.length === 1 ? "item" : "items"}</p>
+          <p className="result-count">{catalogueLoading ? "Loading…" : catalogueError ? "Unavailable" : `${visibleItems.length} ${visibleItems.length === 1 ? "item" : "items"}`}</p>
         </div>
 
         <div className="catalogue-controls">
           <div className="filter-list" role="group" aria-label="Filter by deity">
             {deityFilters.map((filter) => (
               <button
-                className={activeFilter === filter ? "filter-chip active" : "filter-chip"}
+                className={selectedFilter === filter ? "filter-chip active" : "filter-chip"}
                 type="button"
                 key={filter}
                 onClick={() => setActiveFilter(filter)}
-                aria-pressed={activeFilter === filter}
+                aria-pressed={selectedFilter === filter}
               >
                 {filter}
               </button>
             ))}
           </div>
-          <p className="reference-note">Demo prices and offers shown for preview only.</p>
+          <p className="reference-note">Prices and stock from the current catalogue.</p>
         </div>
 
-        {visibleItems.length > 0 ? (
+        {catalogueError ? <div className="empty-results" role="alert"><p>{catalogueError}</p></div> : catalogueLoading ? <div className="empty-results" role="status"><p>Loading the current catalogue…</p></div> : visibleItems.length > 0 ? (
           <div className="product-grid">
             {visibleItems.map((item, index) => (
               <article className="product-card" key={item.id}>
@@ -133,16 +137,15 @@ export default function Storefront() {
                     />
                     <span className="image-tag">VIEW MURTI</span>
                   </Link>
-                  {item.originalPrice > item.price && <span className="discount-tag">DEMO OFFER</span>}
                 </div>
                 <div className="product-info">
                   <p className="product-deity">{item.deity}</p>
                   <h3>{item.name}</h3>
-                  <p className="product-placement">{item.placement}</p>
+                  {item.placement && <p className="product-placement">{item.placement}</p>}
                   <Link className="details-link" href={`/products/${item.id}`}>View details <span aria-hidden="true">→</span></Link>
                   <div className="product-buy-row">
-                    <span className="product-price-block"><strong>₹{item.price}</strong>{item.originalPrice > item.price && <del>₹{item.originalPrice}</del>}<small>demo price · {"stock" in item ? (item.stock ? `${item.stock} available` : "out of stock") : "preview stock"}</small></span>
-                    <AddToBagButton id={item.id} disabled={"stock" in item ? item.stock < 1 : false} />
+                    <span className="product-price-block"><strong>₹{item.price}</strong><small>{item.stock ? `${item.stock} available` : "out of stock"}</small></span>
+                    <AddToBagButton id={item.id} disabled={item.stock < 1} />
                   </div>
                 </div>
               </article>
@@ -150,7 +153,7 @@ export default function Storefront() {
           </div>
         ) : (
           <div className="empty-results">
-            <p>No murtis match that search.</p>
+            <p>{products.length ? "No murtis match that search." : "No products have been added yet."}</p>
             <button type="button" onClick={() => { setSearch(""); setActiveFilter("All murtis"); }}>
               Show all murtis
             </button>
@@ -163,7 +166,7 @@ export default function Storefront() {
         <div>
           <p className="eyebrow">MADE FOR YOUR SPACE</p>
           <h2>A little presence, wherever you place it.</h2>
-          <p>Choose a small murti for your car dashboard, Devghar, or personal mandir.</p>
+          <p>Browse the current Kalacar catalogue.</p>
         </div>
       </section>
 
@@ -177,7 +180,7 @@ export default function Storefront() {
             className="brand-logo"
           />
         </Link>
-        <p>Demo prices and discounts are sample values. Product photos, final pricing, availability, and payment will be confirmed before launch.</p>
+        <p>Prices and availability reflect the current catalogue.</p>
         <a className="footer-whatsapp" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20have%20a%20question%20about%20an%20order." target="_blank" rel="noreferrer">WhatsApp · +91 88306 46308</a>
       </footer>
     </main>

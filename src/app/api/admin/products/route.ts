@@ -13,10 +13,12 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const name = String(form.get("name") ?? "").trim();
     const deity = String(form.get("deity") ?? "").trim();
+    const placement = String(form.get("placement") ?? "").trim();
     const price = Number(form.get("price"));
     const stock = Number(form.get("stock"));
     const files = form.getAll("images").filter((entry): entry is File => entry instanceof File);
     if (name.length < 2 || name.length > 160 || deity.length < 2 || deity.length > 80) return NextResponse.json({ error: "Enter a product name and deity (2–160 characters)." }, { status: 400 });
+    if (placement.length > 255) return NextResponse.json({ error: "Placement must be 255 characters or fewer." }, { status: 400 });
     if (!Number.isSafeInteger(price) || price < 1 || price > 1000000 || !Number.isSafeInteger(stock) || stock < 0 || stock > 1000000) return NextResponse.json({ error: "Enter a valid price and non-negative whole stock quantity." }, { status: 400 });
     if (files.length < 1 || files.length > 5) return NextResponse.json({ error: "Choose between 1 and 5 product images." }, { status: 400 });
     if (files.some(file => !imageTypes[file.type] || file.size > 5 * 1024 * 1024) || files.reduce((sum, file) => sum + file.size, 0) > 20 * 1024 * 1024) return NextResponse.json({ error: "Use JPG, PNG, WebP, or AVIF images (up to 5 MB each, 20 MB total)." }, { status: 400 });
@@ -31,8 +33,8 @@ export async function POST(request: Request) {
       savedFiles.push(diskPath);
       gallery.push(`/uploads/${fileName}`);
     }
-    await createProduct({ id, name, deity, image: gallery[0], gallery, price, originalPrice: price, stock });
-    return NextResponse.json({ product: { id, name, deity, image: gallery[0], gallery, price, originalPrice: price, stock } }, { status: 201 });
+    await createProduct({ id, name, deity, image: gallery[0], gallery, placement, price, originalPrice: price, stock });
+    return NextResponse.json({ product: { id, name, deity, image: gallery[0], gallery, placement, price, originalPrice: price, stock } }, { status: 201 });
   } catch (error) {
     await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
     if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") return NextResponse.json({ error: "A product with that name already exists. Choose a different product name." }, { status: 409 });

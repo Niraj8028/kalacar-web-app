@@ -4,7 +4,6 @@ import { updateProduct } from "@/lib/catalogue-db";
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const { id } = await params;
-  if (!["ganpati", "sri-krishna", "swami-samarth"].includes(id)) return NextResponse.json({ error: "Unknown Kalacar product." }, { status: 404 });
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid update." }, { status: 400 });

@@ -7,8 +7,6 @@ import type { FormEvent } from "react";
 type User = { id: string; name: string; email: string; phone: string };
 type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; address: string; pincode: string; items: Array<{ id: string; name: string; price: number; quantity: number }> };
 type CheckoutOrder = { orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
-type PaymentResponse = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
-declare global { interface Window { Razorpay?: new (options: { key: string; amount: number; currency: string; name: string; order_id: string; prefill: { name: string; email: string; contact: string }; handler: (response: PaymentResponse) => void; modal: { backdropclose: boolean; escape: boolean; handleback: boolean; confirm_close: boolean; ondismiss: () => void } }) => { open: () => void; on: (event: string, callback: (response: { error?: { description?: string } }) => void) => void } } }
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const waLink = (orderId?: string) => `https://wa.me/918830646308?text=${encodeURIComponent(orderId ? `Hi Kalacar, I need help with order ${orderId}. Please check its payment or delivery status.` : "Hi Kalacar, I have a question about an order.")}`;
 

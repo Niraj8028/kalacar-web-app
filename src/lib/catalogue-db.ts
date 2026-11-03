@@ -23,12 +23,6 @@ function database() {
   });
 }
 
-const seed = [
-  ["ganpati", "Ganpati Murti", "Ganpati", "/images/catalogue/ganpati/ganpati-01.jpeg", "Seated Ganpati murti against a soft green background", "For a car dashboard or Devghar", 599, 799, 8],
-  ["sri-krishna", "Sri Krishna Murti", "Sri Krishna", "/images/catalogue/sri-krishna/sri-krishna-07.webp", "Small Sri Krishna murti displayed on a car dashboard", "For a car dashboard or Devghar", 699, 899, 5],
-  ["swami-samarth", "Swami Samarth Murti", "Swami Samarth", "/images/catalogue/swami-samarth/swami-samarth-01.jpeg", "Seated Swami Samarth murti on a neutral background", "For a car dashboard or Devghar", 749, 999, 0],
-] as const;
-
 async function initialize() {
   const db = database();
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_products (
@@ -39,13 +33,6 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [galleryColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'gallery'");
   if (galleryColumns.length === 0) await db.execute("ALTER TABLE kalacar_products ADD COLUMN gallery TEXT NULL AFTER image");
-  await db.query("INSERT IGNORE INTO kalacar_products (id,name,deity,image,image_alt,placement,price,original_price,stock) VALUES ?", [seed]);
-  const seedGalleries = [
-    ["ganpati", ["/images/catalogue/ganpati/ganpati-01.jpeg", "/images/catalogue/ganpati/ganpati-04.jpeg", "/images/catalogue/ganpati/ganpati-07.jpeg"]],
-    ["sri-krishna", ["/images/catalogue/sri-krishna/sri-krishna-07.webp", "/images/catalogue/sri-krishna/sri-krishna-08.webp", "/images/catalogue/sri-krishna/sri-krishna-09.webp"]],
-    ["swami-samarth", ["/images/catalogue/swami-samarth/swami-samarth-01.jpeg", "/images/catalogue/swami-samarth/swami-samarth-02.jpeg", "/images/catalogue/swami-samarth/swami-samarth-03.jpeg"]],
-  ] as const;
-  for (const [id, gallery] of seedGalleries) await db.execute("UPDATE kalacar_products SET gallery=COALESCE(gallery, ?) WHERE id=?", [JSON.stringify(gallery), id]);
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_orders (
     id CHAR(36) PRIMARY KEY, idempotency_key CHAR(36) NOT NULL UNIQUE, razorpay_order_id VARCHAR(64) NULL UNIQUE,
     razorpay_payment_id VARCHAR(64) NULL UNIQUE, amount INT UNSIGNED NOT NULL, currency CHAR(3) NOT NULL DEFAULT 'INR',
@@ -82,12 +69,12 @@ async function initialize() {
     const salt = randomBytes(16);
     const hash = await scrypt(process.env.KALACAR_DEMO_PASSWORD, salt, 64) as Buffer;
     const passwordHash = `${salt.toString("hex")}:${hash.toString("hex")}`;
-    const demos = [
+    const demoLogins = [
       [randomUUID(), "Ganpati Demo", "ganpati@example.test", "+919000000001", passwordHash],
       [randomUUID(), "Krishna Demo", "krishna@example.test", "+919000000002", passwordHash],
       [randomUUID(), "Swami Demo", "swami@example.test", "+919000000003", passwordHash],
     ];
-    await db.query("INSERT IGNORE INTO kalacar_users (id,name,email,phone,password_hash) VALUES ?", [demos]);
+    await db.query("INSERT IGNORE INTO kalacar_users (id,name,email,phone,password_hash) VALUES ?", [demoLogins]);
   }
 }
 
@@ -100,7 +87,7 @@ type ProductRow = RowDataPacket & { id: string; name: string; deity: string; ima
 
 export async function listProducts() {
   await ensureCatalogue();
-  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,image,gallery,image_alt,placement,price,original_price,stock,updated_at FROM kalacar_products ORDER BY CASE id WHEN 'ganpati' THEN 0 WHEN 'sri-krishna' THEN 1 WHEN 'swami-samarth' THEN 2 ELSE 3 END, id");
+  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,image,gallery,image_alt,placement,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
   return rows.map(row => {
     let gallery = [row.image];
     if (row.gallery) { try { gallery = JSON.parse(row.gallery) as string[]; } catch { gallery = [row.image]; } }
@@ -108,17 +95,47 @@ export async function listProducts() {
   });
 }
 
-export async function createProduct(product: { id: string; name: string; deity: string; image: string; gallery: string[]; price: number; originalPrice: number; stock: number }) {
+export async function createProduct(product: { id: string; name: string; deity: string; image: string; gallery: string[]; placement: string; price: number; originalPrice: number; stock: number }) {
   await ensureCatalogue();
   await database().execute(
     "INSERT INTO kalacar_products (id,name,deity,image,gallery,image_alt,placement,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?)",
-    [product.id, product.name, product.deity, product.image, JSON.stringify(product.gallery), `${product.name} small devotional murti`, "For a car dashboard or Devghar", product.price, product.originalPrice, product.stock],
+    [product.id, product.name, product.deity, product.image, JSON.stringify(product.gallery), `${product.name} product photo`, product.placement, product.price, product.originalPrice, product.stock],
   );
 }
 
 type CheckoutLine = { id: string; quantity: number };
 type CheckoutCustomer = { name: string; email: string; phone: string; address: string; pincode: string };
 type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
+
+export type OrderStatusFilter = "all" | "pending_payment" | "processing" | "on_hold" | "dispatched" | "completed" | "cancelled" | "refunded";
+type OrderStatusCounts = Record<OrderStatusFilter, number>;
+const orderStatusConditions: Record<Exclude<OrderStatusFilter, "all">, string> = {
+  pending_payment: "status='payment_pending'",
+  processing: "status='paid' AND fulfillment_status IN ('unfulfilled','processing')",
+  on_hold: "status IN ('payment_failed','payment_setup_failed')",
+  dispatched: "status='paid' AND fulfillment_status='dispatched'",
+  completed: "status='paid' AND fulfillment_status='completed'",
+  cancelled: "status IN ('payment_cancelled','cancelled')",
+  refunded: "status='refunded'",
+};
+
+export async function getOrderStatusCounts(): Promise<OrderStatusCounts> {
+  await ensureCatalogue();
+  const [rows] = await database().query<(RowDataPacket & Record<string, number | string>)[]>(`SELECT COUNT(*) AS all_count,
+    ${Object.entries(orderStatusConditions).map(([key, condition]) => `SUM(CASE WHEN ${condition} THEN 1 ELSE 0 END) AS ${key}`).join(",\n    ")}
+    FROM kalacar_orders`);
+  const counts = rows[0] ?? {};
+  return {
+    all: Number(counts.all_count ?? 0),
+    pending_payment: Number(counts.pending_payment ?? 0),
+    processing: Number(counts.processing ?? 0),
+    on_hold: Number(counts.on_hold ?? 0),
+    dispatched: Number(counts.dispatched ?? 0),
+    completed: Number(counts.completed ?? 0),
+    cancelled: Number(counts.cancelled ?? 0),
+    refunded: Number(counts.refunded ?? 0),
+  };
+}
 
 export async function reserveOrder(key: string, lines: CheckoutLine[], customer: CheckoutCustomer, userId: string) {
   await ensureCatalogue();
@@ -281,9 +298,10 @@ export async function markOrderPaid(id: string, razorpayOrderId: string, payment
   return order?.status === "paid";
 }
 
-export async function listOrders() {
+export async function listOrders(filter: OrderStatusFilter = "all") {
   await ensureCatalogue();
-  const [orders] = await database().query<OrderRow[]>("SELECT * FROM kalacar_orders ORDER BY created_at DESC LIMIT 100");
+  const condition = filter === "all" ? "" : `WHERE ${orderStatusConditions[filter]}`;
+  const [orders] = await database().query<OrderRow[]>(`SELECT * FROM kalacar_orders ${condition} ORDER BY created_at DESC LIMIT 100`);
   return Promise.all(orders.map(async order => {
     const [items] = await database().execute<(RowDataPacket & { product_name: string; quantity: number })[]>("SELECT product_name,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
     const status = order.status === "payment_pending" ? "Awaiting payment" : order.status === "paid" ? "Paid" : order.status.replaceAll("_", " ");
@@ -366,5 +384,6 @@ export async function updateProduct(id: string, values: { price?: number; stock?
   if (!fields.length) throw new Error("No changes provided.");
   params.push(id);
   await database().execute<mysql.ResultSetHeader>(`UPDATE kalacar_products SET ${fields.join(",")} WHERE id=?`, params);
-  return ["ganpati", "sri-krishna", "swami-samarth"].includes(id);
+  const [rows] = await database().execute<(RowDataPacket & { id: string })[]>("SELECT id FROM kalacar_products WHERE id=? LIMIT 1", [id]);
+  return rows.length > 0;
 }

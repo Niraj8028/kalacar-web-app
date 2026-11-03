@@ -14,6 +14,17 @@ The edit/verify rhythm during `next dev` — make a change, then
 confirm it actually works at runtime, not only that the types or
 the build are happy.
 
+## Kalacar data-integrity rule
+
+Never add or retain hardcoded business fixtures or startup seeding for
+products, prices, inventory, customers, orders, coupons, or reviews.
+Load business data from the shared database/API. Empty data must render
+an honest empty state; API/database failures must render an unavailable
+state and must never fall back to fake records. The only demo-data
+exception is a clearly labeled local-only login account or login gate
+while real Google/owner authentication credentials are unavailable.
+That exception does not permit demo business records.
+
 You verify through two views of the same running app:
 
 - **`/_next/mcp`** — an HTTP endpoint Next.js exposes about itself.

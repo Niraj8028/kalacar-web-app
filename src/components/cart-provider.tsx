@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { storeItems } from "@/data/catalogue";
+import type { StoreItem } from "@/data/catalogue";
 
 type CartLine = { id: string; quantity: number };
-type LiveStoreItem = (typeof storeItems)[number] & { stock?: number };
+type LiveStoreItem = StoreItem;
 type CartContextValue = {
   lines: CartLine[];
   count: number;
@@ -16,6 +16,8 @@ type CartContextValue = {
   remove: (id: string) => void;
   canAdd: (id: string) => boolean;
   products: LiveStoreItem[];
+  catalogueLoading: boolean;
+  catalogueError: string;
   clear: () => void;
 };
 
@@ -25,17 +27,20 @@ const STORAGE_KEY = "kalacar-demo-cart-v1";
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
-  const [products, setProducts] = useState<LiveStoreItem[]>(storeItems);
+  const [products, setProducts] = useState<LiveStoreItem[]>([]);
+  const [catalogueLoading, setCatalogueLoading] = useState(true);
+  const [catalogueError, setCatalogueError] = useState("");
 
   useEffect(() => {
     let active = true;
     const refresh = async () => {
       try {
         const response = await fetch("/api/products", { cache: "no-store" });
-        if (!response.ok) return;
+        if (!response.ok) throw new Error("Catalogue is temporarily unavailable.");
         const data = await response.json() as { products: LiveStoreItem[] };
-        if (active && data.products.length) setProducts(data.products);
-      } catch { /* Keep the local preview catalogue if the API is offline. */ }
+        if (active) { setProducts(data.products); setCatalogueError(""); }
+      } catch (error) { if (active) { setProducts([]); setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); } }
+      finally { if (active) setCatalogueLoading(false); }
     };
     void refresh();
     const timer = window.setInterval(refresh, 2500);
@@ -93,11 +98,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const canAdd = (id: string) => {
       const product = products.find(item => item.id === id);
       const quantity = lines.find(line => line.id === id)?.quantity ?? 0;
-      return product?.stock === undefined || quantity < product.stock;
+      return !!product && quantity < product.stock;
     };
     const clear = () => setLines([]);
-    return { lines, count, subtotal, add, setQuantity, remove, canAdd, products, clear };
-  }, [lines, products, add, setQuantity, remove]);
+    return { lines, count, subtotal, add, setQuantity, remove, canAdd, products, clear, catalogueLoading, catalogueError };
+  }, [lines, products, add, setQuantity, remove, catalogueLoading, catalogueError]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

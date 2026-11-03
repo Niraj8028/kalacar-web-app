@@ -342,3 +342,4 @@ button { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+.local-data-notice { margin: 0; padding: 10px clamp(18px, 5vw, 76px); border-bottom: 1px solid var(--gold); background: var(--surface-soft); color: var(--muted); font-size: 10px; line-height: 1.5; }

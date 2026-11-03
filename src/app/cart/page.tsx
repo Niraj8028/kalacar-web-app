@@ -5,13 +5,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useCart } from "@/components/cart-provider";
+import type { RazorpayPaymentSuccess } from "@/types/razorpay";
 
 const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
-
-type RazorpayPaymentSuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
-type RazorpayOptions = { key: string; amount: number; currency: string; name: string; description: string; order_id: string; prefill: { name: string; email: string; contact: string }; handler: (response: RazorpayPaymentSuccess) => void; modal: { backdropclose: boolean; escape: boolean; handleback: boolean; confirm_close: boolean; ondismiss: () => void } };
-type RazorpayCheckout = { open: () => void; on: (event: string, callback: (response: { error?: { description?: string } }) => void) => void };
-declare global { interface Window { Razorpay?: new (options: RazorpayOptions) => RazorpayCheckout } }
 
 type SavedCheckout = { fingerprint: string; idempotencyKey: string; orderId: string; razorpayOrderId: string; amount: number };
 const SAVED_CHECKOUT_KEY = "kalacar.pending-checkout.v1";
@@ -38,7 +34,7 @@ function loadRazorpay() {
 }
 
 export default function CartPage() {
-  const { lines, subtotal, setQuantity, remove, products: catalogue, clear, canAdd, add } = useCart();
+  const { lines, subtotal, setQuantity, remove, products: catalogue, clear, canAdd, add, catalogueLoading, catalogueError } = useCart();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -173,9 +169,14 @@ export default function CartPage() {
         {savedCheckout && !success && <div className="saved-checkout-banner" role="status"><div><strong>{savedCheckout.orderId ? `Saved checkout · ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout request saved"}</strong><p>{paymentStatus ? `Latest status: ${paymentStatus.replaceAll("_", " ")}.` : savedCheckout.orderId ? "If you left the payment window, the order is still saved." : "Continue checkout with the same cart so the server can resume the saved request."} Check the status before attempting payment again.</p></div><div>{savedCheckout.orderId && <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>}<Link href="/account">Account & orders</Link></div></div>}
         {showSuccess && <p className="cart-success" role="status">{success}</p>}
 
-        {products.length === 0 ? (
+        {catalogueError ? (
+          <div className="cart-empty" role="alert"><p>{catalogueError}</p><p>Your saved bag is kept in this browser. Current prices and stock cannot be confirmed, so checkout is unavailable.</p><Link className="continue-button" href="/#catalogue">Return to the catalogue</Link></div>
+        ) : catalogueLoading ? (
+          <div className="cart-empty" role="status"><p>Checking current product prices and availability…</p></div>
+        ) : products.length === 0 ? (
           <div className="cart-empty">
-            <p>Your bag is empty.</p>
+            <p>{lines.length ? "Saved bag items are no longer in the current catalogue." : "Your bag is empty."}</p>
+            {lines.length > 0 && <button type="button" className="remove-button" onClick={clear}>Clear saved bag</button>}
             <Link className="continue-button" href="/#catalogue">Explore the murtis</Link>
           </div>
         ) : (
@@ -190,7 +191,7 @@ export default function CartPage() {
                     <div className="cart-line-info">
                       <p className="product-deity">{item.deity}</p>
                       <h2><Link href={`/products/${item.id}`}>{item.name}</Link></h2>
-                      <p className="cart-unit-price">{money(item.price)} <span>test price</span></p>
+                      <p className="cart-unit-price">{money(item.price)} <span>unit price</span></p>
                       <div className="cart-line-controls">
                         <div className="quantity-control" aria-label={`Quantity for ${item.name}`}>
                           <button type="button" onClick={() => setQuantity(item.id, quantity - 1)} aria-label="Decrease quantity">−</button>
