@@ -40,7 +40,7 @@ export default function CartPage() {
   const [success, setSuccess] = useState("");
   const [verificationData, setVerificationData] = useState<{ orderId: string; payment: RazorpayPaymentSuccess } | null>(null);
   const checkoutKey = useRef({ fingerprint: "", value: "" });
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", address: "", pincode: "" });
+  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", address: "", city: "", state: "", landmark: "", instructions: "", pincode: "" });
   const [accountLoaded, setAccountLoaded] = useState(false);
   const [account, setAccount] = useState<{ name: string; email: string; phone: string } | null>(null);
   const [savedCheckout, setSavedCheckout] = useState<SavedCheckout | null>(null);
@@ -120,7 +120,7 @@ export default function CartPage() {
     event.preventDefault(); setBusy(true); setError(""); setSuccess("");
     try {
       if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
-      const fingerprint = JSON.stringify([...lines].sort((a, b) => a.id.localeCompare(b.id)));
+      const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => a.id.localeCompare(b.id)), customer });
       const existing = readSavedCheckout();
       if (existing && existing.fingerprint !== fingerprint) {
         if (existing.orderId) await syncSavedCheckout(existing, true, false);
@@ -217,8 +217,12 @@ export default function CartPage() {
                   <label>Full name<input required minLength={2} maxLength={160} autoComplete="name" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} /></label>
                   <label>Email<input required type="email" autoComplete="email" value={customer.email} onChange={e => setCustomer({ ...customer, email: e.target.value })} /></label>
                   <label>Mobile number<input required type="tel" minLength={10} autoComplete="tel" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} /></label>
-                  <label>Delivery address<textarea required minLength={8} autoComplete="street-address" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} /></label>
-                  <label>PIN code<input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="postal-code" value={customer.pincode} onChange={e => setCustomer({ ...customer, pincode: e.target.value })} /></label>
+                  <label>Area, building and street<textarea required minLength={8} maxLength={500} autoComplete="street-address" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} /></label>
+                  <label>City or district<input required maxLength={100} autoComplete="address-level2" value={customer.city} onChange={e => setCustomer({ ...customer, city: e.target.value })} /></label>
+                  <label>State<input required maxLength={100} autoComplete="address-level1" value={customer.state} onChange={e => setCustomer({ ...customer, state: e.target.value })} /></label>
+                  <label>Landmark (optional)<input maxLength={200} autoComplete="off" value={customer.landmark} onChange={e => setCustomer({ ...customer, landmark: e.target.value })} /></label>
+                  <label>Delivery instructions (optional)<textarea maxLength={300} autoComplete="off" value={customer.instructions} onChange={e => setCustomer({ ...customer, instructions: e.target.value })} /></label>
+                  <label>PIN code<input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="postal-code" value={customer.pincode} onChange={e => setCustomer({ ...customer, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })} /></label>
                   {error && <p className="demo-checkout-message" role="alert">{error}</p>}
                   {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
                   <button className="checkout-demo-button" type="submit" disabled={!account || busy || products.some(({item, quantity}) => item.stock < quantity)}>{busy ? "Starting secure checkout…" : "Pay with Razorpay · Test mode"}</button>

@@ -1,6 +1,7 @@
 import mysql, { type RowDataPacket } from "mysql2/promise";
 import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual, createHash } from "node:crypto";
 import { promisify } from "node:util";
+import type { ProductAccordion } from "@/data/catalogue";
 
 const scrypt = promisify(scryptCallback);
 
@@ -33,6 +34,8 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [galleryColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'gallery'");
   if (galleryColumns.length === 0) await db.execute("ALTER TABLE kalacar_products ADD COLUMN gallery TEXT NULL AFTER image");
+  const [accordionColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'accordions'");
+  if (accordionColumns.length === 0) await db.execute("ALTER TABLE kalacar_products ADD COLUMN accordions JSON NULL AFTER placement");
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_orders (
     id CHAR(36) PRIMARY KEY, idempotency_key CHAR(36) NOT NULL UNIQUE, razorpay_order_id VARCHAR(64) NULL UNIQUE,
     razorpay_payment_id VARCHAR(64) NULL UNIQUE, amount INT UNSIGNED NOT NULL, currency CHAR(3) NOT NULL DEFAULT 'INR',
@@ -83,23 +86,44 @@ export async function ensureCatalogue() {
   try { await ready; } catch (error) { ready = undefined; throw error; }
 }
 
-type ProductRow = RowDataPacket & { id: string; name: string; deity: string; image: string; gallery: string | null; image_alt: string; placement: string; price: number; original_price: number; stock: number; updated_at: Date };
+type ProductRow = RowDataPacket & { id: string; name: string; deity: string; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
+
+function parseAccordions(value: ProductRow["accordions"]): ProductAccordion[] {
+  if (!value) return [];
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed as ProductAccordion[] : [];
+  } catch { return []; }
+}
 
 export async function listProducts() {
   await ensureCatalogue();
-  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,image,gallery,image_alt,placement,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
+  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,image,gallery,image_alt,placement,accordions,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
   return rows.map(row => {
     let gallery = [row.image];
     if (row.gallery) { try { gallery = JSON.parse(row.gallery) as string[]; } catch { gallery = [row.image]; } }
-    return { id: row.id, name: row.name, deity: row.deity, image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), updatedAt: row.updated_at };
+    return { id: row.id, name: row.name, deity: row.deity, image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), updatedAt: row.updated_at };
   });
 }
 
-export async function createProduct(product: { id: string; name: string; deity: string; image: string; gallery: string[]; placement: string; price: number; originalPrice: number; stock: number }) {
+export async function getProductGallery(id: string): Promise<string[] | null> {
+  await ensureCatalogue();
+  const [rows] = await database().execute<(RowDataPacket & { image: string; gallery: string | null })[]>("SELECT image,gallery FROM kalacar_products WHERE id=? LIMIT 1", [id]);
+  if (!rows.length) return null;
+  if (rows[0].gallery) {
+    try {
+      const parsed = JSON.parse(rows[0].gallery) as unknown;
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === "string")) return parsed;
+    } catch { /* Use the current primary image as a safe fallback. */ }
+  }
+  return [rows[0].image];
+}
+
+export async function createProduct(product: { id: string; name: string; deity: string; image: string; gallery: string[]; placement: string; accordions: ProductAccordion[]; price: number; originalPrice: number; stock: number }) {
   await ensureCatalogue();
   await database().execute(
-    "INSERT INTO kalacar_products (id,name,deity,image,gallery,image_alt,placement,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?)",
-    [product.id, product.name, product.deity, product.image, JSON.stringify(product.gallery), `${product.name} product photo`, product.placement, product.price, product.originalPrice, product.stock],
+    "INSERT INTO kalacar_products (id,name,deity,image,gallery,image_alt,placement,accordions,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    [product.id, product.name, product.deity, product.image, JSON.stringify(product.gallery), `${product.name} product photo`, product.placement, JSON.stringify(product.accordions), product.price, product.originalPrice, product.stock],
   );
 }
 
@@ -397,12 +421,19 @@ export async function updateOrderFulfillment(id: string, fulfillmentStatus: "pro
   return result.affectedRows > 0;
 }
 
-export async function updateProduct(id: string, values: { price?: number; stock?: number }) {
+export async function updateProduct(id: string, values: { name?: string; deity?: string; placement?: string; price?: number; stock?: number; image?: string; gallery?: string[]; accordions?: ProductAccordion[] }) {
   await ensureCatalogue();
   const fields: string[] = [];
   const params: (string | number)[] = [];
+  if (values.name !== undefined) { fields.push("name=?"); params.push(values.name); }
+  if (values.deity !== undefined) { fields.push("deity=?"); params.push(values.deity); }
+  if (values.placement !== undefined) { fields.push("placement=?"); params.push(values.placement); }
   if (values.price !== undefined) { fields.push("price=?"); params.push(values.price); }
   if (values.stock !== undefined) { fields.push("stock=?"); params.push(values.stock); }
+  if (values.image !== undefined) { fields.push("image=?"); params.push(values.image); }
+  if (values.gallery !== undefined) { fields.push("gallery=?"); params.push(JSON.stringify(values.gallery)); }
+  if (values.name !== undefined) { fields.push("image_alt=?"); params.push(`${values.name} product photo`); }
+  if (values.accordions !== undefined) { fields.push("accordions=?"); params.push(JSON.stringify(values.accordions)); }
   if (!fields.length) throw new Error("No changes provided.");
   params.push(id);
   await database().execute<mysql.ResultSetHeader>(`UPDATE kalacar_products SET ${fields.join(",")} WHERE id=?`, params);

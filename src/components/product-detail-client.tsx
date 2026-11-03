@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AddToBagButton } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
+import { ProductDetailAccordions } from "@/components/product-detail-accordions";
 
 type LiveProduct = StoreItem & { stock: number };
 
@@ -43,5 +44,6 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
         <div className="detail-rule"/><h2>Product details</h2><dl className="product-facts"><div><dt>Deity</dt><dd>{item.deity}</dd></div><div><dt>Availability</dt><dd>{item.stock ? `${item.stock} in stock` : "Out of stock"}</dd></div></dl>
       </div>
     </section>
+    <ProductDetailAccordions sections={item.accordions ?? []} />
   </main>;
 }

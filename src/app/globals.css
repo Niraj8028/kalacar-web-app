@@ -125,7 +125,7 @@ button { color: inherit; }
 .back-to-shop { color: var(--muted); font-size: 12px; }
 .back-to-shop:hover, .detail-breadcrumb a:hover { color: var(--accent); }
 .detail-breadcrumb { display: flex; gap: 10px; padding: 20px clamp(18px, 7vw, 100px); color: var(--muted); font-size: 11px; }
-.detail-layout { max-width: 1320px; margin: 0 auto; padding: 12px clamp(18px, 5vw, 76px) 80px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); align-items: start; gap: clamp(32px, 6vw, 84px); }
+.detail-layout { max-width: 1320px; margin: 0 auto; padding: 12px clamp(18px, 5vw, 76px) 48px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); align-items: start; gap: clamp(32px, 6vw, 84px); }
 .detail-gallery { min-width: 0; }
 .detail-main-image { position: relative; aspect-ratio: 1 / .88; overflow: hidden; background: var(--surface-soft); }
 .detail-main-image img, .detail-thumbnail img { object-fit: cover; }
@@ -144,6 +144,19 @@ button { color: inherit; }
 .product-facts > div { padding: 11px 0; display: flex; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); font-size: 11px; }
 .product-facts dt { color: var(--muted); }
 .product-facts dd { margin: 0; text-align: right; }
+.product-detail-accordions { max-width: 1320px; margin: 0 auto; padding: 0 clamp(18px, 5vw, 76px) 80px; }
+.product-detail-accordions h2 { margin: 0 0 14px; font: 400 26px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.product-detail-accordion { border-top: 1px solid var(--line); }
+.product-detail-accordion:last-child { border-bottom: 1px solid var(--line); }
+.product-detail-accordion summary { min-height: 52px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); background: var(--surface-soft); color: var(--ink); cursor: pointer; font-size: 14px; font-weight: 600; list-style: none; }
+.product-detail-accordion summary::-webkit-details-marker { display: none; }
+.product-detail-accordion-icon::before { content: "+"; color: var(--accent); font-size: 18px; font-weight: 400; }
+.product-detail-accordion[open] .product-detail-accordion-icon::before { content: "−"; }
+.product-detail-spec-list { margin: 0; background: var(--surface); }
+.product-detail-spec-row { min-height: 40px; padding: 9px 16px; display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1fr); gap: 18px; border-bottom: 1px solid var(--line); font-size: 12px; line-height: 1.5; }
+.product-detail-spec-row dt { color: var(--muted); font-weight: 600; }
+.product-detail-spec-row dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.product-detail-accordion-content { margin: 0; padding: 14px 16px; color: var(--muted); font-size: 12px; line-height: 1.7; white-space: pre-line; }
 .detail-demo-offer { display: inline-block; margin: 20px 0 8px; padding: 7px 9px; background: var(--surface-soft); color: var(--accent); font-size: 9px; letter-spacing: .09em; }
 .detail-price { display: flex; align-items: baseline; gap: 11px; margin: 0 0 2px; font-size: 25px; font-weight: 600; }
 .detail-price del { color: var(--muted); font-size: 15px; font-weight: 400; }
@@ -319,7 +332,7 @@ button { color: inherit; }
   .detail-header { min-height: 68px; padding: 0 16px; }
   .back-to-shop { font-size: 10px; }
   .detail-breadcrumb { padding: 15px 17px; gap: 7px; font-size: 9px; }
-  .detail-layout { padding: 4px 16px 45px; grid-template-columns: 1fr; gap: 25px; }
+  .detail-layout { padding: 4px 16px 35px; grid-template-columns: 1fr; gap: 25px; }
   .detail-main-image { aspect-ratio: 1 / .9; }
   .detail-thumbnails { gap: 8px; }
   .detail-copy { position: static; padding-top: 0; }
@@ -327,6 +340,8 @@ button { color: inherit; }
   .detail-placement { margin: 10px 0 20px; font-size: 12px; }
   .detail-rule { margin: 23px 0 18px; }
   .detail-copy h2 { font-size: 22px; }
+  .product-detail-accordions { padding: 0 16px 50px; }
+  .product-detail-accordions h2 { font-size: 23px; }
   .cart-content { padding: 29px 16px 50px; }
   .cart-layout { grid-template-columns: 1fr; gap: 22px; }
   .cart-line { min-height: 0; grid-template-columns: 82px minmax(0, 1fr); gap: 11px; }

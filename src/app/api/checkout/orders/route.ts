@@ -25,14 +25,20 @@ export async function POST(request: Request) {
   }
   if (!data.customer || typeof data.customer !== "object") return NextResponse.json({ error: "Enter your delivery details." }, { status: 400 });
   const customer = data.customer as Record<string, unknown>;
+  const address = typeof customer.address === "string" ? customer.address.trim() : "";
+  const city = typeof customer.city === "string" ? customer.city.trim() : "";
+  const state = typeof customer.state === "string" ? customer.state.trim() : "";
+  const landmark = typeof customer.landmark === "string" ? customer.landmark.trim() : "";
+  const instructions = typeof customer.instructions === "string" ? customer.instructions.trim() : "";
+  const addressParts = [address, landmark && `Landmark: ${landmark}`, city, state, instructions && `Delivery instructions: ${instructions}`].filter(Boolean);
   const normalized = {
     name: account.name,
     email: account.email,
     phone: account.phone,
-    address: typeof customer.address === "string" ? customer.address.trim() : "",
+    address: addressParts.join("\n"),
     pincode: typeof customer.pincode === "string" ? customer.pincode.trim() : "",
   };
-  if (normalized.name.length < 2 || normalized.name.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email) || normalized.phone.replace(/\D/g, "").length < 10 || normalized.address.length < 8 || !/^\d{6}$/.test(normalized.pincode)) return NextResponse.json({ error: "Check your name, email, phone, full address, and 6-digit pincode." }, { status: 400 });
+  if (normalized.name.length < 2 || normalized.name.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email) || normalized.phone.replace(/\D/g, "").length < 10 || address.length < 8 || address.length > 500 || !city || city.length > 100 || !state || state.length > 100 || landmark.length > 200 || instructions.length > 300 || !/^\d{6}$/.test(normalized.pincode)) return NextResponse.json({ error: "Enter your area/building, city or district, state, and a valid 6-digit PIN code." }, { status: 400 });
   let order: Awaited<ReturnType<typeof reserveOrder>>;
   try { order = await reserveOrder(data.idempotencyKey, items, normalized, account.id); }
   catch (error) {
