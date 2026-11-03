@@ -54,6 +54,12 @@ export default function CartPage() {
     const item = catalogue.find((product) => product.id === line.id);
     return item ? [{ item, quantity: line.quantity }] : [];
   });
+  // A success message belongs to the completed order, not to any items added afterward.
+  const showSuccess = Boolean(success) && products.length === 0;
+
+  useEffect(() => {
+    if (success && products.length > 0) setSuccess("");
+  }, [success, products.length]);
 
   useEffect(() => {
     void fetch("/api/auth/session", { cache: "no-store" }).then(response => response.json()).then((data: { user: { name: string; email: string; phone: string } | null }) => {
@@ -104,9 +110,10 @@ export default function CartPage() {
       const result = await fetch("/api/checkout/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, ...payment }) });
       const verification = await result.json() as { error?: string; status?: string };
       if (!result.ok || verification.status !== "paid") throw new Error(verification.error || "Payment is still being verified.");
-      setSuccess(`Payment confirmed in test mode. Order ${orderId.slice(0, 8)} is recorded.`);
+      const confirmation = `Payment confirmed in test mode. Order ${orderId.slice(0, 8)} is recorded.`;
       localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null);
       setVerificationData(null); clear(); checkoutKey.current = { fingerprint: "", value: "" };
+      setSuccess(confirmation);
     } catch (verificationError) {
       setVerificationData({ orderId, payment });
       setError(verificationError instanceof Error ? verificationError.message : "Payment verification is pending. Keep this page open and retry.");
@@ -164,7 +171,7 @@ export default function CartPage() {
         <h1>Your bag</h1>
         <p className="cart-demo-banner">RAZORPAY TEST MODE · Preview prices only. No live payment will be taken.</p>
         {savedCheckout && !success && <div className="saved-checkout-banner" role="status"><div><strong>{savedCheckout.orderId ? `Saved checkout · ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout request saved"}</strong><p>{paymentStatus ? `Latest status: ${paymentStatus.replaceAll("_", " ")}.` : savedCheckout.orderId ? "If you left the payment window, the order is still saved." : "Continue checkout with the same cart so the server can resume the saved request."} Check the status before attempting payment again.</p></div><div>{savedCheckout.orderId && <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>}<Link href="/account">Account & orders</Link></div></div>}
-        {success && <p className="cart-success" role="status">{success}</p>}
+        {showSuccess && <p className="cart-success" role="status">{success}</p>}
 
         {products.length === 0 ? (
           <div className="cart-empty">
@@ -202,7 +209,7 @@ export default function CartPage() {
                 <div><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
                 <div><span>Delivery</span><span>Calculated later</span></div>
                 <p>Test checkout reserves current stock and charges product subtotal only. Shipping is not included in this local test.</p>
-                {success ? <div className="demo-checkout-message" role="status">{success}<Link className="account-contact" href="/account">View order status in your account →</Link></div> : <form className="checkout-form" onSubmit={startCheckout}>
+                {showSuccess ? <div className="demo-checkout-message" role="status">{success}<Link className="account-contact" href="/account">View order status in your account →</Link></div> : <form className="checkout-form" onSubmit={startCheckout}>
                   <h3>Delivery details</h3>
                   {!accountLoaded ? <p className="demo-checkout-message">Loading account…</p> : !account ? <div className="account-checkout-gate"><p>Sign in or create an account before checkout. Your payment status and order history will stay linked to you.</p><Link className="checkout-demo-button" href="/account?next=%2Fcart">Sign in to continue</Link></div> : <>
                   <p className="account-checkout-note">Order updates will be saved to {account.email}.</p>

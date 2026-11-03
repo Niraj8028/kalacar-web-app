@@ -9,10 +9,14 @@ export async function POST(request: Request) {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
   if (!email || !password) return NextResponse.json({ error: "Enter your email and password." }, { status: 400 });
-  const user = await authenticateCustomer(email, password);
-  if (!user) return NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
-  const token = await createCustomerSession(user.id);
-  const response = NextResponse.json({ user });
-  response.cookies.set(CUSTOMER_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24 * 7 });
-  return response;
+  try {
+    const user = await authenticateCustomer(email, password);
+    if (!user) return NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
+    const token = await createCustomerSession(user.id);
+    const response = NextResponse.json({ user });
+    response.cookies.set(CUSTOMER_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24 * 7 });
+    return response;
+  } catch {
+    return NextResponse.json({ error: "Account service is unavailable. Check the local database connection and try again." }, { status: 503 });
+  }
 }

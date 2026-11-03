@@ -196,6 +196,7 @@ button { color: inherit; }
 .saved-checkout-banner a { color: var(--accent); text-decoration: underline; }
 .checkout-retry-button { border: 0; padding: 9px 0; background: transparent; color: var(--accent); text-align: left; text-decoration: underline; cursor: pointer; font-size: 10px; }
 .empty-orders { padding: 20px 2px; color: var(--muted); font-size: 12px; }
+.customer-fulfillment-status { margin: 8px 0; padding: 9px 11px; border-radius: 8px; background: #f0f3ed; color: #46583f; font-size: 12px; }
 .cart-empty { padding: 38px 24px; border: 1px solid var(--line); background: var(--surface); text-align: center; }
 .detail-header-links { display: flex; align-items: center; gap: 20px; }
 .account-checkout-gate { padding: 13px; border: 1px solid var(--line); background: var(--page); }

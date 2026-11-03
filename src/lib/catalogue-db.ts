@@ -53,6 +53,8 @@ async function initialize() {
     phone VARCHAR(32) NOT NULL, address TEXT NOT NULL, pincode VARCHAR(12) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [fulfillmentColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'fulfillment_status'");
+  if (!fulfillmentColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN fulfillment_status VARCHAR(24) NOT NULL DEFAULT 'unfulfilled' AFTER status");
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_order_items (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, order_id CHAR(36) NOT NULL,
     product_id VARCHAR(64) NOT NULL, product_name VARCHAR(160) NOT NULL,
@@ -116,7 +118,7 @@ export async function createProduct(product: { id: string; name: string; deity: 
 
 type CheckoutLine = { id: string; quantity: number };
 type CheckoutCustomer = { name: string; email: string; phone: string; address: string; pincode: string };
-type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
+type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
 
 export async function reserveOrder(key: string, lines: CheckoutLine[], customer: CheckoutCustomer, userId: string) {
   await ensureCatalogue();
@@ -240,7 +242,7 @@ export async function listCustomerOrders(userId: string) {
   const [orders] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100", [userId]);
   return Promise.all(orders.map(async (order) => {
     const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
-    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
+    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
   }));
 }
 
@@ -285,14 +287,21 @@ export async function listOrders() {
   return Promise.all(orders.map(async order => {
     const [items] = await database().execute<(RowDataPacket & { product_name: string; quantity: number })[]>("SELECT product_name,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
     const status = order.status === "payment_pending" ? "Awaiting payment" : order.status === "paid" ? "Paid" : order.status.replaceAll("_", " ");
-    return { id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, item: items.map(row => `${row.product_name} · ${row.quantity}`).join(", ") };
+    return { id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, item: items.map(row => `${row.product_name} · ${row.quantity}`).join(", ") };
   }));
+}
+
+export async function updateOrderFulfillment(id: string, fulfillmentStatus: "processing" | "dispatched" | "completed") {
+  await ensureCatalogue();
+  const priorStatuses = { processing: ["unfulfilled", "processing"], dispatched: ["processing", "dispatched"], completed: ["dispatched", "completed"] }[fulfillmentStatus];
+  const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET fulfillment_status=? WHERE id=? AND status='paid' AND fulfillment_status IN (?,?)", [fulfillmentStatus, id, ...priorStatuses]);
+  return result.affectedRows > 0;
 }
 
 export async function updateProduct(id: string, values: { price?: number; stock?: number }) {
   await ensureCatalogue();
   const fields: string[] = [];
-  const params: number[] = [];
+  const params: (string | number)[] = [];
   if (values.price !== undefined) { fields.push("price=?"); params.push(values.price); }
   if (values.stock !== undefined) { fields.push("stock=?"); params.push(values.stock); }
   if (!fields.length) throw new Error("No changes provided.");
