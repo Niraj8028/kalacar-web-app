@@ -291,6 +291,65 @@ export async function listOrders() {
   }));
 }
 
+export async function getAdminMetrics() {
+  await ensureCatalogue();
+  const connection = await database().getConnection();
+  const configuredThreshold = Number(process.env.KALACAR_LOW_STOCK_THRESHOLD ?? "3");
+  const lowStockThreshold = Number.isSafeInteger(configuredThreshold) && configuredThreshold >= 1 && configuredThreshold <= 1_000_000 ? configuredThreshold : 3;
+  let originalTimeZone: string | undefined;
+  let reusableConnection = true;
+  try {
+    const [timeZoneRows] = await connection.query<(RowDataPacket & { session_time_zone: string })[]>("SELECT @@session.time_zone AS session_time_zone");
+    const sessionTimeZone = String(timeZoneRows[0]?.session_time_zone ?? "");
+    if (!/^(SYSTEM|[+-]\d{2}:\d{2}|[A-Za-z0-9_+-]+(?:\/[A-Za-z0-9_+-]+)*)$/.test(sessionTimeZone)) throw new Error("Database session timezone is not recognized.");
+    originalTimeZone = sessionTimeZone;
+    await connection.query("SET SESSION time_zone = '+05:30'");
+
+    const [orderRows] = await connection.query<(RowDataPacket & {
+      total_orders: number | string;
+      paid_orders: number | string;
+      revenue_today: number | string;
+      revenue_month: number | string;
+      paid_revenue: number | string;
+      fulfillment_needed: number | string;
+      payment_recovery: number | string;
+    })[]>(`SELECT
+      COUNT(*) AS total_orders,
+      COALESCE(SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END),0) AS paid_orders,
+      COALESCE(SUM(CASE WHEN status='paid' AND DATE(created_at)=CURRENT_DATE THEN amount ELSE 0 END),0) AS revenue_today,
+      COALESCE(SUM(CASE WHEN status='paid' AND YEAR(created_at)=YEAR(CURRENT_DATE) AND MONTH(created_at)=MONTH(CURRENT_DATE) THEN amount ELSE 0 END),0) AS revenue_month,
+      COALESCE(SUM(CASE WHEN status='paid' THEN amount ELSE 0 END),0) AS paid_revenue,
+      COALESCE(SUM(CASE WHEN status='paid' AND fulfillment_status='unfulfilled' THEN 1 ELSE 0 END),0) AS fulfillment_needed,
+      COALESCE(SUM(CASE WHEN status IN ('payment_failed','payment_setup_failed') THEN 1 ELSE 0 END),0) AS payment_recovery
+      FROM kalacar_orders`);
+    const [productRows] = await connection.execute<(RowDataPacket & { low_stock_products: number | string; out_of_stock_products: number | string })[]>(`SELECT
+      COALESCE(SUM(CASE WHEN stock > 0 AND stock <= ? THEN 1 ELSE 0 END),0) AS low_stock_products,
+      COALESCE(SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END),0) AS out_of_stock_products
+      FROM kalacar_products`, [lowStockThreshold]);
+    const orderStats = orderRows[0];
+    const paidOrders = Number(orderStats?.paid_orders ?? 0);
+    const paidRevenue = Number(orderStats?.paid_revenue ?? 0);
+    return {
+      todayRevenue: Number(orderStats?.revenue_today ?? 0),
+      monthRevenue: Number(orderStats?.revenue_month ?? 0),
+      totalOrders: Number(orderStats?.total_orders ?? 0),
+      paidOrders,
+      averageOrderValue: paidOrders ? Math.round((paidRevenue / paidOrders) * 100) / 100 : 0,
+      lowStockProducts: Number(productRows[0]?.low_stock_products ?? 0),
+      outOfStockProducts: Number(productRows[0]?.out_of_stock_products ?? 0),
+      lowStockThreshold,
+      fulfillmentNeeded: Number(orderStats?.fulfillment_needed ?? 0),
+      paymentRecovery: Number(orderStats?.payment_recovery ?? 0),
+    };
+  } finally {
+    if (originalTimeZone !== undefined) {
+      try { await connection.query(`SET SESSION time_zone = '${originalTimeZone}'`); }
+      catch { connection.destroy(); reusableConnection = false; }
+    }
+    if (reusableConnection) connection.release();
+  }
+}
+
 export async function updateOrderFulfillment(id: string, fulfillmentStatus: "processing" | "dispatched" | "completed") {
   await ensureCatalogue();
   const priorStatuses = { processing: ["unfulfilled", "processing"], dispatched: ["processing", "dispatched"], completed: ["dispatched", "completed"] }[fulfillmentStatus];

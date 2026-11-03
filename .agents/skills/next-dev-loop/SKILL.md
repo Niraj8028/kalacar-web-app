@@ -100,6 +100,10 @@ Once per session, confirm both views are live.
    user is on webpack. Refuse — Turbopack is required.
 4. `get_routes` → your route map for the rest of the session.
 
+### Next.js MCP tool-name compatibility
+
+Some newer Next.js dev servers expose `get_errors` instead of `get_compilation_issues`. If `tools/list` omits `get_compilation_issues`, inspect the live `get_errors` description and call it. When the description explicitly includes build/compilation errors, use that result as the compile/runtime diagnostic gate; empty `configErrors` and `sessionErrors` means no errors are reported at that moment. Continue to verify Turbopack from the startup banner and fetch `get_routes`. If the live tool does not cover build/compilation errors, stop and report the mismatch; do not substitute a source grep or a build command for this gate.
+
 ## loop
 
 ### before the edit — narrow the scope
@@ -113,7 +117,7 @@ search doesn't.
 
 Four failure modes. Check each:
 
-- **Compiles** — `get_compilation_issues`.
+- **Compiles** — `get_compilation_issues`, or the verified `get_errors` compatibility equivalent described above.
 - **Runs without errors** — `/_next/mcp` (server and bubbled-up
   browser errors both surface here).
 - **Behaves as intended** — `agent-browser` drives the page; assert
