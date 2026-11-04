@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const phone = typeof body.phone === "string" ? body.phone.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (name.length < 2 || name.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phone.replace(/\D/g, "").length < 10 || password.length < 10 || password.length > 128) return NextResponse.json({ error: "Enter your name, valid email, phone, and a password of at least 10 characters." }, { status: 400 });
+  if (name.length < 2 || name.length > 160 || email.length > 190 || phone.length > 32 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phone.replace(/\D/g, "").length < 10 || password.length < 10 || password.length > 128) return NextResponse.json({ error: "Enter your name, valid email, phone, and a password of at least 10 characters." }, { status: 400 });
   try {
     const user = await createCustomer(name, email, phone, password);
     const token = await createCustomerSession(user.id);

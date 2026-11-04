@@ -10,6 +10,8 @@ export async function POST(request: Request) {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
   if (!email || !password) return NextResponse.json({ error: "Enter your email and password." }, { status: 400 });
+  // Cap lengths before hashing: scrypt on a huge "password" would tie up the CPU.
+  if (email.length > 190 || password.length > 128) return NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
   const limited = limitOrNull([
     { key: `login:ip:${clientIp(request)}`, limit: 20, windowMs: 10 * MINUTE },
     { key: `login:email:${email}`, limit: 8, windowMs: 15 * MINUTE },

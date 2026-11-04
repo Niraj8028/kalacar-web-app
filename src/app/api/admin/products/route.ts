@@ -5,8 +5,10 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { createProduct } from "@/lib/catalogue-db";
 import { parseProductAccordions } from "@/lib/product-accordions";
+import { IMAGE_EXTENSIONS, readVerifiedImage } from "@/lib/image-signature";
 
-const imageTypes: Record<string, string> = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif" };
+const imageTypes: Record<string, string> = IMAGE_EXTENSIONS;
+class InvalidImageError extends Error {}
 
 export async function POST(request: Request) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
@@ -33,9 +35,11 @@ export async function POST(request: Request) {
     await mkdir(uploadDir, { recursive: true });
     const gallery: string[] = [];
     for (const file of files) {
-      const fileName = `${id}-${randomUUID()}${imageTypes[file.type]}`;
+      const verified = await readVerifiedImage(file);
+      if (!verified) throw new InvalidImageError();
+      const fileName = `${id}-${randomUUID()}${verified.extension}`;
       const diskPath = path.join(uploadDir, fileName);
-      await writeFile(diskPath, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+      await writeFile(diskPath, verified.bytes, { flag: "wx" });
       savedFiles.push(diskPath);
       gallery.push(`/uploads/${fileName}`);
     }
@@ -43,6 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ product: { id, name, deity, image: gallery[0], gallery, placement, accordions, price, originalPrice: price, stock } }, { status: 201 });
   } catch (error) {
     await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
+    if (error instanceof InvalidImageError) return NextResponse.json({ error: "One of the files isn't a real JPG, PNG, WebP or AVIF image. Choose a different photo." }, { status: 400 });
     if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") return NextResponse.json({ error: "A product with that name already exists. Choose a different product name." }, { status: 409 });
     console.error("Product creation failed:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Could not create the product in the Kalacar catalogue." }, { status: 503 });

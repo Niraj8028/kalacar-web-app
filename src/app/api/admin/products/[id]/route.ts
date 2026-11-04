@@ -5,8 +5,10 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { getProductGallery, updateProduct } from "@/lib/catalogue-db";
 import { parseProductAccordions } from "@/lib/product-accordions";
+import { IMAGE_EXTENSIONS, readVerifiedImage } from "@/lib/image-signature";
 
-const imageTypes: Record<string, string> = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/avif": ".avif" };
+const imageTypes: Record<string, string> = IMAGE_EXTENSIONS;
+class InvalidImageError extends Error {}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
@@ -59,9 +61,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         for (const entry of manifest) {
           if (entry.kind === "existing") { gallery.push(entry.src); continue; }
           const file = files[entry.uploadIndex];
-          const fileName = `${id}-${randomUUID()}${imageTypes[file.type]}`;
+          const verified = await readVerifiedImage(file);
+          if (!verified) throw new InvalidImageError();
+          const fileName = `${id}-${randomUUID()}${verified.extension}`;
           const diskPath = path.join(uploadDir, fileName);
-          await writeFile(diskPath, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+          await writeFile(diskPath, verified.bytes, { flag: "wx" });
           savedFiles.push(diskPath);
           gallery.push(`/uploads/${fileName}`);
         }
@@ -73,9 +77,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         await mkdir(uploadDir, { recursive: true });
         const gallery: string[] = [];
         for (const file of files) {
-          const fileName = `${id}-${randomUUID()}${imageTypes[file.type]}`;
+          const verified = await readVerifiedImage(file);
+          if (!verified) throw new InvalidImageError();
+          const fileName = `${id}-${randomUUID()}${verified.extension}`;
           const diskPath = path.join(uploadDir, fileName);
-          await writeFile(diskPath, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+          await writeFile(diskPath, verified.bytes, { flag: "wx" });
           savedFiles.push(diskPath);
           gallery.push(`/uploads/${fileName}`);
         }
@@ -89,7 +95,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       for (const key of ["price", "stock"] as const) {
         const value = values[key];
         if (value === undefined) continue;
-        if (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > 1000000) return NextResponse.json({ error: `${key} must be a whole number between 0 and 1,000,000.` }, { status: 400 });
+        const min = key === "price" ? 1 : 0;
+        if (!Number.isSafeInteger(value) || (value as number) < min || (value as number) > 1000000) return NextResponse.json({ error: key === "price" ? "Price must be a whole number of rupees from ₹1 to ₹10,00,000." : "Stock must be a whole number from 0 to 10,00,000." }, { status: 400 });
         update[key] = value as number;
       }
       if (!Object.keys(update).length) return NextResponse.json({ error: "Provide product fields to update." }, { status: 400 });
@@ -102,6 +109,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true, id, ...update }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
+    if (error instanceof InvalidImageError) return NextResponse.json({ error: "One of the files isn't a real JPG, PNG, WebP or AVIF image. Choose a different photo." }, { status: 400 });
     console.error("Product update unavailable:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Product update could not be saved." }, { status: 503 });
   }
