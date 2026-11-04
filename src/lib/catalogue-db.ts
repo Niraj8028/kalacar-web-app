@@ -66,19 +66,10 @@ async function initialize() {
     event_id VARCHAR(100) PRIMARY KEY, event_type VARCHAR(80) NOT NULL,
     received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [googleColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_users LIKE 'google_sub'");
+  if (!googleColumns.length) await db.execute("ALTER TABLE kalacar_users ADD COLUMN google_sub VARCHAR(64) NULL AFTER password_hash, ADD UNIQUE KEY users_google_sub (google_sub)");
   const [userColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'user_id'");
   if (!userColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN user_id CHAR(36) NULL AFTER id, ADD KEY orders_user_id (user_id)");
-  if (process.env.NODE_ENV === "development" && process.env.KALACAR_DEMO_PASSWORD) {
-    const salt = randomBytes(16);
-    const hash = await scrypt(process.env.KALACAR_DEMO_PASSWORD, salt, 64) as Buffer;
-    const passwordHash = `${salt.toString("hex")}:${hash.toString("hex")}`;
-    const demoLogins = [
-      [randomUUID(), "Ganpati Demo", "ganpati@example.test", "+919000000001", passwordHash],
-      [randomUUID(), "Krishna Demo", "krishna@example.test", "+919000000002", passwordHash],
-      [randomUUID(), "Swami Demo", "swami@example.test", "+919000000003", passwordHash],
-    ];
-    await db.query("INSERT IGNORE INTO kalacar_users (id,name,email,phone,password_hash) VALUES ?", [demoLogins]);
-  }
 }
 
 export async function ensureCatalogue() {
@@ -277,6 +268,28 @@ export async function authenticateCustomer(email: string, password: string) {
   const actual = await scrypt(password, Buffer.from(saltHex || "", "hex"), expected.length || 64) as Buffer;
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
   return { id: user.id, name: user.name, email: user.email, phone: user.phone };
+}
+
+/**
+ * Find the account for a verified Google identity: by Google ID first, then by
+ * verified email (linking an existing password account), else create one.
+ * Google-only accounts get a password hash that can never match.
+ */
+export async function upsertGoogleCustomer(googleSub: string, email: string, name: string) {
+  await ensureCatalogue();
+  type UserRow = RowDataPacket & { id: string; name: string; email: string; phone: string; google_sub: string | null };
+  const db = database();
+  const [bySub] = await db.execute<UserRow[]>("SELECT id,name,email,phone,google_sub FROM kalacar_users WHERE google_sub=? LIMIT 1", [googleSub]);
+  if (bySub[0]) return { id: bySub[0].id, name: bySub[0].name, email: bySub[0].email, phone: bySub[0].phone };
+  const [byEmail] = await db.execute<UserRow[]>("SELECT id,name,email,phone,google_sub FROM kalacar_users WHERE email=? LIMIT 1", [email]);
+  if (byEmail[0]) {
+    if (byEmail[0].google_sub && byEmail[0].google_sub !== googleSub) throw new Error("This email is linked to a different Google account.");
+    await db.execute("UPDATE kalacar_users SET google_sub=? WHERE id=? AND google_sub IS NULL", [googleSub, byEmail[0].id]);
+    return { id: byEmail[0].id, name: byEmail[0].name, email: byEmail[0].email, phone: byEmail[0].phone };
+  }
+  const id = randomUUID();
+  await db.execute("INSERT INTO kalacar_users (id,name,email,phone,password_hash,google_sub) VALUES (?,?,?,?,?,?)", [id, name.slice(0, 160), email, "", "google-oauth-only", googleSub]);
+  return { id, name: name.slice(0, 160), email, phone: "" };
 }
 
 export async function createCustomerSession(userId: string) {

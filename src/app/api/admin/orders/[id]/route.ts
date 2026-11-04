@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireOwner } from "@/lib/customer-auth";
 import { getAdminOrderDetails, updateOrderFulfillment } from "@/lib/catalogue-db";
 
 const allowed = new Set(["processing", "dispatched", "completed"]);
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
+  const denied = await requireOwner();
+  if (denied) return denied;
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Order not found." }, { status: 404 });
   try {
@@ -19,6 +22,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
+  const denied = await requireOwner();
+  if (denied) return denied;
   const body = await request.json().catch(() => null) as { fulfillmentStatus?: unknown } | null;
   if (typeof body?.fulfillmentStatus !== "string" || !allowed.has(body.fulfillmentStatus)) {
     return NextResponse.json({ error: "Choose packing, dispatched, or delivered." }, { status: 400 });

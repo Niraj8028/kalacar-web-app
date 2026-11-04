@@ -20,6 +20,21 @@ export default function AccountPanel() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const googleErrorFromUrl = () => {
+    const url = new URL(window.location.href);
+    const reason = url.searchParams.get("auth_error");
+    if (!reason) return "";
+    url.searchParams.delete("auth_error");
+    window.history.replaceState(null, "", url);
+    const messages: Record<string, string> = {
+      cancelled: "Google sign-in was cancelled.",
+      expired: "Google sign-in expired. Please try again.",
+      unverified: "Your Google email isn’t verified, so we couldn’t sign you in.",
+      google: "Google didn’t accept the sign-in. Check the OAuth client settings and try again.",
+    };
+    return messages[reason] ?? "Google sign-in is unavailable right now. Please try again.";
+  };
+
   const refresh = useCallback(async () => {
     const response = await fetch("/api/auth/session", { cache: "no-store" });
     const session = await response.json().catch(() => null) as { user?: User | null; error?: string } | null;
@@ -28,7 +43,7 @@ export default function AccountPanel() {
       setError(session?.error || "Account service is unavailable. Check the local database connection and try again.");
       return;
     }
-    setError("");
+    setError(googleErrorFromUrl());
     setUser(session.user ?? null);
     if (session.user) {
       const ordersResponse = await fetch("/api/account/orders", { cache: "no-store" });
@@ -117,19 +132,20 @@ export default function AccountPanel() {
       <p className="eyebrow">KALACAR CUSTOMER ACCOUNT</p>
       <h1>{user ? `Namaste, ${user.name.split(" ")[0]}` : "Your orders, in one place."}</h1>
       <p className="account-lede">Payment status and order records stay attached to your account, even if you close the payment window.</p>
-      <p className="account-demo-banner">LOCAL DEVELOPMENT · Test accounts and Razorpay test mode only. No live payment is taken.</p>
+      <p className="account-demo-banner">LOCAL DEVELOPMENT · Razorpay test mode only. No live payment is taken.</p>
       {error && <p className="account-message error" role="alert">{error}</p>}{notice && <p className="account-message" role="status">{notice}</p>}
       {!user ? <div className="account-card">
         <div className="account-tabs"><button className={mode === "login" ? "selected" : ""} onClick={() => { setMode("login"); setError(""); }}>Sign in</button><button className={mode === "register" ? "selected" : ""} onClick={() => { setMode("register"); setError(""); }}>Create account</button></div>
+        <a className="google-signin" href="/api/auth/google/start?next=/account"><svg aria-hidden="true" viewBox="0 0 18 18" width="18" height="18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>Continue with Google</a>
+        <p className="account-divider"><span>or use email</span></p>
         <form className="account-form" onSubmit={submit}>
           {mode === "register" && <><label>Your name<input required minLength={2} maxLength={160} autoComplete="name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label><label>Mobile number<input required type="tel" minLength={10} autoComplete="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label></>}
           <label>Email<input required type="email" autoComplete="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label>
           <label>Password<input required type="password" minLength={10} autoComplete={mode === "login" ? "current-password" : "new-password"} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></label>
           <button className="checkout-demo-button" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
         </form>
-        <details className="demo-accounts"><summary>Local demo accounts</summary><p>Use any of these with the shared local demo password shown below. These accounts exist only in this development database.</p><ul><li>ganpati@example.test</li><li>krishna@example.test</li><li>swami@example.test</li></ul><code>KalacarLocal2026!</code></details>
       </div> : <div className="account-card">
-        <div className="account-profile"><div><strong>{user.name}</strong><span>{user.email} · {user.phone}</span></div><button type="button" className="account-signout" onClick={() => void logout()}>Sign out</button></div>
+        <div className="account-profile"><div><strong>{user.name}</strong><span>{user.email}{user.phone ? ` · ${user.phone}` : ""}</span></div><button type="button" className="account-signout" onClick={() => void logout()}>Sign out</button></div>
         <h2>Your orders</h2>
         {orders.length === 0 ? <p className="empty-orders">No orders yet. Your checkout orders will appear here.</p> : <div className="account-orders">{orders.map(order => {
           const status = order.status.replaceAll("_", " ");

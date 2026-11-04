@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { requireOwner } from "@/lib/customer-auth";
 import { createProduct } from "@/lib/catalogue-db";
 import { parseProductAccordions } from "@/lib/product-accordions";
 
@@ -9,6 +10,8 @@ const imageTypes: Record<string, string> = { "image/jpeg": ".jpg", "image/png": 
 
 export async function POST(request: Request) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
+  const denied = await requireOwner();
+  if (denied) return denied;
   const savedFiles: string[] = [];
   try {
     const form = await request.formData();
