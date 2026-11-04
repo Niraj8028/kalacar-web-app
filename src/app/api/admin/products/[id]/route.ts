@@ -1,124 +1,74 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
-import { getProductGallery, updateProduct } from "@/lib/catalogue-db";
-import { parseProductAccordions } from "@/lib/product-accordions";
-import { IMAGE_EXTENSIONS, readVerifiedImage } from "@/lib/image-signature";
+import { addressDb } from "@/lib/catalogue-db";
+import { saveColours, updateColourQuick } from "@/lib/colours";
+import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
 
-const imageTypes: Record<string, string> = IMAGE_EXTENSIONS;
-class InvalidImageError extends Error {}
-
+/**
+ * Edit details: product fields (name, deity, badge, tagline, description, detail sections) and the
+ * full list of colours with their photos, prices and stock. Quick price/stock edits for one colour
+ * go to /api/admin/products/[id]/variants/[variantId].
+ */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const { id } = await params;
-  const savedFiles: string[] = [];
-  try {
-    const contentType = request.headers.get("content-type") || "";
-    let update: Parameters<typeof updateProduct>[1] = {};
-    const expected: { price?: number; stock?: number } = {};
-    const readExpected = (raw: unknown, key: "price" | "stock") => {
-      if (raw === undefined || raw === null || raw === "") return true;
-      const value = Number(raw);
-      if (!Number.isSafeInteger(value) || value < 0) return false;
-      expected[key] = value; return true;
-    };
-    if (contentType.includes("multipart/form-data")) {
-      const form = await request.formData();
-      const name = String(form.get("name") ?? "").trim();
-      const deity = String(form.get("deity") ?? "").trim();
-      const placement = String(form.get("placement") ?? "").trim();
-      const price = Number(form.get("price"));
-      const stock = Number(form.get("stock"));
-      const accordions = parseProductAccordions(form.get("accordions"));
-      if (!readExpected(form.get("expectedPrice"), "price") || !readExpected(form.get("expectedStock"), "stock")) return NextResponse.json({ error: "Invalid expected values." }, { status: 400 });
-      const files = form.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
-      if (name.length < 2 || name.length > 160 || deity.length < 2 || deity.length > 80) return NextResponse.json({ error: "Enter a product name and deity (2–160 characters)." }, { status: 400 });
-      if (placement.length > 255) return NextResponse.json({ error: "Description must be 255 characters or fewer." }, { status: 400 });
-      if (!Number.isSafeInteger(price) || price < 1 || price > 1000000 || !Number.isSafeInteger(stock) || stock < 0 || stock > 1000000) return NextResponse.json({ error: "Enter a valid price and non-negative whole stock quantity." }, { status: 400 });
-      if (!accordions) return NextResponse.json({ error: "Check each product detail section (up to 12; title up to 80 and content up to 3,000 characters)." }, { status: 400 });
-      if (files.length > 5) return NextResponse.json({ error: "A product can have no more than 5 images." }, { status: 400 });
-      if (files.some(file => !imageTypes[file.type] || file.size > 5 * 1024 * 1024) || files.reduce((sum, file) => sum + file.size, 0) > 20 * 1024 * 1024) return NextResponse.json({ error: "Use JPG, PNG, WebP, or AVIF images (up to 5 MB each, 20 MB total)." }, { status: 400 });
-      update = { name, deity, placement, price, stock, accordions };
-      const manifestValue = form.get("galleryManifest");
-      if (typeof manifestValue === "string") {
-        let rawManifest: unknown;
-        try { rawManifest = JSON.parse(manifestValue); } catch { return NextResponse.json({ error: "The product image order is invalid." }, { status: 400 }); }
-        if (!Array.isArray(rawManifest) || rawManifest.length < 1 || rawManifest.length > 5) return NextResponse.json({ error: "Keep between 1 and 5 product images." }, { status: 400 });
-        const currentGallery = await getProductGallery(id);
-        if (!currentGallery) return NextResponse.json({ error: "Product not found." }, { status: 404 });
-        const usedFiles = new Set<number>();
-        const existingSources = new Set<string>();
-        const manifest: Array<{ kind: "existing"; src: string } | { kind: "upload"; uploadIndex: number }> = [];
-        for (const item of rawManifest) {
-          if (!item || typeof item !== "object") return NextResponse.json({ error: "The product image order is invalid." }, { status: 400 });
-          const entry = item as { kind?: unknown; src?: unknown; uploadIndex?: unknown };
-          if (entry.kind === "existing" && typeof entry.src === "string" && currentGallery.includes(entry.src) && !existingSources.has(entry.src)) {
-            existingSources.add(entry.src); manifest.push({ kind: "existing", src: entry.src });
-          } else if (entry.kind === "upload" && Number.isSafeInteger(entry.uploadIndex) && Number(entry.uploadIndex) >= 0 && Number(entry.uploadIndex) < files.length && !usedFiles.has(Number(entry.uploadIndex))) {
-            usedFiles.add(Number(entry.uploadIndex)); manifest.push({ kind: "upload", uploadIndex: Number(entry.uploadIndex) });
-          } else return NextResponse.json({ error: "The product image order is invalid. Reload the editor and try again." }, { status: 400 });
-        }
-        if (usedFiles.size !== files.length) return NextResponse.json({ error: "One or more selected replacement images are missing." }, { status: 400 });
-        const uploadDir = path.join(process.cwd(), "public", "uploads");
-        await mkdir(uploadDir, { recursive: true });
-        const gallery: string[] = [];
-        for (const entry of manifest) {
-          if (entry.kind === "existing") { gallery.push(entry.src); continue; }
-          const file = files[entry.uploadIndex];
-          const verified = await readVerifiedImage(file);
-          if (!verified) throw new InvalidImageError();
-          const fileName = `${id}-${randomUUID()}${verified.extension}`;
-          const diskPath = path.join(uploadDir, fileName);
-          await writeFile(diskPath, verified.bytes, { flag: "wx" });
-          savedFiles.push(diskPath);
-          gallery.push(`/uploads/${fileName}`);
-        }
-        update = { ...update, image: gallery[0], gallery };
-      } else if (files.length) {
-        // Preserve support for clients that send a complete replacement gallery.
-        if (files.length > 5) return NextResponse.json({ error: "A product can have no more than 5 images." }, { status: 400 });
-        const uploadDir = path.join(process.cwd(), "public", "uploads");
-        await mkdir(uploadDir, { recursive: true });
-        const gallery: string[] = [];
-        for (const file of files) {
-          const verified = await readVerifiedImage(file);
-          if (!verified) throw new InvalidImageError();
-          const fileName = `${id}-${randomUUID()}${verified.extension}`;
-          const diskPath = path.join(uploadDir, fileName);
-          await writeFile(diskPath, verified.bytes, { flag: "wx" });
-          savedFiles.push(diskPath);
-          gallery.push(`/uploads/${fileName}`);
-        }
-        update = { ...update, image: gallery[0], gallery };
-      }
-    } else {
-      let body: unknown;
-      try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
-      if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid update." }, { status: 400 });
-      const values = body as { price?: unknown; stock?: unknown; expectedPrice?: unknown; expectedStock?: unknown };
-      if (!readExpected(values.expectedPrice, "price") || !readExpected(values.expectedStock, "stock")) return NextResponse.json({ error: "Invalid expected values." }, { status: 400 });
-      for (const key of ["price", "stock"] as const) {
-        const value = values[key];
-        if (value === undefined) continue;
+  if (!/^[a-z0-9-]{1,64}$/.test(id)) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  if (!(request.headers.get("content-type") ?? "").includes("multipart/form-data")) {
+    // Quick price/stock edit on a product with exactly one colour applies to that colour.
+    const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+    if (!body) return NextResponse.json({ error: "Invalid update." }, { status: 400 });
+    const db = await addressDb();
+    const [variants] = await db.execute("SELECT id FROM kalacar_product_variants WHERE product_id=?", [id]) as unknown as [Array<{ id: string }>];
+    if (!variants.length) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+    if (variants.length > 1) return NextResponse.json({ error: "This product has several colours. Change price and stock per colour." }, { status: 409 });
+    const values: { price?: number; stock?: number } = {}; const expected: { price?: number; stock?: number } = {};
+    for (const key of ["price", "stock"] as const) {
+      const value = body[key];
+      if (value !== undefined) {
         const min = key === "price" ? 1 : 0;
-        if (!Number.isSafeInteger(value) || (value as number) < min || (value as number) > 1000000) return NextResponse.json({ error: key === "price" ? "Price must be a whole number of rupees from ₹1 to ₹10,00,000." : "Stock must be a whole number from 0 to 10,00,000." }, { status: 400 });
-        update[key] = value as number;
+        if (!Number.isSafeInteger(value) || (value as number) < min || (value as number) > 1_000_000) return NextResponse.json({ error: key === "price" ? "Price must be a whole number of rupees from ₹1 to ₹10,00,000." : "Stock must be a whole number from 0 to 10,00,000." }, { status: 400 });
+        values[key] = value as number;
       }
-      if (!Object.keys(update).length) return NextResponse.json({ error: "Provide product fields to update." }, { status: 400 });
+      const exp = body[key === "price" ? "expectedPrice" : "expectedStock"];
+      if (exp !== undefined) { if (!Number.isSafeInteger(exp) || (exp as number) < 0) return NextResponse.json({ error: "Invalid expected values." }, { status: 400 }); expected[key] = exp as number; }
     }
-    const result = await updateProduct(id, update, expected);
-    if (result.status !== "ok") await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
+    if (!Object.keys(values).length) return NextResponse.json({ error: "Provide a price or stock to update." }, { status: 400 });
+    const result = await updateColourQuick(id, variants[0].id, values, expected);
     if (result.status === "not_found") return NextResponse.json({ error: "Product not found." }, { status: 404 });
-    if (result.status === "conflict") {
-      return NextResponse.json({ error: "This product changed while you were editing (for example, an order came in). Nothing was saved.", conflict: true, current: result.current }, { status: 409, headers: { "Cache-Control": "no-store" } });
-    }
-    return NextResponse.json({ ok: true, id, ...update }, { headers: { "Cache-Control": "no-store" } });
+    if (result.status === "conflict") return NextResponse.json({ error: "This product changed while you were editing (for example, an order came in). Nothing was saved.", conflict: true, current: result.current }, { status: 409, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ok: true, id, ...values }, { headers: { "Cache-Control": "no-store" } });
+  }
+  let saved: { paths: string[] } = { paths: [] };
+  try {
+    const parsed = parseProductForm(await request.formData());
+    if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const form = parsed.value;
+    const photos = await savePhotos(id, form.files); saved = photos;
+    const db = await addressDb();
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.execute("SELECT image, gallery FROM kalacar_products WHERE id=? FOR UPDATE", [id]) as unknown as [Array<{ image: string; gallery: string | null }>];
+      if (!rows.length) { await connection.rollback(); await removeFiles(photos.paths); return NextResponse.json({ error: "Product not found." }, { status: 404 }); }
+      // Photos already on this product (old product gallery + every colour's gallery) may be reused.
+      const allowed = new Set<string>([rows[0].image, ...(rows[0].gallery ? JSON.parse(rows[0].gallery) as string[] : [])]);
+      await connection.execute("UPDATE kalacar_products SET name=?,deity=?,badge=?,tagline=?,placement=?,accordions=?,image_alt=? WHERE id=?",
+        [form.name, form.deity, form.badge || null, form.tagline || null, form.placement, JSON.stringify(form.accordions), `${form.name} product photo`, id]);
+      const result = await saveColours(connection, id, form.colours, photos.urls, allowed);
+      if (result.status !== "ok") {
+        await connection.rollback(); await removeFiles(photos.paths);
+        if (result.status === "conflict") return NextResponse.json({ error: `“${result.colour}” changed while this form was open (for example, an order came in). Nothing was saved.`, conflict: true, colour: result.colour, current: result.current }, { status: 409 });
+        if (result.status === "not_found") return NextResponse.json({ error: "Product not found." }, { status: 404 });
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      await connection.commit();
+      return NextResponse.json({ ok: true, id, colours: result.colours }, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
   } catch (error) {
-    await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
+    await removeFiles(saved.paths);
     if (error instanceof InvalidImageError) return NextResponse.json({ error: "One of the files isn't a real JPG, PNG, WebP or AVIF image. Choose a different photo." }, { status: 400 });
     console.error("Product update unavailable:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Product update could not be saved." }, { status: 503 });

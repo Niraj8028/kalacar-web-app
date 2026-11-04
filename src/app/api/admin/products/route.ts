@@ -1,52 +1,52 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
-import { createProduct } from "@/lib/catalogue-db";
-import { parseProductAccordions } from "@/lib/product-accordions";
-import { IMAGE_EXTENSIONS, readVerifiedImage } from "@/lib/image-signature";
+import { addressDb, listProducts } from "@/lib/catalogue-db";
+import { saveColours } from "@/lib/colours";
+import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
 
-const imageTypes: Record<string, string> = IMAGE_EXTENSIONS;
-class InvalidImageError extends Error {}
+const noStore = { "Cache-Control": "no-store" };
+
+/** Dashboard catalogue: every product with all colours, including hidden ones. */
+export async function GET() {
+  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
+  const denied = await requireOwner();
+  if (denied) return denied;
+  try { return NextResponse.json({ products: await listProducts({ includeHidden: true }) }, { headers: noStore }); }
+  catch (error) {
+    console.error("Admin catalogue unavailable:", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "Catalogue is temporarily unavailable." }, { status: 503, headers: noStore });
+  }
+}
 
 export async function POST(request: Request) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
-  const savedFiles: string[] = [];
+  let saved: { paths: string[] } = { paths: [] };
   try {
-    const form = await request.formData();
-    const name = String(form.get("name") ?? "").trim();
-    const deity = String(form.get("deity") ?? "").trim();
-    const placement = String(form.get("placement") ?? "").trim();
-    const price = Number(form.get("price"));
-    const stock = Number(form.get("stock"));
-    const accordions = parseProductAccordions(form.get("accordions") ?? "[]");
-    const files = form.getAll("images").filter((entry): entry is File => entry instanceof File);
-    if (name.length < 2 || name.length > 160 || deity.length < 2 || deity.length > 80) return NextResponse.json({ error: "Enter a product name and deity (2–160 characters)." }, { status: 400 });
-    if (placement.length > 255) return NextResponse.json({ error: "Placement must be 255 characters or fewer." }, { status: 400 });
-    if (!accordions) return NextResponse.json({ error: "Check each product detail section (up to 12; title up to 80 and content up to 3,000 characters)." }, { status: 400 });
-    if (!Number.isSafeInteger(price) || price < 1 || price > 1000000 || !Number.isSafeInteger(stock) || stock < 0 || stock > 1000000) return NextResponse.json({ error: "Enter a valid price and non-negative whole stock quantity." }, { status: 400 });
-    if (files.length < 1 || files.length > 5) return NextResponse.json({ error: "Choose between 1 and 5 product images." }, { status: 400 });
-    if (files.some(file => !imageTypes[file.type] || file.size > 5 * 1024 * 1024) || files.reduce((sum, file) => sum + file.size, 0) > 20 * 1024 * 1024) return NextResponse.json({ error: "Use JPG, PNG, WebP, or AVIF images (up to 5 MB each, 20 MB total)." }, { status: 400 });
-    const id = name.normalize("NFKD").toLowerCase().replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 54) || `murti-${randomUUID().slice(0, 8)}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-    const gallery: string[] = [];
-    for (const file of files) {
-      const verified = await readVerifiedImage(file);
-      if (!verified) throw new InvalidImageError();
-      const fileName = `${id}-${randomUUID()}${verified.extension}`;
-      const diskPath = path.join(uploadDir, fileName);
-      await writeFile(diskPath, verified.bytes, { flag: "wx" });
-      savedFiles.push(diskPath);
-      gallery.push(`/uploads/${fileName}`);
-    }
-    await createProduct({ id, name, deity, image: gallery[0], gallery, placement, accordions, price, originalPrice: price, stock });
-    return NextResponse.json({ product: { id, name, deity, image: gallery[0], gallery, placement, accordions, price, originalPrice: price, stock } }, { status: 201 });
+    const parsed = parseProductForm(await request.formData());
+    if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const form = parsed.value;
+    if (form.colours.some(colour => colour.gallery.some(photo => photo.kind === "existing"))) return NextResponse.json({ error: "Upload photos for each colour of a new product." }, { status: 400 });
+    const id = form.name.normalize("NFKD").toLowerCase().replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 54) || `murti-${crypto.randomUUID().slice(0, 8)}`;
+    const photos = await savePhotos(id, form.files); saved = photos;
+    const first = form.colours.find(colour => colour.active) ?? form.colours[0];
+    const firstGallery = first.gallery.map(photo => photo.kind === "upload" ? photos.urls[photo.uploadIndex] : photo.src);
+    const db = await addressDb();
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        "INSERT INTO kalacar_products (id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [id, form.name, form.deity, form.badge || null, form.tagline || null, firstGallery[0], JSON.stringify(firstGallery), `${form.name} product photo`, form.placement, JSON.stringify(form.accordions), first.price, first.originalPrice, 0]);
+      const result = await saveColours(connection, id, form.colours, photos.urls, new Set());
+      if (result.status !== "ok") { await connection.rollback(); await removeFiles(photos.paths); return NextResponse.json({ error: result.status === "invalid" ? result.error : "Could not save the colours." }, { status: 400 }); }
+      await connection.commit();
+      return NextResponse.json({ product: { id, name: form.name, colours: result.colours } }, { status: 201 });
+    } catch (error) { await connection.rollback(); throw error; }
+    finally { connection.release(); }
   } catch (error) {
-    await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
+    await removeFiles(saved.paths);
     if (error instanceof InvalidImageError) return NextResponse.json({ error: "One of the files isn't a real JPG, PNG, WebP or AVIF image. Choose a different photo." }, { status: 400 });
     if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") return NextResponse.json({ error: "A product with that name already exists. Choose a different product name." }, { status: 409 });
     console.error("Product creation failed:", error instanceof Error ? error.message : "unknown error");

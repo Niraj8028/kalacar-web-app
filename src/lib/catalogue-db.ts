@@ -78,6 +78,30 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [googleColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_users LIKE 'google_sub'");
   if (!googleColumns.length) await db.execute("ALTER TABLE kalacar_users ADD COLUMN google_sub VARCHAR(64) NULL AFTER password_hash, ADD UNIQUE KEY users_google_sub (google_sub)");
+  // Product presentation managed from the dashboard
+  const [badgeColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'badge'");
+  if (!badgeColumns.length) await db.execute("ALTER TABLE kalacar_products ADD COLUMN badge VARCHAR(40) NULL AFTER deity, ADD COLUMN tagline VARCHAR(120) NULL AFTER badge");
+  // Colours (variants): the real source of photos, price and stock. The product row keeps a summary.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_product_variants (
+    id VARCHAR(80) PRIMARY KEY, product_id VARCHAR(64) NOT NULL, name VARCHAR(60) NOT NULL, swatch CHAR(7) NOT NULL DEFAULT '#b08d57',
+    gallery JSON NOT NULL, price INT UNSIGNED NOT NULL, original_price INT UNSIGNED NOT NULL, stock INT UNSIGNED NOT NULL DEFAULT 0,
+    sort SMALLINT NOT NULL DEFAULT 0, active TINYINT(1) NOT NULL DEFAULT 1,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY variants_product (product_id, sort),
+    CONSTRAINT kalacar_variants_product_fk FOREIGN KEY (product_id) REFERENCES kalacar_products(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Every product without colours gets one default colour carrying its current photos, price and stock.
+  await db.execute(`INSERT INTO kalacar_product_variants (id,product_id,name,gallery,price,original_price,stock,sort,active)
+    SELECT CONCAT(p.id,'-standard'), p.id, 'Standard', COALESCE(p.gallery, JSON_ARRAY(p.image)), p.price, p.original_price, p.stock, 0, 1
+    FROM kalacar_products p WHERE NOT EXISTS (SELECT 1 FROM kalacar_product_variants v WHERE v.product_id=p.id)`);
+  const [variantItemColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_order_items LIKE 'variant_id'");
+  if (!variantItemColumns.length) await db.execute("ALTER TABLE kalacar_order_items ADD COLUMN variant_id VARCHAR(80) NULL AFTER product_name, ADD COLUMN variant_name VARCHAR(60) NULL AFTER variant_id");
+  // Store settings managed from the dashboard (e.g. gift packaging).
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_settings (
+    name VARCHAR(60) PRIMARY KEY, value JSON NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [giftColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'gift_wrap'");
+  if (!giftColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN gift_wrap TINYINT(1) NOT NULL DEFAULT 0 AFTER amount, ADD COLUMN gift_wrap_price INT UNSIGNED NOT NULL DEFAULT 0 AFTER gift_wrap");
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_addresses (
     id CHAR(36) PRIMARY KEY, user_id CHAR(36) NOT NULL, label VARCHAR(10) NOT NULL DEFAULT 'Home',
     full_name VARCHAR(160) NOT NULL, phone VARCHAR(32) NOT NULL, address VARCHAR(500) NOT NULL,
@@ -96,7 +120,8 @@ export async function ensureCatalogue() {
   try { await ready; } catch (error) { ready = undefined; throw error; }
 }
 
-/** Pool for modules that keep their own queries (e.g. saved addresses), after tables exist. */
+export type { VariantRow };
+/** Pool for modules that keep their own queries (e.g. saved addresses, colours), after tables exist. */
 export async function addressDb() {
   await ensureCatalogue();
   return database();
@@ -108,7 +133,7 @@ export async function fillMissingCustomerPhone(userId: string, phone: string) {
   await database().execute("UPDATE kalacar_users SET phone=? WHERE id=? AND phone=''", [phone, userId]);
 }
 
-type ProductRow = RowDataPacket & { id: string; name: string; deity: string; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
+type ProductRow = RowDataPacket & { id: string; name: string; deity: string; badge: string | null; tagline: string | null; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
 
 function parseAccordions(value: ProductRow["accordions"]): ProductAccordion[] {
   if (!value) return [];
@@ -118,40 +143,61 @@ function parseAccordions(value: ProductRow["accordions"]): ProductAccordion[] {
   } catch { return []; }
 }
 
-export async function listProducts() {
+type VariantRow = RowDataPacket & { id: string; product_id: string; name: string; swatch: string; gallery: string | string[]; price: number; original_price: number; stock: number; sort: number; active: number };
+export type ProductVariant = { id: string; name: string; swatch: string; gallery: string[]; price: number; originalPrice: number; stock: number; sort: number; active: boolean };
+const parseGallery = (value: string | string[] | null, fallback: string[] = []) => {
+  if (Array.isArray(value)) return value;
+  if (!value) return fallback;
+  try { const parsed = JSON.parse(value) as unknown; return Array.isArray(parsed) && parsed.every(item => typeof item === "string") ? parsed as string[] : fallback; } catch { return fallback; }
+};
+const toVariant = (row: VariantRow): ProductVariant => ({ id: row.id, name: row.name, swatch: row.swatch, gallery: parseGallery(row.gallery), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), sort: Number(row.sort), active: Boolean(row.active) });
+
+/** Products with their colours. The shop gets visible colours only; the dashboard passes includeHidden. */
+export async function listProducts({ includeHidden = false } = {}) {
   await ensureCatalogue();
-  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,image,gallery,image_alt,placement,accordions,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
+  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
+  const [variantRows] = await database().query<VariantRow[]>(`SELECT * FROM kalacar_product_variants ${includeHidden ? "" : "WHERE active=1"} ORDER BY sort, name`);
   return rows.map(row => {
-    let gallery = [row.image];
-    if (row.gallery) { try { gallery = JSON.parse(row.gallery) as string[]; } catch { gallery = [row.image]; } }
-    return { id: row.id, name: row.name, deity: row.deity, image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), updatedAt: row.updated_at };
-  });
+    const gallery = parseGallery(row.gallery, [row.image]);
+    const variants = variantRows.filter(variant => variant.product_id === row.id).map(toVariant);
+    return { id: row.id, name: row.name, deity: row.deity, badge: row.badge ?? "", tagline: row.tagline ?? "", image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), variants, updatedAt: row.updated_at };
+  }).filter(product => includeHidden || product.variants.length > 0);
 }
 
-export async function getProductGallery(id: string): Promise<string[] | null> {
+/**
+ * Recomputes the product's summary from its visible colours: total stock, lowest price (and that
+ * colour's regular price), and the first colour's photos. Call inside the same transaction.
+ */
+export async function syncProductSummary(connection: mysql.PoolConnection, productId: string) {
+  const [variants] = await connection.execute<VariantRow[]>("SELECT * FROM kalacar_product_variants WHERE product_id=? AND active=1 ORDER BY sort, name", [productId]);
+  if (!variants.length) { await connection.execute("UPDATE kalacar_products SET stock=0 WHERE id=?", [productId]); return; }
+  const cheapest = [...variants].sort((a, b) => Number(a.price) - Number(b.price))[0];
+  const gallery = parseGallery(variants[0].gallery);
+  await connection.execute("UPDATE kalacar_products SET stock=?, price=?, original_price=?, image=?, gallery=? WHERE id=?",
+    [variants.reduce((sum, v) => sum + Number(v.stock), 0), Number(cheapest.price), Number(cheapest.original_price), gallery[0] ?? "", JSON.stringify(gallery), productId]);
+}
+
+
+export async function createProduct(product: { id: string; name: string; deity: string; badge?: string; tagline?: string; image: string; gallery: string[]; placement: string; accordions: ProductAccordion[]; price: number; originalPrice: number; stock: number }) {
   await ensureCatalogue();
-  const [rows] = await database().execute<(RowDataPacket & { image: string; gallery: string | null })[]>("SELECT image,gallery FROM kalacar_products WHERE id=? LIMIT 1", [id]);
-  if (!rows.length) return null;
-  if (rows[0].gallery) {
-    try {
-      const parsed = JSON.parse(rows[0].gallery) as unknown;
-      if (Array.isArray(parsed) && parsed.every(item => typeof item === "string")) return parsed;
-    } catch { /* Use the current primary image as a safe fallback. */ }
-  }
-  return [rows[0].image];
+  const connection = await database().getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.execute(
+      "INSERT INTO kalacar_products (id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      [product.id, product.name, product.deity, product.badge || null, product.tagline || null, product.image, JSON.stringify(product.gallery), `${product.name} product photo`, product.placement, JSON.stringify(product.accordions), product.price, product.originalPrice, product.stock],
+    );
+    // A new product starts with one colour; more are added in Edit details.
+    await connection.execute("INSERT INTO kalacar_product_variants (id,product_id,name,gallery,price,original_price,stock,sort,active) VALUES (?,?,?,?,?,?,?,0,1)",
+      [`${product.id}-standard`, product.id, "Standard", JSON.stringify(product.gallery), product.price, product.originalPrice, product.stock]);
+    await connection.commit();
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
 }
 
-export async function createProduct(product: { id: string; name: string; deity: string; image: string; gallery: string[]; placement: string; accordions: ProductAccordion[]; price: number; originalPrice: number; stock: number }) {
-  await ensureCatalogue();
-  await database().execute(
-    "INSERT INTO kalacar_products (id,name,deity,image,gallery,image_alt,placement,accordions,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-    [product.id, product.name, product.deity, product.image, JSON.stringify(product.gallery), `${product.name} product photo`, product.placement, JSON.stringify(product.accordions), product.price, product.originalPrice, product.stock],
-  );
-}
-
-type CheckoutLine = { id: string; quantity: number };
+type CheckoutLine = { id: string; variantId?: string; quantity: number };
 type CheckoutCustomer = { name: string; email: string; phone: string; address: string; pincode: string };
-type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; tracking_note: string | null; cancel_reason: string | null; cancelled_at: Date | null; refund_amount: number | null; refund_reason: string | null; refund_reference: string | null; refunded_at: Date | null; stock_restored: number; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
+type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; gift_wrap: number; gift_wrap_price: number; tracking_note: string | null; cancel_reason: string | null; cancelled_at: Date | null; refund_amount: number | null; refund_reason: string | null; refund_reference: string | null; refunded_at: Date | null; stock_restored: number; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
 
 export type OrderStatusFilter = "all" | "pending_payment" | "processing" | "on_hold" | "dispatched" | "completed" | "cancelled" | "refunded";
 type OrderStatusCounts = Record<OrderStatusFilter, number>;
@@ -183,7 +229,7 @@ export async function getOrderStatusCounts(): Promise<OrderStatusCounts> {
   };
 }
 
-export async function reserveOrder(key: string, lines: CheckoutLine[], customer: CheckoutCustomer, userId: string) {
+export async function reserveOrder(key: string, lines: CheckoutLine[], customer: CheckoutCustomer, userId: string, giftWrapPrice: number | null = null) {
   await ensureCatalogue();
   const db = database();
   const connection = await db.getConnection();
@@ -196,21 +242,31 @@ export async function reserveOrder(key: string, lines: CheckoutLine[], customer:
       const existing = existingRows[0];
       return { id: existing.id, amount: Number(existing.amount), razorpayOrderId: existing.razorpay_order_id, status: existing.status, reused: true };
     }
-    const requested = [...lines].sort((a, b) => a.id.localeCompare(b.id));
-    const items: Array<{ id: string; name: string; price: number; quantity: number }> = [];
+    // Lock in a fixed order (product, then colour) so concurrent checkouts can't deadlock.
+    const requested = [...lines].sort((a, b) => a.id.localeCompare(b.id) || (a.variantId ?? "").localeCompare(b.variantId ?? ""));
+    const items: Array<{ id: string; name: string; variantId: string; variantName: string; price: number; quantity: number }> = [];
     let amount = 0;
     for (const line of requested) {
-      const [rows] = await connection.execute<ProductRow[]>("SELECT id,name,price,stock FROM kalacar_products WHERE id=? FOR UPDATE", [line.id]);
+      const [rows] = await connection.execute<ProductRow[]>("SELECT id,name FROM kalacar_products WHERE id=? FOR UPDATE", [line.id]);
       const product = rows[0];
-      if (!product || Number(product.stock) < line.quantity) throw new Error("INSUFFICIENT_STOCK");
-      const [result] = await connection.execute<mysql.ResultSetHeader>("UPDATE kalacar_products SET stock=stock-? WHERE id=? AND stock>=?", [line.quantity, line.id, line.quantity]);
+      if (!product) throw new Error("INSUFFICIENT_STOCK");
+      // Old carts without a colour use the product's first visible colour.
+      const [variants] = await connection.execute<VariantRow[]>(
+        line.variantId ? "SELECT * FROM kalacar_product_variants WHERE id=? AND product_id=? AND active=1 FOR UPDATE" : "SELECT * FROM kalacar_product_variants WHERE product_id=? AND active=1 ORDER BY sort, name LIMIT 1 FOR UPDATE",
+        line.variantId ? [line.variantId, line.id] : [line.id]);
+      const variant = variants[0];
+      if (!variant || Number(variant.stock) < line.quantity) throw new Error("INSUFFICIENT_STOCK");
+      const [result] = await connection.execute<mysql.ResultSetHeader>("UPDATE kalacar_product_variants SET stock=stock-? WHERE id=? AND stock>=?", [line.quantity, variant.id, line.quantity]);
       if (result.affectedRows !== 1) throw new Error("INSUFFICIENT_STOCK");
-      amount += Number(product.price) * line.quantity;
-      items.push({ id: line.id, name: product.name, price: Number(product.price), quantity: line.quantity });
+      amount += Number(variant.price) * line.quantity;
+      items.push({ id: line.id, name: product.name, variantId: variant.id, variantName: variant.name, price: Number(variant.price), quantity: line.quantity });
     }
+    for (const productId of new Set(items.map(item => item.id))) await syncProductSummary(connection, productId);
+    // Gift packaging price comes from dashboard settings at the moment of checkout and is part of the charged total.
+    if (giftWrapPrice !== null) amount += giftWrapPrice;
     const id = randomUUID();
-    await connection.execute("INSERT INTO kalacar_orders (id,user_id,idempotency_key,amount,status,customer_name,email,phone,address,pincode) VALUES (?,?,?,?,'payment_pending',?,?,?,?,?)", [id, userId, key, amount, customer.name, customer.email, customer.phone, customer.address, customer.pincode]);
-    for (const item of items) await connection.execute("INSERT INTO kalacar_order_items (order_id,product_id,product_name,unit_price,quantity) VALUES (?,?,?,?,?)", [id, item.id, item.name, item.price, item.quantity]);
+    await connection.execute("INSERT INTO kalacar_orders (id,user_id,idempotency_key,amount,gift_wrap,gift_wrap_price,status,customer_name,email,phone,address,pincode) VALUES (?,?,?,?,?,?,'payment_pending',?,?,?,?,?)", [id, userId, key, amount, giftWrapPrice !== null ? 1 : 0, giftWrapPrice ?? 0, customer.name, customer.email, customer.phone, customer.address, customer.pincode]);
+    for (const item of items) await connection.execute("INSERT INTO kalacar_order_items (order_id,product_id,product_name,variant_id,variant_name,unit_price,quantity) VALUES (?,?,?,?,?,?,?)", [id, item.id, item.name, item.variantId, item.variantName, item.price, item.quantity]);
     await connection.commit();
     return { id, amount, razorpayOrderId: null, status: "payment_pending", reused: false };
   } catch (error) {
@@ -227,6 +283,16 @@ export async function reserveOrder(key: string, lines: CheckoutLine[], customer:
   } finally { connection.release(); }
 }
 
+/** Returns order items to their colour's stock (falls back to the product's first colour for old orders). */
+async function returnItemsToStock(connection: mysql.PoolConnection, orderId: string) {
+  const [items] = await connection.execute<(RowDataPacket & { product_id: string; variant_id: string | null; quantity: number })[]>("SELECT product_id,variant_id,quantity FROM kalacar_order_items WHERE order_id=?", [orderId]);
+  for (const item of items) {
+    const [result] = item.variant_id ? await connection.execute<mysql.ResultSetHeader>("UPDATE kalacar_product_variants SET stock=stock+? WHERE id=?", [item.quantity, item.variant_id]) : [{ affectedRows: 0 } as mysql.ResultSetHeader];
+    if (!result.affectedRows) await connection.execute("UPDATE kalacar_product_variants SET stock=stock+? WHERE product_id=? ORDER BY sort, name LIMIT 1", [item.quantity, item.product_id]);
+  }
+  for (const productId of new Set(items.map(item => item.product_id))) await syncProductSummary(connection, productId);
+}
+
 export async function attachRazorpayOrder(id: string, razorpayOrderId: string) {
   await ensureCatalogue();
   await database().execute("UPDATE kalacar_orders SET razorpay_order_id=? WHERE id=? AND status='payment_pending'", [razorpayOrderId, id]);
@@ -240,8 +306,7 @@ export async function releaseOrderAfterPaymentSetupFailure(id: string) {
     const [orders] = await connection.execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE id=? FOR UPDATE", [id]);
     const order = orders[0];
     if (!order || order.status !== "payment_pending" || order.razorpay_order_id) { await connection.rollback(); return; }
-    const [items] = await connection.execute<(RowDataPacket & { product_id: string; quantity: number })[]>("SELECT product_id,quantity FROM kalacar_order_items WHERE order_id=?", [id]);
-    for (const item of items) await connection.execute("UPDATE kalacar_products SET stock=stock+? WHERE id=?", [item.quantity, item.product_id]);
+    await returnItemsToStock(connection, id);
     await connection.execute("UPDATE kalacar_orders SET status='payment_setup_failed' WHERE id=? AND status='payment_pending'", [id]);
     await connection.commit();
   } catch (error) { await connection.rollback(); throw error; }
@@ -253,13 +318,14 @@ export async function findOrder(id: string) {
   const [rows] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE id=?", [id]);
   const order = rows[0];
   if (!order) return null;
-  const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [id]);
-  return { id: order.id, userId: order.user_id, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, amount: Number(order.amount), status: order.status, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
+  const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; variant_name: string | null; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,variant_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [id]);
+  return { id: order.id, userId: order.user_id, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, amount: Number(order.amount), status: order.status, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
 }
 
 const statusLabels: Record<string, string> = { payment_pending: "Awaiting payment", paid: "Paid", paid_after_cancel: "Paid after cancel", payment_failed: "Payment failed", payment_setup_failed: "Payment setup failed", payment_cancelled: "Cancelled", cancelled: "Cancelled", refunded: "Refunded" };
 const statusLabel = (status: string) => statusLabels[status] ?? status.replaceAll("_", " ");
 const lifecycle = (order: OrderRow) => ({
+  giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0),
   rawStatus: order.status, trackingNote: order.tracking_note ?? "", cancelReason: order.cancel_reason ?? "", cancelledAt: order.cancelled_at,
   refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), refundReason: order.refund_reason ?? "",
   refundReference: order.refund_reference ?? "", refundedAt: order.refunded_at, stockRestored: Boolean(order.stock_restored),
@@ -270,7 +336,7 @@ export async function getAdminOrderDetails(id: string) {
   const [rows] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE id=?", [id]);
   const order = rows[0];
   if (!order) return null;
-  const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=? ORDER BY id", [id]);
+  const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; variant_name: string | null; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,variant_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=? ORDER BY id", [id]);
   const status = statusLabel(order.status);
   return {
     ...lifecycle(order),
@@ -284,7 +350,7 @@ export async function getAdminOrderDetails(id: string) {
     total: Number(order.amount),
     status,
     fulfillmentStatus: order.fulfillment_status,
-    items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })),
+    items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })),
   };
 }
 
@@ -357,8 +423,8 @@ export async function listCustomerOrders(userId: string) {
   await ensureCatalogue();
   const [orders] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100", [userId]);
   return Promise.all(orders.map(async (order) => {
-    const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
-    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
+    const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; variant_name: string | null; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,variant_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
+    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0), trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
   }));
 }
 
@@ -408,9 +474,9 @@ export async function listOrders(filter: OrderStatusFilter = "all") {
   const condition = filter === "all" ? "" : `WHERE ${orderStatusConditions[filter]}`;
   const [orders] = await database().query<OrderRow[]>(`SELECT * FROM kalacar_orders ${condition} ORDER BY created_at DESC LIMIT 100`);
   return Promise.all(orders.map(async order => {
-    const [items] = await database().execute<(RowDataPacket & { product_name: string; quantity: number })[]>("SELECT product_name,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
+    const [items] = await database().execute<(RowDataPacket & { product_name: string; variant_name: string | null; quantity: number })[]>("SELECT product_name,variant_name,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
     const status = statusLabel(order.status);
-    return { rawStatus: order.status, id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, item: items.map(row => `${row.product_name} · ${row.quantity}`).join(", ") };
+    return { rawStatus: order.status, id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, item: items.map(row => `${row.product_name}${row.variant_name && row.variant_name !== "Standard" ? ` (${row.variant_name})` : ""} · ${row.quantity}`).join(", ") };
   }));
 }
 
@@ -448,7 +514,7 @@ export async function getAdminMetrics() {
     const [productRows] = await connection.execute<(RowDataPacket & { low_stock_products: number | string; out_of_stock_products: number | string })[]>(`SELECT
       COALESCE(SUM(CASE WHEN stock > 0 AND stock <= ? THEN 1 ELSE 0 END),0) AS low_stock_products,
       COALESCE(SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END),0) AS out_of_stock_products
-      FROM kalacar_products`, [lowStockThreshold]);
+      FROM kalacar_product_variants WHERE active=1`, [lowStockThreshold]);
     const orderStats = orderRows[0];
     const paidOrders = Number(orderStats?.paid_orders ?? 0);
     const paidRevenue = Number(orderStats?.paid_revenue ?? 0);
@@ -480,49 +546,11 @@ export async function updateOrderFulfillment(id: string, fulfillmentStatus: "pro
   return result.affectedRows > 0;
 }
 
-export type ProductUpdateResult = { status: "ok" } | { status: "not_found" } | { status: "conflict"; current: { price: number; stock: number } };
 
-/**
- * Updates a product. When `expected` is given, the write only happens if the stored price/stock
- * still equal what the owner was looking at (optimistic concurrency). The row is locked with the
- * same FOR UPDATE lock checkout uses, so a sale and a dashboard edit can't overwrite each other.
- */
-export async function updateProduct(id: string, values: { name?: string; deity?: string; placement?: string; price?: number; stock?: number; image?: string; gallery?: string[]; accordions?: ProductAccordion[] }, expected: { price?: number; stock?: number } = {}): Promise<ProductUpdateResult> {
-  await ensureCatalogue();
-  const fields: string[] = [];
-  const params: (string | number)[] = [];
-  if (values.name !== undefined) { fields.push("name=?"); params.push(values.name); }
-  if (values.deity !== undefined) { fields.push("deity=?"); params.push(values.deity); }
-  if (values.placement !== undefined) { fields.push("placement=?"); params.push(values.placement); }
-  if (values.price !== undefined) { fields.push("price=?"); params.push(values.price); }
-  if (values.stock !== undefined) { fields.push("stock=?"); params.push(values.stock); }
-  if (values.image !== undefined) { fields.push("image=?"); params.push(values.image); }
-  if (values.gallery !== undefined) { fields.push("gallery=?"); params.push(JSON.stringify(values.gallery)); }
-  if (values.name !== undefined) { fields.push("image_alt=?"); params.push(`${values.name} product photo`); }
-  if (values.accordions !== undefined) { fields.push("accordions=?"); params.push(JSON.stringify(values.accordions)); }
-  if (!fields.length) throw new Error("No changes provided.");
-  const connection = await database().getConnection();
-  try {
-    await connection.beginTransaction();
-    const [rows] = await connection.execute<(RowDataPacket & { price: number; stock: number })[]>("SELECT price,stock FROM kalacar_products WHERE id=? FOR UPDATE", [id]);
-    const row = rows[0];
-    if (!row) { await connection.rollback(); return { status: "not_found" }; }
-    const current = { price: Number(row.price), stock: Number(row.stock) };
-    if ((expected.stock !== undefined && current.stock !== expected.stock) || (expected.price !== undefined && current.price !== expected.price)) {
-      await connection.rollback();
-      return { status: "conflict", current };
-    }
-    await connection.execute<mysql.ResultSetHeader>(`UPDATE kalacar_products SET ${fields.join(",")} WHERE id=?`, [...params, id]);
-    await connection.commit();
-    return { status: "ok" };
-  } catch (error) { await connection.rollback(); throw error; }
-  finally { connection.release(); }
-}
 
 /** Puts an order's items back into stock once (guarded by stock_restored). Call inside a transaction holding the order row lock. */
 async function restoreOrderStock(connection: mysql.PoolConnection, orderId: string) {
-  const [items] = await connection.execute<(RowDataPacket & { product_id: string; quantity: number })[]>("SELECT product_id,quantity FROM kalacar_order_items WHERE order_id=?", [orderId]);
-  for (const item of items) await connection.execute("UPDATE kalacar_products SET stock=stock+? WHERE id=?", [item.quantity, item.product_id]);
+  await returnItemsToStock(connection, orderId);
   await connection.execute("UPDATE kalacar_orders SET stock_restored=1 WHERE id=?", [orderId]);
 }
 
