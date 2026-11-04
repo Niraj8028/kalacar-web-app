@@ -81,6 +81,8 @@ async function initialize() {
   // Product presentation managed from the dashboard
   const [badgeColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'badge'");
   if (!badgeColumns.length) await db.execute("ALTER TABLE kalacar_products ADD COLUMN badge VARCHAR(40) NULL AFTER deity, ADD COLUMN tagline VARCHAR(120) NULL AFTER badge");
+  const [specColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'specs'");
+  if (!specColumns.length) await db.execute("ALTER TABLE kalacar_products ADD COLUMN specs JSON NULL AFTER accordions, ADD COLUMN highlights JSON NULL AFTER specs");
   // Colours (variants): the real source of photos, price and stock. The product row keeps a summary.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_product_variants (
     id VARCHAR(80) PRIMARY KEY, product_id VARCHAR(64) NOT NULL, name VARCHAR(60) NOT NULL, swatch CHAR(7) NOT NULL DEFAULT '#b08d57',
@@ -133,7 +135,7 @@ export async function fillMissingCustomerPhone(userId: string, phone: string) {
   await database().execute("UPDATE kalacar_users SET phone=? WHERE id=? AND phone=''", [phone, userId]);
 }
 
-type ProductRow = RowDataPacket & { id: string; name: string; deity: string; badge: string | null; tagline: string | null; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
+type ProductRow = RowDataPacket & { id: string; name: string; deity: string; badge: string | null; tagline: string | null; specs: unknown; highlights: unknown; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
 
 function parseAccordions(value: ProductRow["accordions"]): ProductAccordion[] {
   if (!value) return [];
@@ -153,14 +155,19 @@ const parseGallery = (value: string | string[] | null, fallback: string[] = []) 
 const toVariant = (row: VariantRow): ProductVariant => ({ id: row.id, name: row.name, swatch: row.swatch, gallery: parseGallery(row.gallery), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), sort: Number(row.sort), active: Boolean(row.active) });
 
 /** Products with their colours. The shop gets visible colours only; the dashboard passes includeHidden. */
+export type ProductSpec = { label: string; value: string };
+const readJson = (value: unknown) => { if (value == null) return null; if (typeof value !== "string") return value; try { return JSON.parse(value) as unknown; } catch { return null; } };
+const parseSpecs = (value: unknown): ProductSpec[] => { const list = readJson(value); return Array.isArray(list) ? list.filter((s): s is ProductSpec => Boolean(s) && typeof s.label === "string" && typeof s.value === "string") : []; };
+const parseHighlights = (value: unknown): string[] => { const list = readJson(value); return Array.isArray(list) ? list.filter((h): h is string => typeof h === "string") : []; };
+
 export async function listProducts({ includeHidden = false } = {}) {
   await ensureCatalogue();
-  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
+  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,specs,highlights,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
   const [variantRows] = await database().query<VariantRow[]>(`SELECT * FROM kalacar_product_variants ${includeHidden ? "" : "WHERE active=1"} ORDER BY sort, name`);
   return rows.map(row => {
     const gallery = parseGallery(row.gallery, [row.image]);
     const variants = variantRows.filter(variant => variant.product_id === row.id).map(toVariant);
-    return { id: row.id, name: row.name, deity: row.deity, badge: row.badge ?? "", tagline: row.tagline ?? "", image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), variants, updatedAt: row.updated_at };
+    return { id: row.id, name: row.name, deity: row.deity, badge: row.badge ?? "", tagline: row.tagline ?? "", specs: parseSpecs(row.specs), highlights: parseHighlights(row.highlights), image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), variants, updatedAt: row.updated_at };
   }).filter(product => includeHidden || product.variants.length > 0);
 }
 

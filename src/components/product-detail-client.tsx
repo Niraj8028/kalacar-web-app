@@ -7,6 +7,7 @@ import { useState } from "react";
 import { AddToBagButton, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
+import { DeliveryLine, ProductHighlights, SpecCards } from "@/components/product-facts";
 
 const LOW_STOCK = 3;
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -85,7 +86,10 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" disabled={canBuy < 1} label="Add to bag" />
             <button type="button" className="buy-now-button" disabled={canBuy < 1 && inCart < 1} onClick={buyNow}>Buy now</button>
           </div>
+          <DeliveryLine />
         </div>
+        <ProductHighlights items={item.highlights ?? []} />
+        <SpecCards specs={item.specs ?? []} />
 
         <div className="detail-rule" /><h2>Product details</h2>
         <dl className="product-facts"><div><dt>Deity</dt><dd>{item.deity}</dd></div>{colours.length > 1 && <div><dt>Colours</dt><dd>{colours.map(c => c.name).join(", ")}</dd></div>}<div><dt>Availability</dt><dd>{colour && colour.stock > 0 ? `${colour.stock} in stock${colours.length > 1 ? ` in ${colour.name}` : ""}` : "Out of stock"}</dd></div></dl>

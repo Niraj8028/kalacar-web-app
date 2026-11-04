@@ -26,6 +26,8 @@ export type StoreItem = {
   deity: string;
   badge?: string;
   tagline?: string;
+  specs?: Array<{ label: string; value: string }>;
+  highlights?: string[];
   variants: StoreColour[];
   image: string;
   imageAlt: string;

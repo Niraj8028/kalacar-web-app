@@ -54,8 +54,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (!rows.length) { await connection.rollback(); await removeFiles(photos.paths); return NextResponse.json({ error: "Product not found." }, { status: 404 }); }
       // Photos already on this product (old product gallery + every colour's gallery) may be reused.
       const allowed = new Set<string>([rows[0].image, ...(rows[0].gallery ? JSON.parse(rows[0].gallery) as string[] : [])]);
-      await connection.execute("UPDATE kalacar_products SET name=?,deity=?,badge=?,tagline=?,placement=?,accordions=?,image_alt=? WHERE id=?",
-        [form.name, form.deity, form.badge || null, form.tagline || null, form.placement, JSON.stringify(form.accordions), `${form.name} product photo`, id]);
+      await connection.execute("UPDATE kalacar_products SET name=?,deity=?,badge=?,tagline=?,placement=?,accordions=?,specs=?,highlights=?,image_alt=? WHERE id=?",
+        [form.name, form.deity, form.badge || null, form.tagline || null, form.placement, JSON.stringify(form.accordions), JSON.stringify(form.specs), JSON.stringify(form.highlights), `${form.name} product photo`, id]);
       const result = await saveColours(connection, id, form.colours, photos.urls, allowed);
       if (result.status !== "ok") {
         await connection.rollback(); await removeFiles(photos.paths);
