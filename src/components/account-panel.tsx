@@ -7,7 +7,7 @@ import AddressBook from "@/components/address-book";
 import { ArrowLeft, External } from "@/components/icons";
 
 type User = { id: string; name: string; email: string; phone: string };
-type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; variant?: string; price: number; quantity: number }>; giftWrap?: boolean; giftWrapPrice?: number };
+type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; variant?: string; price: number; quantity: number }>; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number };
 type CheckoutOrder = { orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const waLink = (orderId?: string) => `https://wa.me/918830646308?text=${encodeURIComponent(orderId ? `Hi Kalacar, I need help with order ${orderId}. Please check its payment or delivery status.` : "Hi Kalacar, I have a question about an order.")}`;
@@ -154,7 +154,7 @@ export default function AccountPanel() {
           const status = order.status.replaceAll("_", " ");
           return <article className="account-order" key={order.id}>
             <div className="order-heading"><div><span>Order {order.id.slice(0, 8).toUpperCase()}</span><small>{new Date(order.createdAt).toLocaleString("en-IN")}</small></div><strong>{money(order.amount)}</strong></div>
-            <p>{order.items.map(item => `${item.name}${item.variant && item.variant !== "Standard" ? ` (${item.variant})` : ""} × ${item.quantity}`).join(" · ")}{order.giftWrap && ` · Gift packaging${order.giftWrapPrice ? ` ${money(order.giftWrapPrice)}` : ""}`}</p>
+            <p>{order.items.map(item => `${item.name}${item.variant && item.variant !== "Standard" ? ` (${item.variant})` : ""} × ${item.quantity}`).join(" · ")}{order.giftWrap && ` · Gift packaging${order.giftWrapPrice ? ` ${money(order.giftWrapPrice)}` : ""}`}{order.couponCode && order.discount ? ` · Coupon ${order.couponCode} −${money(order.discount)}` : ""}</p>
             {order.status === "paid" && <p className="customer-fulfillment-status">Delivery progress: {({ unfulfilled: "Preparing for packing", processing: "Being prepared", dispatched: "Dispatched", completed: "Delivered" } as Record<string, string>)[order.fulfillmentStatus] || "Being prepared"}</p>}
             {order.status === "paid" && order.trackingNote && <p className="customer-tracking"><span>Tracking</span>{order.trackingNote}</p>}
             {order.status === "refunded" && <p className="customer-order-note">Refunded {order.refundAmount ? money(order.refundAmount) : ""}{order.refundAmount && order.refundAmount < order.amount ? ` of ${money(order.amount)}` : ""}. Refunds usually reach your account in 5–7 working days.</p>}

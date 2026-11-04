@@ -540,3 +540,24 @@ button { color: inherit; }
 /* SVG icons inside text links and buttons */
 .back-to-shop svg, .account-contact svg, .details-link svg, .order-whatsapp svg, .theme-toggle svg, .cart-content a svg { vertical-align: -3px; }
 .back-to-shop, .details-link { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Coupon box in the order summary */
+.cart-summary > .coupon-box { display: block; margin: 0 0 14px; font-size: 13px; }
+.cart-summary > .coupon-applied { display: grid; margin: 0 0 14px; }
+.coupon-toggle { padding: 0; font-size: 13px; }
+.coupon-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
+.coupon-row { display: flex; gap: 8px; }
+.coupon-row input { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid var(--line); background: var(--page); color: var(--ink); font: inherit; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; }
+.coupon-row input[aria-invalid="true"] { border-color: #b3543f; }
+.coupon-apply { min-width: 84px; height: 44px; padding: 0 16px; border: 1px solid var(--accent); background: var(--accent); color: var(--page); font: inherit; font-size: 13px; cursor: pointer; }
+.coupon-apply:disabled { opacity: .6; cursor: wait; }
+.coupon-error { margin: 6px 0 12px; color: #b3543f; font-size: 12px; line-height: 1.5; }
+.coupon-applied { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; margin: 0 0 14px; padding: 12px; border: 1px dashed var(--accent); background: var(--page); }
+.coupon-applied svg { color: var(--accent); }
+.coupon-applied span { display: grid; gap: 2px; min-width: 0; font-size: 13px; }
+.coupon-applied b { letter-spacing: .06em; }
+.coupon-applied small { color: var(--muted); font-size: 11px; }
+.coupon-applied strong { color: var(--accent); font-size: 13px; white-space: nowrap; }
+.coupon-applied .address-link { font-size: 12px; }
+.cart-discount span:last-child { color: var(--accent); }
+@media (max-width: 420px) { .coupon-applied { grid-template-columns: auto 1fr auto; } .coupon-applied .address-link { grid-column: 2 / -1; justify-self: end; } }

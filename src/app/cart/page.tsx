@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { CouponBox, type AppliedCoupon } from "@/components/coupon-box";
 import type { FormEvent } from "react";
 import { useCart } from "@/components/cart-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
@@ -58,6 +59,9 @@ export default function CartPage() {
     return () => { active = false; };
   }, []);
   const giftTotal = giftOffer && wantGift ? giftOffer.price : 0;
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponNote, setCouponNote] = useState("");
+  const discount = coupon?.discount ?? 0;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -166,7 +170,7 @@ export default function CartPage() {
     event.preventDefault(); setBusy(true); setError(""); setSuccess("");
     try {
       if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
-      const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)), customer, gift: Boolean(giftOffer && wantGift) });
+      const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)), customer, gift: Boolean(giftOffer && wantGift), coupon: coupon?.code ?? "" });
       const existing = readSavedCheckout();
       if (existing && existing.fingerprint !== fingerprint) {
         if (existing.orderId) await syncSavedCheckout(existing, true, false);
@@ -178,10 +182,12 @@ export default function CartPage() {
       }
       const persisted: SavedCheckout = { fingerprint, idempotencyKey: checkoutKey.current.value, orderId: existing?.fingerprint === fingerprint ? existing.orderId : "", razorpayOrderId: existing?.fingerprint === fingerprint ? existing.razorpayOrderId : "", amount: existing?.fingerprint === fingerprint ? existing.amount : 0 };
       localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(persisted));
-      const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })), customer, saveAddress: selectedAddress === "new" && saveAddress, giftWrap: Boolean(giftOffer && wantGift) }) });
-      const order = await response.json() as { error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string };
+      const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })), customer, saveAddress: selectedAddress === "new" && saveAddress, giftWrap: Boolean(giftOffer && wantGift), couponCode: coupon?.code ?? null }) });
+      const order = await response.json() as { coupon?: boolean; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string };
       if (!response.ok) {
         if (response.status === 502) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); }
+        // The coupon stopped applying (expired, used up…): nothing was charged; drop it so the total is honest.
+        if (order.coupon) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); setCoupon(null); throw new Error(`${order.error} The coupon was removed — check the new total and try again.`); }
         throw new Error(order.error || "Could not start checkout.");
       }
       const activeOrder: SavedCheckout = { ...persisted, orderId: order.orderId, razorpayOrderId: order.razorpayOrderId, amount: order.amount };
@@ -264,10 +270,13 @@ export default function CartPage() {
                   <span><b>{giftOffer.title}</b>{giftOffer.description && <small>{giftOffer.description}</small>}</span>
                   <strong>{giftOffer.price > 0 ? `+${money(giftOffer.price)}` : "Free"}</strong>
                 </label>}
+                {!showSuccess && <CouponBox items={resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity }))} giftWrap={Boolean(giftOffer && wantGift)} applied={coupon} disabled={busy} onChange={(next, message) => { setCoupon(next); setCouponNote(message ?? ""); }} />}
+                {couponNote && <p className="coupon-error" role="status">{couponNote}</p>}
                 <div><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
+                {discount > 0 && <div className="cart-discount"><span>Coupon {coupon?.code}</span><span>−{money(discount)}</span></div>}
                 {giftTotal > 0 && <div><span>{giftOffer?.title}</span><span>{money(giftTotal)}</span></div>}
                 <div><span>Delivery</span><span>Calculated later</span></div>
-                <div className="cart-total"><span>Total</span><strong>{money(subtotal + giftTotal)}</strong></div>
+                <div className="cart-total"><span>Total</span><strong>{money(subtotal - discount + giftTotal)}</strong></div>
                 <p>Test checkout reserves current stock and charges the products{giftTotal > 0 ? " and gift packaging" : ""}. Shipping is not included in this local test.</p>
                 {showSuccess ? <div className="demo-checkout-message" role="status">{success}<Link className="account-contact" href="/account">View order status in your account <ArrowRight /></Link></div> : <form className="checkout-form" onSubmit={startCheckout}>
                   <h3>Delivery details</h3>

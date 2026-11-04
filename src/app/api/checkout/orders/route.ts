@@ -4,6 +4,8 @@ import { attachRazorpayOrder, fillMissingCustomerPhone, releaseOrderAfterPayment
 import { createAddress, findMatchingAddress, parseAddress } from "@/lib/addresses";
 import { getGiftWrap } from "@/lib/settings";
 import { currentCustomer } from "@/lib/customer-auth";
+import { parseCartItems } from "@/lib/cart-items";
+import { CouponError, normalizeCode } from "@/lib/coupons";
 
 export async function POST(request: Request) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Local test checkout is disabled outside development." }, { status: 403 });
@@ -17,19 +19,12 @@ export async function POST(request: Request) {
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 });
-  const data = body as { items?: unknown; customer?: unknown; idempotencyKey?: unknown; giftWrap?: unknown };
+  const data = body as { items?: unknown; customer?: unknown; idempotencyKey?: unknown; giftWrap?: unknown; couponCode?: unknown };
   if (typeof data.idempotencyKey !== "string" || !/^[0-9a-f-]{36}$/i.test(data.idempotencyKey)) return NextResponse.json({ error: "Checkout session is invalid. Reload the cart and try again." }, { status: 400 });
-  if (!Array.isArray(data.items) || data.items.length < 1 || data.items.length > 10) return NextResponse.json({ error: "Your bag is empty or has too many different items." }, { status: 400 });
-  const items: Array<{ id: string; variantId?: string; quantity: number }> = [];
-  const seen = new Set<string>();
-  for (const raw of data.items) {
-    if (!raw || typeof raw !== "object") return NextResponse.json({ error: "Invalid cart item." }, { status: 400 });
-    const item = raw as { id?: unknown; variantId?: unknown; quantity?: unknown };
-    const variantId = typeof item.variantId === "string" && /^[a-z0-9-]{1,80}$/.test(item.variantId) ? item.variantId : undefined;
-    const lineKey = `${String(item.id)}:${variantId ?? ""}`;
-    if (typeof item.id !== "string" || !/^[a-z0-9-]{1,64}$/.test(item.id) || seen.has(lineKey) || !Number.isSafeInteger(item.quantity) || Number(item.quantity) < 1 || Number(item.quantity) > 10) return NextResponse.json({ error: "Cart quantities must be whole numbers from 1 to 10." }, { status: 400 });
-    seen.add(lineKey); items.push({ id: item.id, variantId, quantity: Number(item.quantity) });
-  }
+  const cart = parseCartItems(data.items);
+  if ("error" in cart) return NextResponse.json({ error: cart.error }, { status: 400 });
+  const items = cart.items;
+  const couponCode = typeof data.couponCode === "string" && data.couponCode.trim() ? normalizeCode(data.couponCode) : null;
   const parsed = parseAddress(data.customer);
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
   const delivery = parsed.value;
@@ -51,8 +46,10 @@ export async function POST(request: Request) {
     if (!gift?.enabled) return NextResponse.json({ error: "Gift packaging isn't available right now. Untick it and try again." }, { status: 409 });
     giftWrapPrice = gift.price;
   }
-  try { order = await reserveOrder(data.idempotencyKey, items, normalized, account.id, giftWrapPrice); }
+  try { order = await reserveOrder(data.idempotencyKey, items, normalized, account.id, giftWrapPrice, couponCode); }
   catch (error) {
+    // Nothing was reserved or charged; the cart shows why the coupon no longer applies.
+    if (error instanceof CouponError) return NextResponse.json({ error: error.message, coupon: true }, { status: 409 });
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") return NextResponse.json({ error: "One or more items no longer have enough stock. Your cart has not been charged." }, { status: 409 });
     console.error("Order reservation failed:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Could not reserve your items. Please try again." }, { status: 503 });

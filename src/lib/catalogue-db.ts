@@ -2,6 +2,7 @@ import mysql, { type RowDataPacket } from "mysql2/promise";
 import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual, createHash } from "node:crypto";
 import { promisify } from "node:util";
 import type { ProductAccordion } from "@/data/catalogue";
+import { CouponError, applyCoupon } from "@/lib/coupons";
 
 const scrypt = promisify(scryptCallback);
 
@@ -115,6 +116,16 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [userColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'user_id'");
   if (!userColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN user_id CHAR(36) NULL AFTER id, ADD KEY orders_user_id (user_id)");
+  // Coupons managed from the dashboard. Orders keep the coupon id plus a snapshot of the code and discount.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_coupons (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, code VARCHAR(32) NOT NULL UNIQUE, type VARCHAR(10) NOT NULL,
+    amount INT UNSIGNED NOT NULL, max_discount INT UNSIGNED NULL, min_spend INT UNSIGNED NOT NULL DEFAULT 0,
+    usage_limit INT UNSIGNED NULL, once_per_customer TINYINT(1) NOT NULL DEFAULT 1,
+    starts_on DATE NULL, expires_on DATE NULL, active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [couponColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'coupon_id'");
+  if (!couponColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN coupon_id INT UNSIGNED NULL AFTER gift_wrap_price, ADD COLUMN coupon_code VARCHAR(32) NULL AFTER coupon_id, ADD COLUMN discount INT UNSIGNED NOT NULL DEFAULT 0 AFTER coupon_code, ADD KEY orders_coupon_id (coupon_id)");
 }
 
 export async function ensureCatalogue() {
@@ -204,7 +215,7 @@ export async function createProduct(product: { id: string; name: string; deity: 
 
 type CheckoutLine = { id: string; variantId?: string; quantity: number };
 type CheckoutCustomer = { name: string; email: string; phone: string; address: string; pincode: string };
-type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; gift_wrap: number; gift_wrap_price: number; tracking_note: string | null; cancel_reason: string | null; cancelled_at: Date | null; refund_amount: number | null; refund_reason: string | null; refund_reference: string | null; refunded_at: Date | null; stock_restored: number; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
+type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; gift_wrap: number; gift_wrap_price: number; coupon_code: string | null; discount: number; tracking_note: string | null; cancel_reason: string | null; cancelled_at: Date | null; refund_amount: number | null; refund_reason: string | null; refund_reference: string | null; refunded_at: Date | null; stock_restored: number; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
 
 export type OrderStatusFilter = "all" | "pending_payment" | "processing" | "on_hold" | "dispatched" | "completed" | "cancelled" | "refunded";
 type OrderStatusCounts = Record<OrderStatusFilter, number>;
@@ -236,7 +247,7 @@ export async function getOrderStatusCounts(): Promise<OrderStatusCounts> {
   };
 }
 
-export async function reserveOrder(key: string, lines: CheckoutLine[], customer: CheckoutCustomer, userId: string, giftWrapPrice: number | null = null) {
+export async function reserveOrder(key: string, lines: CheckoutLine[], customer: CheckoutCustomer, userId: string, giftWrapPrice: number | null = null, couponCode: string | null = null) {
   await ensureCatalogue();
   const db = database();
   const connection = await db.getConnection();
@@ -269,10 +280,16 @@ export async function reserveOrder(key: string, lines: CheckoutLine[], customer:
       items.push({ id: line.id, name: product.name, variantId: variant.id, variantName: variant.name, price: Number(variant.price), quantity: line.quantity });
     }
     for (const productId of new Set(items.map(item => item.id))) await syncProductSummary(connection, productId);
+    // Coupon: checked again here with its row locked, so the last remaining use can't be taken twice.
+    // The discount applies to the murtis only (not gift packaging).
+    const coupon = couponCode ? await applyCoupon(connection, couponCode, userId, amount, giftWrapPrice ?? 0) : null;
+    if (coupon && !coupon.ok) throw new CouponError(coupon.error);
+    const discount = coupon?.ok ? coupon.discount : 0;
+    amount -= discount;
     // Gift packaging price comes from dashboard settings at the moment of checkout and is part of the charged total.
     if (giftWrapPrice !== null) amount += giftWrapPrice;
     const id = randomUUID();
-    await connection.execute("INSERT INTO kalacar_orders (id,user_id,idempotency_key,amount,gift_wrap,gift_wrap_price,status,customer_name,email,phone,address,pincode) VALUES (?,?,?,?,?,?,'payment_pending',?,?,?,?,?)", [id, userId, key, amount, giftWrapPrice !== null ? 1 : 0, giftWrapPrice ?? 0, customer.name, customer.email, customer.phone, customer.address, customer.pincode]);
+    await connection.execute("INSERT INTO kalacar_orders (id,user_id,idempotency_key,amount,gift_wrap,gift_wrap_price,coupon_id,coupon_code,discount,status,customer_name,email,phone,address,pincode) VALUES (?,?,?,?,?,?,?,?,?,'payment_pending',?,?,?,?,?)", [id, userId, key, amount, giftWrapPrice !== null ? 1 : 0, giftWrapPrice ?? 0, coupon?.ok ? coupon.coupon.id : null, coupon?.ok ? coupon.coupon.code : null, discount, customer.name, customer.email, customer.phone, customer.address, customer.pincode]);
     for (const item of items) await connection.execute("INSERT INTO kalacar_order_items (order_id,product_id,product_name,variant_id,variant_name,unit_price,quantity) VALUES (?,?,?,?,?,?,?)", [id, item.id, item.name, item.variantId, item.variantName, item.price, item.quantity]);
     await connection.commit();
     return { id, amount, razorpayOrderId: null, status: "payment_pending", reused: false };
@@ -288,6 +305,20 @@ export async function reserveOrder(key: string, lines: CheckoutLine[], customer:
     }
     throw error;
   } finally { connection.release(); }
+}
+
+/** Item total for a cart at today's prices (no locks; for the coupon preview only — checkout recomputes it). */
+export async function quoteItemsSubtotal(lines: CheckoutLine[]) {
+  await ensureCatalogue();
+  let total = 0;
+  for (const line of lines) {
+    const [variants] = await database().execute<VariantRow[]>(
+      line.variantId ? "SELECT * FROM kalacar_product_variants WHERE id=? AND product_id=? AND active=1" : "SELECT * FROM kalacar_product_variants WHERE product_id=? AND active=1 ORDER BY sort, name LIMIT 1",
+      line.variantId ? [line.variantId, line.id] : [line.id]);
+    if (!variants[0]) return null;
+    total += Number(variants[0].price) * line.quantity;
+  }
+  return total;
 }
 
 /** Returns order items to their colour's stock (falls back to the product's first colour for old orders). */
@@ -333,6 +364,7 @@ const statusLabels: Record<string, string> = { payment_pending: "Awaiting paymen
 const statusLabel = (status: string) => statusLabels[status] ?? status.replaceAll("_", " ");
 const lifecycle = (order: OrderRow) => ({
   giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0),
+  couponCode: order.coupon_code ?? "", discount: Number(order.discount ?? 0),
   rawStatus: order.status, trackingNote: order.tracking_note ?? "", cancelReason: order.cancel_reason ?? "", cancelledAt: order.cancelled_at,
   refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), refundReason: order.refund_reason ?? "",
   refundReference: order.refund_reference ?? "", refundedAt: order.refunded_at, stockRestored: Boolean(order.stock_restored),
@@ -431,7 +463,7 @@ export async function listCustomerOrders(userId: string) {
   const [orders] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100", [userId]);
   return Promise.all(orders.map(async (order) => {
     const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; variant_name: string | null; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,variant_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
-    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0), trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
+    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0), couponCode: order.coupon_code ?? "", discount: Number(order.discount ?? 0), trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
   }));
 }
 
