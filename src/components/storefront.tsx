@@ -136,16 +136,18 @@ export default function Storefront() {
                       priority={index < 3}
                     />
                     <span className="image-tag">VIEW MURTI</span>
+                    {(() => { const save = item.originalPrice > item.price ? Math.round((1 - item.price / item.originalPrice) * 100) : 0; return (item.badge || save > 0) ? <span className="card-badges">{item.badge && <span className="badge-chip">{item.badge}</span>}{save > 0 && <span className="badge-chip save">Save {save}%</span>}</span> : null; })()}
                   </Link>
                 </div>
                 <div className="product-info">
                   <p className="product-deity">{item.deity}</p>
                   <h3>{item.name}</h3>
-                  {item.placement && <p className="product-placement">{item.placement}</p>}
+                  {item.tagline ? <p className="product-placement">{item.tagline}</p> : item.placement && <p className="product-placement">{item.placement}</p>}
+                  {item.variants.length > 1 && <p className="card-swatches" aria-label={`${item.variants.length} colours: ${item.variants.map(v => v.name).join(", ")}`}>{item.variants.map(v => <span key={v.id} className="colour-dot" style={{ background: v.swatch }} title={v.name} aria-hidden="true" />)}<small>{item.variants.length} colours</small></p>}
                   <Link className="details-link" href={`/products/${item.id}`}>View details <span aria-hidden="true">→</span></Link>
                   <div className="product-buy-row">
-                    <span className="product-price-block"><strong>₹{item.price}</strong><small>{item.stock ? `${item.stock} available` : "out of stock"}</small></span>
-                    <AddToBagButton id={item.id} disabled={item.stock < 1} />
+                    <span className="product-price-block"><strong>{new Set(item.variants.map(v => v.price)).size > 1 ? "from " : ""}₹{item.price}</strong>{item.originalPrice > item.price && <del>₹{item.originalPrice}</del>}<small>{item.stock < 1 ? "out of stock" : item.stock <= 3 ? `only ${item.stock} left` : "in stock"}</small></span>
+                    {item.variants.length > 1 ? <Link className="add-button choose-colour" href={`/products/${item.id}`}>Choose colour</Link> : <AddToBagButton id={item.id} variantId={item.variants[0]?.id} disabled={item.stock < 1} />}
                   </div>
                 </div>
               </article>

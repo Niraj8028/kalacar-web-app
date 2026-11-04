@@ -7,10 +7,26 @@ export type ProductAccordion = {
   defaultOpen: boolean;
 };
 
+/** One colour of a product: its own photos, price, regular price and stock. */
+export type StoreColour = {
+  id: string;
+  name: string;
+  swatch: string;
+  gallery: string[];
+  price: number;
+  originalPrice: number;
+  stock: number;
+  sort: number;
+  active: boolean;
+};
+
 export type StoreItem = {
   id: string;
   name: string;
   deity: string;
+  badge?: string;
+  tagline?: string;
+  variants: StoreColour[];
   image: string;
   imageAlt: string;
   placement: string;

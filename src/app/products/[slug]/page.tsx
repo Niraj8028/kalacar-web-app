@@ -2,7 +2,9 @@ import ProductDetailClient from "@/components/product-detail-client";
 
 export const instant = false;
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProductPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ colour?: string | string[] }> }) {
   const { slug } = await params;
-  return <ProductDetailClient slug={slug} />;
+  const { colour } = await searchParams;
+  const initialColour = typeof colour === "string" && /^[a-z0-9-]{1,80}$/.test(colour) ? colour : "";
+  return <ProductDetailClient slug={slug} initialColour={initialColour} />;
 }

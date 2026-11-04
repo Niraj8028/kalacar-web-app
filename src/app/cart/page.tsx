@@ -47,7 +47,16 @@ function loadRazorpay() {
 }
 
 export default function CartPage() {
-  const { lines, subtotal, setQuantity, remove, products: catalogue, clear, canAdd, add, catalogueLoading, catalogueError } = useCart();
+  const { lines, resolved, subtotal, setQuantity, remove, changeColour, clear, canAdd, catalogueLoading, catalogueError } = useCart();
+  // Gift packaging offer comes from dashboard Settings; the server re-reads the price at checkout.
+  const [giftOffer, setGiftOffer] = useState<{ price: number; title: string; description: string } | null>(null);
+  const [wantGift, setWantGift] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/settings", { cache: "no-store" }).then(r => r.json()).then((data: { giftWrap?: { price: number; title: string; description: string } | null }) => { if (active) setGiftOffer(data.giftWrap ?? null); }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+  const giftTotal = giftOffer && wantGift ? giftOffer.price : 0;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -64,10 +73,7 @@ export default function CartPage() {
   const [savedCheckout, setSavedCheckout] = useState<SavedCheckout | null>(null);
   const [paymentStatus, setPaymentStatus] = useState("");
   const lastAutoSyncAt = useRef(0);
-  const products = lines.flatMap((line) => {
-    const item = catalogue.find((product) => product.id === line.id);
-    return item ? [{ item, quantity: line.quantity }] : [];
-  });
+  const products = resolved.map(({ key, product, colour, line }) => ({ key, item: product, colour, quantity: line.quantity }));
   // A success message belongs to the completed order, not to any items added afterward.
   const showSuccess = Boolean(success) && products.length === 0;
 
@@ -159,7 +165,7 @@ export default function CartPage() {
     event.preventDefault(); setBusy(true); setError(""); setSuccess("");
     try {
       if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
-      const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => a.id.localeCompare(b.id)), customer });
+      const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)), customer, gift: Boolean(giftOffer && wantGift) });
       const existing = readSavedCheckout();
       if (existing && existing.fingerprint !== fingerprint) {
         if (existing.orderId) await syncSavedCheckout(existing, true, false);
@@ -171,7 +177,7 @@ export default function CartPage() {
       }
       const persisted: SavedCheckout = { fingerprint, idempotencyKey: checkoutKey.current.value, orderId: existing?.fingerprint === fingerprint ? existing.orderId : "", razorpayOrderId: existing?.fingerprint === fingerprint ? existing.razorpayOrderId : "", amount: existing?.fingerprint === fingerprint ? existing.amount : 0 };
       localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(persisted));
-      const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: lines, customer, saveAddress: selectedAddress === "new" && saveAddress }) });
+      const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })), customer, saveAddress: selectedAddress === "new" && saveAddress, giftWrap: Boolean(giftOffer && wantGift) }) });
       const order = await response.json() as { error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string };
       if (!response.ok) {
         if (response.status === 502) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); }
@@ -222,33 +228,46 @@ export default function CartPage() {
           <>
             <div className="cart-layout">
               <div className="cart-lines">
-                {products.map(({ item, quantity }) => (
-                  <article className="cart-line" key={item.id}>
-                    <Link className="cart-line-image" href={`/products/${item.id}`}>
-                      <Image src={item.image} alt={item.imageAlt} fill sizes="110px" />
+                {products.map(({ key, item, colour, quantity }) => (
+                  <article className="cart-line" key={key}>
+                    <Link className="cart-line-image" href={`/products/${item.id}?colour=${colour.id}`}>
+                      <Image src={colour.gallery[0] ?? item.image} alt={`${item.name}${item.variants.length > 1 ? ` in ${colour.name}` : ""}`} fill sizes="110px" />
                     </Link>
                     <div className="cart-line-info">
                       <p className="product-deity">{item.deity}</p>
-                      <h2><Link href={`/products/${item.id}`}>{item.name}</Link></h2>
-                      <p className="cart-unit-price">{money(item.price)} <span>unit price</span></p>
+                      <h2><Link href={`/products/${item.id}?colour=${colour.id}`}>{item.name}</Link></h2>
+                      {item.variants.length > 1 && <label className="cart-colour"><span className="colour-dot" style={{ background: colour.swatch }} aria-hidden="true" /><span className="sr-only">Colour</span>
+                        <select aria-label={`Colour for ${item.name}`} value={colour.id} onChange={e => changeColour(key, e.target.value)}>
+                          {item.variants.map(option => <option key={option.id} value={option.id} disabled={option.stock < 1 && option.id !== colour.id}>{option.name}{option.stock < 1 ? " — sold out" : option.price !== colour.price ? ` — ${money(option.price)}` : ""}</option>)}
+                        </select><small>change</small></label>}
+                      <p className="cart-unit-price">{money(colour.price)} <span>unit price</span>{colour.originalPrice > colour.price && <del>{money(colour.originalPrice)}</del>}</p>
+                      {colour.stock < quantity && <p className="cart-stock-warning" role="alert">Only {colour.stock} left in {colour.name}. Lower the quantity to check out.</p>}
                       <div className="cart-line-controls">
                         <div className="quantity-control" aria-label={`Quantity for ${item.name}`}>
-                          <button type="button" onClick={() => setQuantity(item.id, quantity - 1)} aria-label="Decrease quantity">−</button>
+                          <button type="button" onClick={() => setQuantity(key, quantity - 1)} aria-label="Decrease quantity">−</button>
                           <span>{quantity}</span>
-                          <button type="button" disabled={!canAdd(item.id)} onClick={() => setQuantity(item.id, quantity + 1)} aria-label="Increase quantity">+</button>
+                          <button type="button" disabled={!canAdd(item.id, colour.id)} onClick={() => setQuantity(key, quantity + 1)} aria-label="Increase quantity">+</button>
                         </div>
-                        <button className="remove-button" type="button" onClick={() => remove(item.id)}>Remove</button>
+                        <button className="remove-button" type="button" onClick={() => remove(key)}>Remove</button>
                       </div>
                     </div>
-                    <strong className="cart-line-total">{money(item.price * quantity)}</strong>
+                    <strong className="cart-line-total">{money(colour.price * quantity)}</strong>
                   </article>
                 ))}
               </div>
               <aside className="cart-summary">
                 <h2>Order summary</h2>
+                {giftOffer && !showSuccess && <label className={`gift-option${wantGift ? " selected" : ""}`}>
+                  <input type="checkbox" checked={wantGift} onChange={e => setWantGift(e.target.checked)} />
+                  <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="9" width="17" height="11" rx="1.5" /><path d="M2.5 9h19v-3h-19zM12 6v14M12 6c-1.5-3-5-3.5-5-1.2C7 6 9.5 6 12 6Zm0 0c1.5-3 5-3.5 5-1.2C17 6 14.5 6 12 6Z" /></svg>
+                  <span><b>{giftOffer.title}</b>{giftOffer.description && <small>{giftOffer.description}</small>}</span>
+                  <strong>{giftOffer.price > 0 ? `+${money(giftOffer.price)}` : "Free"}</strong>
+                </label>}
                 <div><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
+                {giftTotal > 0 && <div><span>{giftOffer?.title}</span><span>{money(giftTotal)}</span></div>}
                 <div><span>Delivery</span><span>Calculated later</span></div>
-                <p>Test checkout reserves current stock and charges product subtotal only. Shipping is not included in this local test.</p>
+                <div className="cart-total"><span>Total</span><strong>{money(subtotal + giftTotal)}</strong></div>
+                <p>Test checkout reserves current stock and charges the products{giftTotal > 0 ? " and gift packaging" : ""}. Shipping is not included in this local test.</p>
                 {showSuccess ? <div className="demo-checkout-message" role="status">{success}<Link className="account-contact" href="/account">View order status in your account →</Link></div> : <form className="checkout-form" onSubmit={startCheckout}>
                   <h3>Delivery details</h3>
                   {!accountLoaded ? <p className="demo-checkout-message">Loading account…</p> : !account ? <div className="account-checkout-gate"><p>Sign in or create an account before checkout. Your payment status and order history will stay linked to you.</p><Link className="checkout-demo-button" href="/account?next=%2Fcart">Sign in to continue</Link></div> : <>
@@ -277,25 +296,9 @@ export default function CartPage() {
                   </>}
                   {error && <p className="demo-checkout-message" role="alert">{error}</p>}
                   {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
-                  <button className="checkout-demo-button" type="submit" disabled={!account || busy || products.some(({item, quantity}) => item.stock < quantity)}>{busy ? "Starting secure checkout…" : "Pay with Razorpay · Test mode"}</button>
+                  <button className="checkout-demo-button" type="submit" disabled={!account || busy || products.some(({ colour, quantity }) => colour.stock < quantity)}>{busy ? "Starting secure checkout…" : "Pay with Razorpay · Test mode"}</button>
                   </>}
                 </form>}
-                {products.length > 0 && (
-                  <section className="cart-add-another" aria-labelledby="cart-add-another-title">
-                    <h3 id="cart-add-another-title">Add one more to your bag</h3>
-                    {products.map(({ item }) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        disabled={!canAdd(item.id)}
-                        onClick={() => add(item.id)}
-                        aria-label={`Add one more ${item.name}`}
-                      >
-                        {canAdd(item.id) ? `Add one more · ${item.name}` : `Stock limit reached · ${item.name}`}
-                      </button>
-                    ))}
-                  </section>
-                )}
               </aside>
             </div>
           </>

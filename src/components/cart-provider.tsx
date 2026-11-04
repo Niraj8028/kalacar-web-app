@@ -3,19 +3,23 @@
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { StoreItem } from "@/data/catalogue";
+import type { StoreColour, StoreItem } from "@/data/catalogue";
 
-type CartLine = { id: string; quantity: number };
-type LiveStoreItem = StoreItem;
+/** A cart line is one colour of one product. Old saved carts have no variantId: they use the first colour. */
+export type CartLine = { id: string; variantId?: string; quantity: number };
+export type ResolvedLine = { key: string; line: CartLine; product: StoreItem; colour: StoreColour };
 type CartContextValue = {
   lines: CartLine[];
+  resolved: ResolvedLine[];
   count: number;
   subtotal: number;
-  add: (id: string) => void;
-  setQuantity: (id: string, quantity: number) => void;
-  remove: (id: string) => void;
-  canAdd: (id: string) => boolean;
-  products: LiveStoreItem[];
+  add: (id: string, variantId?: string, quantity?: number) => boolean;
+  setQuantity: (key: string, quantity: number) => void;
+  remove: (key: string) => void;
+  changeColour: (key: string, variantId: string) => void;
+  canAdd: (id: string, variantId?: string) => boolean;
+  colourOf: (product: StoreItem, variantId?: string) => StoreColour | undefined;
+  products: StoreItem[];
   catalogueLoading: boolean;
   catalogueError: string;
   clear: () => void;
@@ -23,11 +27,12 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "kalacar-demo-cart-v1";
+export const lineKey = (line: CartLine) => `${line.id}:${line.variantId ?? ""}`;
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
-  const [products, setProducts] = useState<LiveStoreItem[]>([]);
+  const [products, setProducts] = useState<StoreItem[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState("");
 
@@ -37,7 +42,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch("/api/products", { cache: "no-store" });
         if (!response.ok) throw new Error("Catalogue is temporarily unavailable.");
-        const data = await response.json() as { products: LiveStoreItem[] };
+        const data = await response.json() as { products: StoreItem[] };
         if (active) { setProducts(data.products); setCatalogueError(""); }
       } catch (error) { if (active) { setProducts([]); setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); } }
       finally { if (active) setCatalogueLoading(false); }
@@ -53,6 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (Array.isArray(saved)) {
         const valid = saved.filter((line): line is CartLine =>
           Boolean(line) && typeof line.id === "string" && /^[a-z0-9-]{1,64}$/.test(line.id) &&
+          (line.variantId === undefined || (typeof line.variantId === "string" && /^[a-z0-9-]{1,80}$/.test(line.variantId))) &&
           Number.isInteger(line.quantity) && line.quantity > 0,
         );
         setLines(valid);
@@ -67,42 +73,71 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
   }, [lines, ready]);
 
-  const add = useCallback((id: string) => {
+  const colourOf = useCallback((product: StoreItem, variantId?: string) =>
+    (variantId ? product.variants.find(v => v.id === variantId) : undefined) ?? product.variants[0], []);
+
+  /** Quantity already in the cart for this exact colour. */
+  const inCart = useCallback((current: CartLine[], id: string, colourId: string, products: StoreItem[]) => {
+    const product = products.find(p => p.id === id);
+    return current.filter(line => line.id === id && product && colourOf(product, line.variantId)?.id === colourId).reduce((sum, line) => sum + line.quantity, 0);
+  }, [colourOf]);
+
+  const add = useCallback((id: string, variantId?: string, quantity = 1) => {
     const product = products.find(item => item.id === id);
-    if (!product) return;
-    setLines((current) => {
-      const found = current.find((line) => line.id === id);
-      if (product.stock !== undefined && (found?.quantity ?? 0) >= product.stock) return current;
-      return found
-        ? current.map((line) => line.id === id ? { ...line, quantity: line.quantity + 1 } : line)
-        : [...current, { id, quantity: 1 }];
+    const colour = product && colourOf(product, variantId);
+    if (!product || !colour) return false;
+    let added = false;
+    setLines(current => {
+      const have = inCart(current, id, colour.id, products);
+      const amount = Math.min(quantity, colour.stock - have);
+      if (amount < 1) return current;
+      added = true;
+      const key = `${id}:${colour.id}`;
+      const found = current.find(line => lineKey(line) === key);
+      return found ? current.map(line => lineKey(line) === key ? { ...line, quantity: line.quantity + amount } : line) : [...current, { id, variantId: colour.id, quantity: amount }];
+    });
+    return added || colour.stock > inCart(lines, id, colour.id, products);
+  }, [products, colourOf, inCart, lines]);
+
+  const setQuantity = useCallback((key: string, quantity: number) => {
+    if (quantity <= 0) { setLines(current => current.filter(line => lineKey(line) !== key)); return; }
+    setLines(current => current.map(line => lineKey(line) === key ? { ...line, quantity } : line));
+  }, []);
+
+  const remove = useCallback((key: string) => setLines(current => current.filter(line => lineKey(line) !== key)), []);
+
+  /** Switch a cart line to another colour of the same product, merging with that colour's line and capping at its stock. */
+  const changeColour = useCallback((key: string, variantId: string) => {
+    setLines(current => {
+      const line = current.find(item => lineKey(item) === key);
+      const product = line && products.find(p => p.id === line.id);
+      const colour = product?.variants.find(v => v.id === variantId);
+      if (!line || !product || !colour) return current;
+      const rest = current.filter(item => lineKey(item) !== key);
+      const targetKey = `${line.id}:${colour.id}`;
+      const existing = rest.find(item => lineKey(item) === targetKey);
+      const quantity = Math.min(colour.stock, line.quantity + (existing?.quantity ?? 0));
+      if (quantity < 1) return current;
+      return existing ? rest.map(item => lineKey(item) === targetKey ? { ...item, quantity } : item) : [...rest, { id: line.id, variantId: colour.id, quantity }];
     });
   }, [products]);
 
-  const setQuantity = useCallback((id: string, quantity: number) => {
-    if (quantity <= 0) {
-      setLines((current) => current.filter((line) => line.id !== id));
-      return;
-    }
-    setLines((current) => current.map((line) => line.id === id ? { ...line, quantity } : line));
-  }, []);
-
-  const remove = useCallback((id: string) => setLines((current) => current.filter((line) => line.id !== id)), []);
-
   const value = useMemo(() => {
+    const resolved: ResolvedLine[] = lines.flatMap(line => {
+      const product = products.find(item => item.id === line.id);
+      const colour = product && colourOf(product, line.variantId);
+      return product && colour ? [{ key: lineKey(line), line, product, colour }] : [];
+    });
     const count = lines.reduce((sum, line) => sum + line.quantity, 0);
-    const subtotal = lines.reduce((sum, line) => {
-      const product = products.find((item) => item.id === line.id);
-      return sum + (product?.price ?? 0) * line.quantity;
-    }, 0);
-    const canAdd = (id: string) => {
+    const subtotal = resolved.reduce((sum, item) => sum + item.colour.price * item.line.quantity, 0);
+    const canAdd = (id: string, variantId?: string) => {
       const product = products.find(item => item.id === id);
-      const quantity = lines.find(line => line.id === id)?.quantity ?? 0;
-      return !!product && quantity < product.stock;
+      const colour = product && colourOf(product, variantId);
+      return Boolean(colour) && inCart(lines, id, colour!.id, products) < colour!.stock;
     };
     const clear = () => setLines([]);
-    return { lines, count, subtotal, add, setQuantity, remove, canAdd, products, clear, catalogueLoading, catalogueError };
-  }, [lines, products, add, setQuantity, remove, catalogueLoading, catalogueError]);
+    return { lines, resolved, count, subtotal, add, setQuantity, remove, changeColour, canAdd, colourOf, products, clear, catalogueLoading, catalogueError };
+  }, [lines, products, add, setQuantity, remove, changeColour, colourOf, inCart, catalogueLoading, catalogueError]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -113,22 +148,22 @@ export function useCart() {
   return cart;
 }
 
-export function AddToBagButton({ id, className = "add-button", disabled = false }: { id: string; className?: string; disabled?: boolean }) {
+const CheckIcon = () => <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5 6.5 11.5 12.5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+
+export function AddToBagButton({ id, variantId, quantity = 1, className = "add-button", disabled = false, label = "Add to bag" }: { id: string; variantId?: string; quantity?: number; className?: string; disabled?: boolean; label?: string }) {
   const { add, canAdd } = useCart();
   const [added, setAdded] = useState(false);
-
+  const unavailable = disabled || !canAdd(id, variantId);
   return (
     <button
       className={className}
       type="button"
-      disabled={disabled || !canAdd(id)}
+      disabled={unavailable}
       onClick={() => {
-        add(id);
-        setAdded(true);
-        window.setTimeout(() => setAdded(false), 1500);
+        if (add(id, variantId, quantity)) { setAdded(true); window.setTimeout(() => setAdded(false), 1500); }
       }}
     >
-      {disabled || !canAdd(id) ? "Out of stock" : added ? "Added ✓" : "Add to bag"}
+      {unavailable ? "Out of stock" : added ? <><CheckIcon /> Added</> : label}
     </button>
   );
 }

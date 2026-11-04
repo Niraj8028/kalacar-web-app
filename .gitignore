@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Product photos uploaded from the dashboard are shop data, not code.
+public/uploads/
