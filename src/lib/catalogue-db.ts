@@ -68,6 +68,15 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [googleColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_users LIKE 'google_sub'");
   if (!googleColumns.length) await db.execute("ALTER TABLE kalacar_users ADD COLUMN google_sub VARCHAR(64) NULL AFTER password_hash, ADD UNIQUE KEY users_google_sub (google_sub)");
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_addresses (
+    id CHAR(36) PRIMARY KEY, user_id CHAR(36) NOT NULL, label VARCHAR(10) NOT NULL DEFAULT 'Home',
+    full_name VARCHAR(160) NOT NULL, phone VARCHAR(32) NOT NULL, address VARCHAR(500) NOT NULL,
+    city VARCHAR(100) NOT NULL, state VARCHAR(100) NOT NULL, landmark VARCHAR(200) NOT NULL DEFAULT '',
+    instructions VARCHAR(300) NOT NULL DEFAULT '', pincode CHAR(6) NOT NULL, is_default TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY addresses_user_id (user_id),
+    CONSTRAINT kalacar_addresses_user_fk FOREIGN KEY (user_id) REFERENCES kalacar_users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [userColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'user_id'");
   if (!userColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN user_id CHAR(36) NULL AFTER id, ADD KEY orders_user_id (user_id)");
 }
@@ -75,6 +84,18 @@ async function initialize() {
 export async function ensureCatalogue() {
   ready ??= initialize();
   try { await ready; } catch (error) { ready = undefined; throw error; }
+}
+
+/** Pool for modules that keep their own queries (e.g. saved addresses), after tables exist. */
+export async function addressDb() {
+  await ensureCatalogue();
+  return database();
+}
+
+/** Stores a phone on accounts that have none yet (e.g. Google sign-ins), so checkout can prefill it. */
+export async function fillMissingCustomerPhone(userId: string, phone: string) {
+  await ensureCatalogue();
+  await database().execute("UPDATE kalacar_users SET phone=? WHERE id=? AND phone=''", [phone, userId]);
 }
 
 type ProductRow = RowDataPacket & { id: string; name: string; deity: string; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };

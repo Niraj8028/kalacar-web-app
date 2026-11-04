@@ -236,6 +236,46 @@ button { color: inherit; }
 .account-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; }
 .account-form input { min-height: 42px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 2px; background: var(--page); color: var(--ink); font-size: 13px; }
 .account-form .checkout-demo-button { width: 100%; margin-top: 3px; }
+/* Saved addresses (account address book + checkout picker) */
+.address-book { margin: 26px 0 8px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.address-book-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.address-book h2, .account-orders-title { margin: 0; font: 400 22px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.account-orders-title { margin-top: 24px; }
+.address-add, .address-link { min-height: 36px; padding: 6px 2px; border: 0; background: transparent; color: var(--accent); cursor: pointer; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.address-link.danger { color: #a14636; }
+.address-link:disabled, .address-add:disabled { opacity: .55; cursor: wait; }
+.address-list { list-style: none; margin: 16px 0 12px; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.address-card { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--line); background: var(--page); color: var(--ink); font-size: 12px; line-height: 1.55; }
+.address-card.is-default, .address-card.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.address-card strong { font-size: 13px; }
+.address-card p { margin: 0; }
+.address-phone { color: var(--muted); }
+.address-card-top { display: flex; gap: 6px; flex-wrap: wrap; }
+.address-chip { padding: 2px 8px; border: 1px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 10px; letter-spacing: .04em; }
+.address-chip.default { border-color: var(--accent); color: var(--accent); }
+.address-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 4px; color: var(--muted); }
+.address-form { max-width: 560px; display: grid; gap: 12px; margin-top: 16px; }
+.address-form h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.address-form label, .checkout-form .address-check { display: grid; gap: 6px; color: var(--muted); font-size: 11px; }
+.address-form input:not([type=radio]):not([type=checkbox]), .address-form textarea { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 2px; background: var(--page); color: var(--ink); font: inherit; font-size: 13px; }
+.address-form textarea { min-height: 72px; resize: vertical; }
+.address-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.address-label-picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.address-label-picker legend { width: 100%; margin-bottom: 6px; color: var(--muted); font-size: 11px; }
+.address-label-picker label { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 20px; background: var(--page); color: var(--ink); cursor: pointer; font-size: 12px; }
+.address-label-picker label.selected { border-color: var(--accent); color: var(--accent); }
+.address-label-picker input { position: absolute; opacity: 0; pointer-events: none; }
+.address-label-picker label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.address-check { display: flex !important; grid-auto-flow: column; align-items: center; gap: 8px !important; cursor: pointer; }
+.address-check input { width: 18px; height: 18px; min-height: 0; accent-color: var(--accent); }
+.address-form-actions { display: flex; align-items: center; gap: 18px; }
+.address-form-actions .checkout-demo-button { width: auto; margin: 0; padding: 0 22px; }
+.checkout-address-picker { display: grid; gap: 8px; margin: 4px 0; padding: 0; border: 0; }
+.checkout-address-picker legend { margin-bottom: 6px; color: var(--muted); font-size: 10px; }
+.address-card.selectable { position: relative; padding-left: 40px; cursor: pointer; }
+.address-card.selectable input { position: absolute; left: 14px; top: 16px; width: 16px; height: 16px; min-height: 0; accent-color: var(--accent); }
+.address-card.selectable.new { padding-top: 12px; padding-bottom: 12px; }
+.address-manage { color: var(--accent); font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
 .account-profile { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .account-profile > div { display: grid; gap: 5px; }
 .account-profile strong { font-size: 14px; }
@@ -360,3 +400,10 @@ button { color: inherit; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
 .local-data-notice { margin: 0; padding: 10px clamp(18px, 5vw, 76px); border-bottom: 1px solid var(--gold); background: var(--surface-soft); color: var(--muted); font-size: 10px; line-height: 1.5; }
+
+@media (max-width: 620px) {
+  .account-form input, .checkout-form input, .checkout-form textarea, .address-form input:not([type=radio]):not([type=checkbox]), .address-form textarea { font-size: 16px; }
+  .address-row { grid-template-columns: 1fr; }
+  .address-form-actions { flex-direction: column; align-items: stretch; gap: 6px; }
+  .address-form-actions .checkout-demo-button { width: 100%; min-height: 46px; }
+}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import AddressBook from "@/components/address-book";
 
 type User = { id: string; name: string; email: string; phone: string };
 type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; address: string; pincode: string; items: Array<{ id: string; name: string; price: number; quantity: number }> };
@@ -146,7 +147,8 @@ export default function AccountPanel() {
         </form>
       </div> : <div className="account-card">
         <div className="account-profile"><div><strong>{user.name}</strong><span>{user.email}{user.phone ? ` · ${user.phone}` : ""}</span></div><button type="button" className="account-signout" onClick={() => void logout()}>Sign out</button></div>
-        <h2>Your orders</h2>
+        <AddressBook defaultName={user.name} defaultPhone={user.phone} />
+        <h2 className="account-orders-title">Your orders</h2>
         {orders.length === 0 ? <p className="empty-orders">No orders yet. Your checkout orders will appear here.</p> : <div className="account-orders">{orders.map(order => {
           const status = order.status.replaceAll("_", " ");
           return <article className="account-order" key={order.id}>

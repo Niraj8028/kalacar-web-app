@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useCart } from "@/components/cart-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
+import { AddressFields, addressSummary, emptyAddress, toDraft } from "@/components/address-fields";
+import type { AddressDraft, SavedAddress } from "@/components/address-fields";
 
 const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 
@@ -40,7 +42,10 @@ export default function CartPage() {
   const [success, setSuccess] = useState("");
   const [verificationData, setVerificationData] = useState<{ orderId: string; payment: RazorpayPaymentSuccess } | null>(null);
   const checkoutKey = useRef({ fingerprint: "", value: "" });
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", address: "", city: "", state: "", landmark: "", instructions: "", pincode: "" });
+  const [customer, setCustomer] = useState<AddressDraft>(emptyAddress());
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState("new");
+  const [saveAddress, setSaveAddress] = useState(true);
   const [accountLoaded, setAccountLoaded] = useState(false);
   const [account, setAccount] = useState<{ name: string; email: string; phone: string } | null>(null);
   const [savedCheckout, setSavedCheckout] = useState<SavedCheckout | null>(null);
@@ -60,7 +65,16 @@ export default function CartPage() {
   useEffect(() => {
     void fetch("/api/auth/session", { cache: "no-store" }).then(response => response.json()).then((data: { user: { name: string; email: string; phone: string } | null }) => {
       setAccount(data.user);
-      if (data.user) setCustomer(previous => ({ ...previous, name: data.user!.name, email: data.user!.email, phone: data.user!.phone }));
+      if (data.user) {
+        const user = data.user;
+        setCustomer(previous => ({ ...previous, fullName: previous.fullName || user.name, phone: previous.phone || user.phone }));
+        void fetch("/api/account/addresses", { cache: "no-store" }).then(r => r.ok ? r.json() : { addresses: [] }).then((book: { addresses?: SavedAddress[] }) => {
+          const list = book.addresses ?? [];
+          setSavedAddresses(list);
+          const preferred = list.find(a => a.isDefault) ?? list[0];
+          if (preferred) { setSelectedAddress(preferred.id); setCustomer(toDraft(preferred)); setSaveAddress(false); }
+        }).catch(() => undefined);
+      }
       const saved = readSavedCheckout();
       if (saved) { setSavedCheckout(saved); if (saved.orderId && data.user) void syncSavedCheckout(saved, true); }
     }).finally(() => setAccountLoaded(true));
@@ -132,7 +146,7 @@ export default function CartPage() {
       }
       const persisted: SavedCheckout = { fingerprint, idempotencyKey: checkoutKey.current.value, orderId: existing?.fingerprint === fingerprint ? existing.orderId : "", razorpayOrderId: existing?.fingerprint === fingerprint ? existing.razorpayOrderId : "", amount: existing?.fingerprint === fingerprint ? existing.amount : 0 };
       localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(persisted));
-      const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: lines, customer }) });
+      const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: lines, customer, saveAddress: selectedAddress === "new" && saveAddress }) });
       const order = await response.json() as { error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string };
       if (!response.ok) {
         if (response.status === 502) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); }
@@ -143,7 +157,7 @@ export default function CartPage() {
       const checkout = new window.Razorpay({
         key: order.keyId, amount: order.amount, currency: order.currency, name: "Kalacar",
         description: "Small devotional murti order", order_id: order.razorpayOrderId,
-        prefill: { name: customer.name, email: customer.email, contact: customer.phone },
+        prefill: { name: customer.fullName, email: account?.email ?? "", contact: customer.phone.replace(/\D/g, "").length === 10 ? `+91${customer.phone.replace(/\D/g, "")}` : customer.phone },
         handler: (payment) => void verifyPayment(order.orderId, payment),
         modal: {
           backdropclose: false, escape: false, handleback: false, confirm_close: true,
@@ -214,15 +228,27 @@ export default function CartPage() {
                   <h3>Delivery details</h3>
                   {!accountLoaded ? <p className="demo-checkout-message">Loading account…</p> : !account ? <div className="account-checkout-gate"><p>Sign in or create an account before checkout. Your payment status and order history will stay linked to you.</p><Link className="checkout-demo-button" href="/account?next=%2Fcart">Sign in to continue</Link></div> : <>
                   <p className="account-checkout-note">Order updates will be saved to {account.email}.</p>
-                  <label>Full name<input required minLength={2} maxLength={160} autoComplete="name" value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} /></label>
-                  <label>Email<input required type="email" autoComplete="email" value={customer.email} onChange={e => setCustomer({ ...customer, email: e.target.value })} /></label>
-                  <label>Mobile number<input required type="tel" minLength={10} autoComplete="tel" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} /></label>
-                  <label>Area, building and street<textarea required minLength={8} maxLength={500} autoComplete="street-address" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} /></label>
-                  <label>City or district<input required maxLength={100} autoComplete="address-level2" value={customer.city} onChange={e => setCustomer({ ...customer, city: e.target.value })} /></label>
-                  <label>State<input required maxLength={100} autoComplete="address-level1" value={customer.state} onChange={e => setCustomer({ ...customer, state: e.target.value })} /></label>
-                  <label>Landmark (optional)<input maxLength={200} autoComplete="off" value={customer.landmark} onChange={e => setCustomer({ ...customer, landmark: e.target.value })} /></label>
-                  <label>Delivery instructions (optional)<textarea maxLength={300} autoComplete="off" value={customer.instructions} onChange={e => setCustomer({ ...customer, instructions: e.target.value })} /></label>
-                  <label>PIN code<input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="postal-code" value={customer.pincode} onChange={e => setCustomer({ ...customer, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })} /></label>
+                  {savedAddresses.length > 0 && <fieldset className="checkout-address-picker">
+                    <legend>Deliver to</legend>
+                    {savedAddresses.map(address => (
+                      <label key={address.id} className={`address-card selectable${selectedAddress === address.id ? " selected" : ""}`}>
+                        <input type="radio" name="delivery-address" checked={selectedAddress === address.id} onChange={() => { setSelectedAddress(address.id); setCustomer(toDraft(address)); }} />
+                        <span className="address-card-top"><span className="address-chip">{address.label}</span>{address.isDefault && <span className="address-chip default">Default</span>}</span>
+                        <strong>{address.fullName}</strong>
+                        <span>{addressSummary(address)}</span>
+                        <span className="address-phone">{address.phone}</span>
+                      </label>
+                    ))}
+                    <label className={`address-card selectable new${selectedAddress === "new" ? " selected" : ""}`}>
+                      <input type="radio" name="delivery-address" checked={selectedAddress === "new"} onChange={() => { setSelectedAddress("new"); setCustomer(emptyAddress(account.name, account.phone)); setSaveAddress(true); }} />
+                      <strong>+ Deliver to a new address</strong>
+                    </label>
+                    <Link className="address-manage" href="/account">Manage saved addresses</Link>
+                  </fieldset>}
+                  {selectedAddress === "new" && <>
+                    <AddressFields idPrefix="checkout" value={customer} onChange={setCustomer} />
+                    <label className="address-check"><input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />Save this address for next time</label>
+                  </>}
                   {error && <p className="demo-checkout-message" role="alert">{error}</p>}
                   {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
                   <button className="checkout-demo-button" type="submit" disabled={!account || busy || products.some(({item, quantity}) => item.stock < quantity)}>{busy ? "Starting secure checkout…" : "Pay with Razorpay · Test mode"}</button>

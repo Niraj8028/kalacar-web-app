@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { attachRazorpayOrder, releaseOrderAfterPaymentSetupFailure, reserveOrder } from "@/lib/catalogue-db";
+import { attachRazorpayOrder, fillMissingCustomerPhone, releaseOrderAfterPaymentSetupFailure, reserveOrder } from "@/lib/catalogue-db";
+import { createAddress, findMatchingAddress, parseAddress } from "@/lib/addresses";
 import { currentCustomer } from "@/lib/customer-auth";
 
 export async function POST(request: Request) {
@@ -23,22 +24,19 @@ export async function POST(request: Request) {
     if (typeof item.id !== "string" || seen.has(item.id) || !Number.isSafeInteger(item.quantity) || Number(item.quantity) < 1 || Number(item.quantity) > 10) return NextResponse.json({ error: "Cart quantities must be whole numbers from 1 to 10." }, { status: 400 });
     seen.add(item.id); items.push({ id: item.id, quantity: Number(item.quantity) });
   }
-  if (!data.customer || typeof data.customer !== "object") return NextResponse.json({ error: "Enter your delivery details." }, { status: 400 });
-  const customer = data.customer as Record<string, unknown>;
-  const address = typeof customer.address === "string" ? customer.address.trim() : "";
-  const city = typeof customer.city === "string" ? customer.city.trim() : "";
-  const state = typeof customer.state === "string" ? customer.state.trim() : "";
-  const landmark = typeof customer.landmark === "string" ? customer.landmark.trim() : "";
-  const instructions = typeof customer.instructions === "string" ? customer.instructions.trim() : "";
-  const addressParts = [address, landmark && `Landmark: ${landmark}`, city, state, instructions && `Delivery instructions: ${instructions}`].filter(Boolean);
-  const normalized = {
-    name: account.name,
-    email: account.email,
-    phone: account.phone,
-    address: addressParts.join("\n"),
-    pincode: typeof customer.pincode === "string" ? customer.pincode.trim() : "",
-  };
-  if (normalized.name.length < 2 || normalized.name.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email) || normalized.phone.replace(/\D/g, "").length < 10 || address.length < 8 || address.length > 500 || !city || city.length > 100 || !state || state.length > 100 || landmark.length > 200 || instructions.length > 300 || !/^\d{6}$/.test(normalized.pincode)) return NextResponse.json({ error: "Enter your area/building, city or district, state, and a valid 6-digit PIN code." }, { status: 400 });
+  const parsed = parseAddress(data.customer);
+  if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const delivery = parsed.value;
+  const addressParts = [delivery.address, delivery.landmark && `Landmark: ${delivery.landmark}`, delivery.city, delivery.state, delivery.instructions && `Delivery instructions: ${delivery.instructions}`].filter(Boolean);
+  // Recipient name/phone come from the delivery form (they may differ from the account); email stays the account's.
+  const normalized = { name: delivery.fullName, email: account.email, phone: delivery.phone, address: addressParts.join("\n"), pincode: delivery.pincode };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email)) return NextResponse.json({ error: "Your account email is invalid. Sign in again." }, { status: 400 });
+  // Best-effort extras: never block checkout on them.
+  await fillMissingCustomerPhone(account.id, delivery.phone).catch(() => undefined);
+  if ((data as { saveAddress?: unknown }).saveAddress === true) {
+    try { if (!await findMatchingAddress(account.id, delivery)) await createAddress(account.id, delivery, false); }
+    catch (error) { console.error("Saving checkout address failed:", error instanceof Error ? error.message : "unknown error"); }
+  }
   let order: Awaited<ReturnType<typeof reserveOrder>>;
   try { order = await reserveOrder(data.idempotencyKey, items, normalized, account.id); }
   catch (error) {
