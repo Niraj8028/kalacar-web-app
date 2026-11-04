@@ -4,6 +4,8 @@ import { findCustomerBySession } from "@/lib/catalogue-db";
 import { isOwnerEmail } from "@/lib/google-oauth";
 
 export const CUSTOMER_COOKIE = "kalacar_customer_session";
+/** Cookies are HTTPS-only in production; localhost uses plain http in development. */
+export const SECURE_COOKIES = process.env.NODE_ENV === "production";
 export async function currentCustomer() {
   if (process.env.NODE_ENV !== "development") return null;
   const token = (await cookies()).get(CUSTOMER_COOKIE)?.value;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { deleteCustomerSession } from "@/lib/catalogue-db";
-import { CUSTOMER_COOKIE } from "@/lib/customer-auth";
+import { CUSTOMER_COOKIE, SECURE_COOKIES } from "@/lib/customer-auth";
 
 export async function POST() {
   if (process.env.NODE_ENV === "development") {
@@ -9,6 +9,6 @@ export async function POST() {
     if (token) await deleteCustomerSession(token);
   }
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(CUSTOMER_COOKIE, "", { httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 0 });
+  response.cookies.set(CUSTOMER_COOKIE, "", { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/", maxAge: 0 });
   return response;
 }

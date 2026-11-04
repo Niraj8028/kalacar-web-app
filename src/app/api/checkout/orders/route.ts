@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MINUTE, limitOrNull } from "@/lib/rate-limit";
 import { attachRazorpayOrder, fillMissingCustomerPhone, releaseOrderAfterPaymentSetupFailure, reserveOrder } from "@/lib/catalogue-db";
 import { createAddress, findMatchingAddress, parseAddress } from "@/lib/addresses";
 import { currentCustomer } from "@/lib/customer-auth";
@@ -7,6 +8,8 @@ export async function POST(request: Request) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Local test checkout is disabled outside development." }, { status: 403 });
   const account = await currentCustomer();
   if (!account) return NextResponse.json({ error: "Sign in before checkout. Your orders are saved to your account." }, { status: 401 });
+  const limited = limitOrNull([{ key: `checkout:user:${account.id}`, limit: 10, windowMs: 10 * MINUTE }], "Too many checkout attempts. Please wait a few minutes, or check your existing order in Account & orders.");
+  if (limited) return limited;
   const keyId = process.env.RAZORPAY_KEY_ID;
   const secret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId?.startsWith("rzp_test_") || !secret) return NextResponse.json({ error: "Razorpay test credentials are not configured." }, { status: 503 });

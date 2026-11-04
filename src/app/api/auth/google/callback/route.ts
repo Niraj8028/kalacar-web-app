@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createCustomerSession, upsertGoogleCustomer } from "@/lib/catalogue-db";
-import { CUSTOMER_COOKIE } from "@/lib/customer-auth";
+import { CUSTOMER_COOKIE, SECURE_COOKIES } from "@/lib/customer-auth";
 import { CALLBACK_PATH, OAUTH_STATE_COOKIE, googleConfig, requestOrigin } from "@/lib/google-oauth";
 
 type StoredRequest = { state: string; verifier: string; next: string; origin: string };
@@ -10,7 +10,7 @@ function fail(origin: string, next: string, reason: string) {
   const target = new URL(next, origin);
   target.searchParams.set("auth_error", reason);
   const response = NextResponse.redirect(target);
-  response.cookies.set(OAUTH_STATE_COOKIE, "", { path: "/api/auth/google", maxAge: 0 });
+  response.cookies.set(OAUTH_STATE_COOKIE, "", { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/api/auth/google", maxAge: 0 });
   return response;
 }
 
@@ -48,8 +48,8 @@ export async function GET(request: Request) {
     const user = await upsertGoogleCustomer(profile.sub, profile.email.toLowerCase(), profile.name?.trim() || profile.email.split("@")[0]);
     const token = await createCustomerSession(user.id);
     const response = NextResponse.redirect(new URL(next, origin));
-    response.cookies.set(CUSTOMER_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge: 60 * 60 * 24 * 7 });
-    response.cookies.set(OAUTH_STATE_COOKIE, "", { path: "/api/auth/google", maxAge: 0 });
+    response.cookies.set(CUSTOMER_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/", maxAge: 60 * 60 * 24 * 7 });
+    response.cookies.set(OAUTH_STATE_COOKIE, "", { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/api/auth/google", maxAge: 0 });
     return response;
   } catch (error) {
     console.error("Google sign-in failed:", error instanceof Error ? error.message : "unknown error");

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MINUTE, limitOrNull } from "@/lib/rate-limit";
 import { currentCustomer } from "@/lib/customer-auth";
 import { toAddressFields } from "@/lib/geocode";
 import type { GeocodeResult } from "@/lib/geocode";
@@ -7,18 +8,6 @@ import type { GeocodeResult } from "@/lib/geocode";
 // The key stays on the server. Coordinates are never stored or logged.
 
 const noStore = { "Cache-Control": "no-store" };
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 30;
-const hits = new Map<string, number[]>();
-
-function rateLimited(userId: string) {
-  const now = Date.now();
-  const recent = (hits.get(userId) ?? []).filter(t => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(userId, recent);
-  return recent.length > MAX_PER_WINDOW;
-}
-
 /** Rough bounding box for India, so we never geocode points elsewhere. */
 const inIndia = (lat: number, lng: number) => lat >= 6 && lat <= 37.6 && lng >= 68 && lng <= 97.5;
 
@@ -30,7 +19,8 @@ export async function GET(request: Request) {
   let user;
   try { user = await currentCustomer(); } catch { return NextResponse.json({ error: "Account service is unavailable." }, { status: 503 }); }
   if (!user) return NextResponse.json({ error: "Sign in to use your location." }, { status: 401 });
-  if (rateLimited(user.id)) return NextResponse.json({ error: "Too many location lookups. Wait a minute and try again." }, { status: 429 });
+  const limited = limitOrNull([{ key: `location:user:${user.id}`, limit: 30, windowMs: MINUTE }], "Too many location lookups. Wait a minute and try again.");
+  if (limited) return limited;
 
   const params = new URL(request.url).searchParams;
   const lat = Number(params.get("lat"));

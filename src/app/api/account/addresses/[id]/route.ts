@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MINUTE, limitOrNull } from "@/lib/rate-limit";
 import { currentCustomer } from "@/lib/customer-auth";
 import { deleteAddress, parseAddress, updateAddress } from "@/lib/addresses";
 
@@ -21,6 +22,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const user = await currentCustomer();
     if (!user) return NextResponse.json({ error: "Sign in to edit addresses." }, { status: 401 });
+    const limited = limitOrNull([{ key: `addresses:user:${user.id}`, limit: 60, windowMs: 10 * MINUTE }]);
+    if (limited) return limited;
     const address = await updateAddress(user.id, id, input, body.setDefault === true || body.isDefault === true);
     if (!address) return NextResponse.json({ error: "Address not found." }, { status: 404 });
     return NextResponse.json({ address });
@@ -37,6 +40,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   try {
     const user = await currentCustomer();
     if (!user) return NextResponse.json({ error: "Sign in to delete addresses." }, { status: 401 });
+    const limited = limitOrNull([{ key: `addresses:user:${user.id}`, limit: 60, windowMs: 10 * MINUTE }]);
+    if (limited) return limited;
     if (!await deleteAddress(user.id, id)) return NextResponse.json({ error: "Address not found." }, { status: 404 });
     return NextResponse.json({ ok: true });
   } catch (error) {

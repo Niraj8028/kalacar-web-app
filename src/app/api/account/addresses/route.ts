@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MINUTE, limitOrNull } from "@/lib/rate-limit";
 import { currentCustomer } from "@/lib/customer-auth";
 import { createAddress, listAddresses, parseAddress } from "@/lib/addresses";
 
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
   try {
     const user = await currentCustomer();
     if (!user) return NextResponse.json({ error: "Sign in to save addresses." }, { status: 401 });
+    const limited = limitOrNull([{ key: `addresses:user:${user.id}`, limit: 60, windowMs: 10 * MINUTE }]);
+    if (limited) return limited;
     const result = await createAddress(user.id, parsed.value, Boolean((body as { isDefault?: unknown }).isDefault === true));
     if ("error" in result) return NextResponse.json({ error: result.error }, { status: 409 });
     return NextResponse.json({ address: result.value }, { status: 201 });

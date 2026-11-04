@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import { MINUTE, clientIp, limitOrNull } from "@/lib/rate-limit";
+import { SECURE_COOKIES } from "@/lib/customer-auth";
 import { CALLBACK_PATH, OAUTH_STATE_COOKIE, googleConfig, newOAuthRequest, requestOrigin, safeNextPath } from "@/lib/google-oauth";
 
 export async function GET(request: Request) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Google sign-in is only enabled in local development for now." }, { status: 403 });
+  const limited = limitOrNull([{ key: `google:ip:${clientIp(request)}`, limit: 30, windowMs: 10 * MINUTE }], "Too many sign-in attempts. Please wait a few minutes and try again.");
+  if (limited) return limited;
   const config = googleConfig();
   if (!config) return NextResponse.json({ error: "Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.local." }, { status: 503 });
   const origin = requestOrigin(request);
@@ -23,6 +27,6 @@ export async function GET(request: Request) {
   }).toString();
 
   const response = NextResponse.redirect(url);
-  response.cookies.set(OAUTH_STATE_COOKIE, JSON.stringify({ state, verifier, next, origin }), { httpOnly: true, sameSite: "lax", secure: false, path: "/api/auth/google", maxAge: 600 });
+  response.cookies.set(OAUTH_STATE_COOKIE, JSON.stringify({ state, verifier, next, origin }), { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/api/auth/google", maxAge: 600 });
   return response;
 }
