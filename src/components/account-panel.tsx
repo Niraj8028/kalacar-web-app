@@ -6,7 +6,7 @@ import type { FormEvent } from "react";
 import AddressBook from "@/components/address-book";
 
 type User = { id: string; name: string; email: string; phone: string };
-type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; address: string; pincode: string; items: Array<{ id: string; name: string; price: number; quantity: number }> };
+type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; price: number; quantity: number }> };
 type CheckoutOrder = { orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const waLink = (orderId?: string) => `https://wa.me/918830646308?text=${encodeURIComponent(orderId ? `Hi Kalacar, I need help with order ${orderId}. Please check its payment or delivery status.` : "Hi Kalacar, I have a question about an order.")}`;
@@ -155,8 +155,11 @@ export default function AccountPanel() {
             <div className="order-heading"><div><span>Order {order.id.slice(0, 8).toUpperCase()}</span><small>{new Date(order.createdAt).toLocaleString("en-IN")}</small></div><strong>{money(order.amount)}</strong></div>
             <p>{order.items.map(item => `${item.name} × ${item.quantity}`).join(" · ")}</p>
             {order.status === "paid" && <p className="customer-fulfillment-status">Delivery progress: {({ unfulfilled: "Preparing for packing", processing: "Being prepared", dispatched: "Dispatched", completed: "Delivered" } as Record<string, string>)[order.fulfillmentStatus] || "Being prepared"}</p>}
+            {order.status === "paid" && order.trackingNote && <p className="customer-tracking"><span>Tracking</span>{order.trackingNote}</p>}
+            {order.status === "refunded" && <p className="customer-order-note">Refunded {order.refundAmount ? money(order.refundAmount) : ""}{order.refundAmount && order.refundAmount < order.amount ? ` of ${money(order.amount)}` : ""}. Refunds usually reach your account in 5–7 working days.</p>}
+            {(order.status === "cancelled" || order.status === "paid_after_cancel") && <p className="customer-order-note">{order.status === "cancelled" ? "This order was cancelled. No payment was taken." : "This order was cancelled, but a payment arrived afterwards. We’ll refund it; message us on WhatsApp if you have questions."}</p>}
             <details className="order-delivery"><summary>Delivery address</summary><p>{order.address} · PIN {order.pincode}</p></details>
-            <div className="order-status-row"><span className={`order-status ${order.status === "paid" ? "paid" : "pending"}`}>{status}</span><div>{order.status !== "paid" && <><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help ↗</a></div></div>
+            <div className="order-status-row"><span className={`order-status ${order.status === "paid" ? "paid" : ["refunded", "cancelled"].includes(order.status) ? "closed" : "pending"}`}>{({ paid_after_cancel: "On hold", payment_pending: "Awaiting payment" } as Record<string, string>)[order.status] ?? status}</span><div>{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help ↗</a></div></div>
           </article>;
         })}</div>}
       </div>}

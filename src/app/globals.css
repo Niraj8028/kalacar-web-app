@@ -259,6 +259,10 @@ button { color: inherit; }
   .location-actions { flex-direction: column; align-items: stretch; gap: 4px; }
   .location-actions .checkout-demo-button { width: 100%; }
 }
+.customer-tracking { margin: 8px 0 0; padding: 9px 11px; border: 1px solid var(--line); background: var(--surface-soft); color: var(--ink); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.customer-tracking span { display: block; color: var(--muted); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.customer-order-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.order-status.closed { background: var(--surface-soft); color: var(--muted); }
 /* Saved addresses (account address book + checkout picker) */
 .address-book { margin: 26px 0 8px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .address-book-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

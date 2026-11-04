@@ -45,6 +45,16 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [fulfillmentColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'fulfillment_status'");
   if (!fulfillmentColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN fulfillment_status VARCHAR(24) NOT NULL DEFAULT 'unfulfilled' AFTER status");
+  const [lifecycleColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'tracking_note'");
+  if (!lifecycleColumns.length) await db.execute(`ALTER TABLE kalacar_orders
+    ADD COLUMN tracking_note VARCHAR(300) NULL AFTER fulfillment_status,
+    ADD COLUMN cancel_reason VARCHAR(300) NULL AFTER tracking_note,
+    ADD COLUMN cancelled_at DATETIME NULL AFTER cancel_reason,
+    ADD COLUMN refund_amount INT UNSIGNED NULL AFTER cancelled_at,
+    ADD COLUMN refund_reason VARCHAR(300) NULL AFTER refund_amount,
+    ADD COLUMN refund_reference VARCHAR(64) NULL AFTER refund_reason,
+    ADD COLUMN refunded_at DATETIME NULL AFTER refund_reference,
+    ADD COLUMN stock_restored TINYINT(1) NOT NULL DEFAULT 0 AFTER refunded_at`);
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_order_items (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, order_id CHAR(36) NOT NULL,
     product_id VARCHAR(64) NOT NULL, product_name VARCHAR(160) NOT NULL,
@@ -141,14 +151,14 @@ export async function createProduct(product: { id: string; name: string; deity: 
 
 type CheckoutLine = { id: string; quantity: number };
 type CheckoutCustomer = { name: string; email: string; phone: string; address: string; pincode: string };
-type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
+type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; tracking_note: string | null; cancel_reason: string | null; cancelled_at: Date | null; refund_amount: number | null; refund_reason: string | null; refund_reference: string | null; refunded_at: Date | null; stock_restored: number; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
 
 export type OrderStatusFilter = "all" | "pending_payment" | "processing" | "on_hold" | "dispatched" | "completed" | "cancelled" | "refunded";
 type OrderStatusCounts = Record<OrderStatusFilter, number>;
 const orderStatusConditions: Record<Exclude<OrderStatusFilter, "all">, string> = {
   pending_payment: "status='payment_pending'",
   processing: "status='paid' AND fulfillment_status IN ('unfulfilled','processing')",
-  on_hold: "status IN ('payment_failed','payment_setup_failed')",
+  on_hold: "status IN ('payment_failed','payment_setup_failed','paid_after_cancel')",
   dispatched: "status='paid' AND fulfillment_status='dispatched'",
   completed: "status='paid' AND fulfillment_status='completed'",
   cancelled: "status IN ('payment_cancelled','cancelled')",
@@ -247,14 +257,23 @@ export async function findOrder(id: string) {
   return { id: order.id, userId: order.user_id, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, amount: Number(order.amount), status: order.status, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
 }
 
+const statusLabels: Record<string, string> = { payment_pending: "Awaiting payment", paid: "Paid", paid_after_cancel: "Paid after cancel", payment_failed: "Payment failed", payment_setup_failed: "Payment setup failed", payment_cancelled: "Cancelled", cancelled: "Cancelled", refunded: "Refunded" };
+const statusLabel = (status: string) => statusLabels[status] ?? status.replaceAll("_", " ");
+const lifecycle = (order: OrderRow) => ({
+  rawStatus: order.status, trackingNote: order.tracking_note ?? "", cancelReason: order.cancel_reason ?? "", cancelledAt: order.cancelled_at,
+  refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), refundReason: order.refund_reason ?? "",
+  refundReference: order.refund_reference ?? "", refundedAt: order.refunded_at, stockRestored: Boolean(order.stock_restored),
+});
+
 export async function getAdminOrderDetails(id: string) {
   await ensureCatalogue();
   const [rows] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE id=?", [id]);
   const order = rows[0];
   if (!order) return null;
   const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=? ORDER BY id", [id]);
-  const status = order.status === "payment_pending" ? "Awaiting payment" : order.status === "paid" ? "Paid" : order.status.replaceAll("_", " ");
+  const status = statusLabel(order.status);
   return {
+    ...lifecycle(order),
     id: order.id,
     date: order.created_at,
     customer: order.customer_name,
@@ -339,7 +358,7 @@ export async function listCustomerOrders(userId: string) {
   const [orders] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100", [userId]);
   return Promise.all(orders.map(async (order) => {
     const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
-    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
+    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, price: Number(item.unit_price), quantity: Number(item.quantity) })) };
   }));
 }
 
@@ -363,7 +382,11 @@ export async function recordRazorpayWebhook(eventId: string, eventType: string, 
     const [orderRows] = await connection.execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE razorpay_order_id=? FOR UPDATE", [payment.order_id]);
     const order = orderRows[0];
     await connection.execute("INSERT IGNORE INTO kalacar_webhook_events (event_id,event_type) VALUES (?,?)", [eventId, eventType]);
-    if (order && payment.amount === Number(order.amount) * 100 && payment.currency === "INR" && payment.status === "captured") await connection.execute("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND status<>'paid'", [payment.id, order.id]);
+    if (order && payment.amount === Number(order.amount) * 100 && payment.currency === "INR" && payment.status === "captured") {
+      await connection.execute("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND status IN ('payment_pending','payment_failed')", [payment.id, order.id]);
+      // Money arrived for an order the owner already cancelled: hold it for a refund instead of silently reopening it.
+      await connection.execute("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND status='cancelled'", [payment.id, order.id]);
+    }
     else if (order && payment.status === "failed") await connection.execute("UPDATE kalacar_orders SET status='payment_failed',razorpay_payment_id=? WHERE id=? AND status='payment_pending'", [payment.id, order.id]);
     await connection.commit();
     return Boolean(order);
@@ -373,7 +396,9 @@ export async function recordRazorpayWebhook(eventId: string, eventType: string, 
 
 export async function markOrderPaid(id: string, razorpayOrderId: string, paymentId: string) {
   await ensureCatalogue();
-  await database().execute("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status<>'paid'", [paymentId, id, razorpayOrderId]);
+  // Only unpaid orders become paid. A cancelled order that gets paid is held for a refund; refunded orders never change.
+  await database().execute("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status IN ('payment_pending','payment_failed')", [paymentId, id, razorpayOrderId]);
+  await database().execute("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status='cancelled'", [paymentId, id, razorpayOrderId]);
   const order = await findOrder(id);
   return order?.status === "paid";
 }
@@ -384,8 +409,8 @@ export async function listOrders(filter: OrderStatusFilter = "all") {
   const [orders] = await database().query<OrderRow[]>(`SELECT * FROM kalacar_orders ${condition} ORDER BY created_at DESC LIMIT 100`);
   return Promise.all(orders.map(async order => {
     const [items] = await database().execute<(RowDataPacket & { product_name: string; quantity: number })[]>("SELECT product_name,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
-    const status = order.status === "payment_pending" ? "Awaiting payment" : order.status === "paid" ? "Paid" : order.status.replaceAll("_", " ");
-    return { id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, item: items.map(row => `${row.product_name} · ${row.quantity}`).join(", ") };
+    const status = statusLabel(order.status);
+    return { rawStatus: order.status, id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, item: items.map(row => `${row.product_name} · ${row.quantity}`).join(", ") };
   }));
 }
 
@@ -473,4 +498,67 @@ export async function updateProduct(id: string, values: { name?: string; deity?:
   await database().execute<mysql.ResultSetHeader>(`UPDATE kalacar_products SET ${fields.join(",")} WHERE id=?`, params);
   const [rows] = await database().execute<(RowDataPacket & { id: string })[]>("SELECT id FROM kalacar_products WHERE id=? LIMIT 1", [id]);
   return rows.length > 0;
+}
+
+/** Puts an order's items back into stock once (guarded by stock_restored). Call inside a transaction holding the order row lock. */
+async function restoreOrderStock(connection: mysql.PoolConnection, orderId: string) {
+  const [items] = await connection.execute<(RowDataPacket & { product_id: string; quantity: number })[]>("SELECT product_id,quantity FROM kalacar_order_items WHERE order_id=?", [orderId]);
+  for (const item of items) await connection.execute("UPDATE kalacar_products SET stock=stock+? WHERE id=?", [item.quantity, item.product_id]);
+  await connection.execute("UPDATE kalacar_orders SET stock_restored=1 WHERE id=?", [orderId]);
+}
+
+type LifecycleResult = { ok: true } | { ok: false; error: string; status: number };
+
+/** Owner cancels an unpaid order: releases its reserved stock. Paid orders must be refunded instead. */
+export async function cancelUnpaidOrder(id: string, reason: string): Promise<LifecycleResult> {
+  await ensureCatalogue();
+  const connection = await database().getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE id=? FOR UPDATE", [id]);
+    const order = rows[0];
+    if (!order) { await connection.rollback(); return { ok: false, error: "Order not found.", status: 404 }; }
+    if (!["payment_pending", "payment_failed", "payment_setup_failed"].includes(order.status)) {
+      await connection.rollback();
+      return { ok: false, error: order.status === "paid" ? "This order is paid. Record a refund instead of cancelling." : "Only unpaid orders can be cancelled.", status: 409 };
+    }
+    // payment_setup_failed orders already released their stock when setup failed.
+    if (!order.stock_restored && order.status !== "payment_setup_failed") await restoreOrderStock(connection, id);
+    await connection.execute("UPDATE kalacar_orders SET status='cancelled',cancel_reason=?,cancelled_at=UTC_TIMESTAMP() WHERE id=?", [reason || null, id]);
+    await connection.commit();
+    return { ok: true };
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
+}
+
+/**
+ * Records a refund the owner has issued in the Razorpay dashboard. Does not move money itself.
+ * Optionally restocks items that were never dispatched.
+ */
+export async function recordOrderRefund(id: string, refund: { amount: number; reason: string; reference: string; restock: boolean }): Promise<LifecycleResult> {
+  await ensureCatalogue();
+  const connection = await database().getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE id=? FOR UPDATE", [id]);
+    const order = rows[0];
+    if (!order) { await connection.rollback(); return { ok: false, error: "Order not found.", status: 404 }; }
+    if (!["paid", "paid_after_cancel"].includes(order.status)) { await connection.rollback(); return { ok: false, error: "Only paid orders can be refunded.", status: 409 }; }
+    if (!Number.isSafeInteger(refund.amount) || refund.amount < 1 || refund.amount > Number(order.amount)) { await connection.rollback(); return { ok: false, error: `Refund must be between ₹1 and ₹${order.amount}.`, status: 400 }; }
+    const notShipped = ["unfulfilled", "processing"].includes(order.fulfillment_status);
+    if (refund.restock && !notShipped) { await connection.rollback(); return { ok: false, error: "Items already dispatched can't be restocked automatically. Adjust stock in Products when they come back.", status: 409 }; }
+    // A paid-after-cancel order already gave its stock back when it was cancelled.
+    if (refund.restock && !order.stock_restored && order.status === "paid") await restoreOrderStock(connection, id);
+    await connection.execute("UPDATE kalacar_orders SET status='refunded',refund_amount=?,refund_reason=?,refund_reference=?,refunded_at=UTC_TIMESTAMP() WHERE id=?", [refund.amount, refund.reason, refund.reference || null, id]);
+    await connection.commit();
+    return { ok: true };
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
+}
+
+/** Courier/tracking note shown to the customer. Only for paid orders. Empty text clears it. */
+export async function setOrderTrackingNote(id: string, note: string) {
+  await ensureCatalogue();
+  const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET tracking_note=? WHERE id=? AND status='paid'", [note || null, id]);
+  return result.affectedRows > 0;
 }

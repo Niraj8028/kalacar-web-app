@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentCustomer } from "@/lib/customer-auth";
-import { findCustomerOrder, markOrderPaid, markOrderPaymentFailed } from "@/lib/catalogue-db";
+import { findCustomerOrder, markOrderPaid, markOrderPaymentFailed, findOrder } from "@/lib/catalogue-db";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Local payment sync is disabled." }, { status: 403 });
@@ -9,7 +9,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
   const order = await findCustomerOrder(id, customer.id);
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
-  if (order.status === "paid" || !order.razorpayOrderId) return NextResponse.json({ status: order.status });
+  if (!["payment_pending", "payment_failed"].includes(order.status) || !order.razorpayOrderId) return NextResponse.json({ status: order.status });
   const keyId = process.env.RAZORPAY_KEY_ID, secret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId?.startsWith("rzp_test_") || !secret) return NextResponse.json({ error: "Test payment status lookup is unavailable." }, { status: 503 });
   try {
@@ -19,7 +19,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     if (!response.ok || !Array.isArray(result.items)) throw new Error("Razorpay status lookup failed.");
     const matching = result.items.filter(p => p.order_id === order.razorpayOrderId && p.amount === order.amount * 100 && p.currency === "INR");
     const captured = matching.find(p => p.status === "captured" && p.id);
-    if (captured?.id) { await markOrderPaid(order.id, order.razorpayOrderId, captured.id); return NextResponse.json({ status: "paid" }); }
+    if (captured?.id) { await markOrderPaid(order.id, order.razorpayOrderId, captured.id); return NextResponse.json({ status: (await findOrder(order.id))?.status ?? "paid" }); }
     if (matching.length && matching.every(p => p.status === "failed")) {
       const latest = matching.find(p => p.id);
       if (latest?.id) await markOrderPaymentFailed(order.id, customer.id, latest.id);
