@@ -8,6 +8,7 @@ import { useCart } from "@/components/cart-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
 import { AddressFields, addressSummary, emptyAddress, toDraft } from "@/components/address-fields";
 import type { AddressDraft, SavedAddress } from "@/components/address-fields";
+import { ArrowLeft, ArrowRight, External } from "@/components/icons";
 
 const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 
@@ -205,7 +206,7 @@ export default function CartPage() {
     <main className="cart-page">
       <header className="detail-header">
         <Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link>
-        <div className="detail-header-links"><Link className="back-to-shop" href="/account">Account & orders</Link><Link className="back-to-shop" href="/#catalogue">← Continue shopping</Link></div>
+        <div className="detail-header-links"><Link className="back-to-shop" href="/account">Account & orders</Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></div>
       </header>
       <section className="cart-content">
         <p className="eyebrow">YOUR SELECTION</p>
@@ -268,7 +269,7 @@ export default function CartPage() {
                 <div><span>Delivery</span><span>Calculated later</span></div>
                 <div className="cart-total"><span>Total</span><strong>{money(subtotal + giftTotal)}</strong></div>
                 <p>Test checkout reserves current stock and charges the products{giftTotal > 0 ? " and gift packaging" : ""}. Shipping is not included in this local test.</p>
-                {showSuccess ? <div className="demo-checkout-message" role="status">{success}<Link className="account-contact" href="/account">View order status in your account →</Link></div> : <form className="checkout-form" onSubmit={startCheckout}>
+                {showSuccess ? <div className="demo-checkout-message" role="status">{success}<Link className="account-contact" href="/account">View order status in your account <ArrowRight /></Link></div> : <form className="checkout-form" onSubmit={startCheckout}>
                   <h3>Delivery details</h3>
                   {!accountLoaded ? <p className="demo-checkout-message">Loading account…</p> : !account ? <div className="account-checkout-gate"><p>Sign in or create an account before checkout. Your payment status and order history will stay linked to you.</p><Link className="checkout-demo-button" href="/account?next=%2Fcart">Sign in to continue</Link></div> : <>
                   <p className="account-checkout-note">Order updates will be saved to {account.email}.</p>
@@ -303,7 +304,7 @@ export default function CartPage() {
             </div>
           </>
         )}
-        <a className="account-contact" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20need%20help%20with%20my%20order%20or%20payment." target="_blank" rel="noreferrer">Need help with an order or payment? WhatsApp +91 88306 46308 ↗</a>
+        <a className="account-contact" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20need%20help%20with%20my%20order%20or%20payment." target="_blank" rel="noreferrer">Need help with an order or payment? WhatsApp +91 88306 46308 <External /></a>
       </section>
     </main>
   );

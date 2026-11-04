@@ -9,6 +9,7 @@ import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
 import { DeliveryLine, ProductHighlights, SpecCards } from "@/components/product-facts";
 import { RecommendedProducts } from "@/components/recommended-products";
+import { ArrowLeft } from "@/components/icons";
 
 const LOW_STOCK = 3;
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -23,7 +24,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
   const [imageIndex, setImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  if (!item) return <main className="product-page"><header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link></header><section className="cart-content"><h1>{catalogueError || (catalogueLoading ? "Loading product…" : "Product not found in the current catalogue.")}</h1><Link href="/#catalogue">← Back to all products</Link></section></main>;
+  if (!item) return <main className="product-page"><header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link></header><section className="cart-content"><h1>{catalogueError || (catalogueLoading ? "Loading product…" : "Product not found in the current catalogue.")}</h1><Link href="/#catalogue"><ArrowLeft /> Back to all products</Link></section></main>;
 
   const colours = item.variants;
   const colour = colours.find(c => c.id === chosenId) ?? colours.find(c => c.stock > 0) ?? colours[0];
@@ -44,7 +45,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
 
   return <main className="product-page">
     {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Confirm this database product’s details, price, and stock before launch. Payments remain in test mode.</p>}
-    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><Link className="back-to-shop" href="/#catalogue">← Back to all murtis</Link></header>
+    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></header>
     <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span>/</span><Link href="/#catalogue">Murtis</Link><span>/</span><span>{item.name}</span></nav>
     <section className="detail-layout">
       <div className="detail-gallery">

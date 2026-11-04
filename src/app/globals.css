@@ -537,3 +537,6 @@ button { color: inherit; }
 .recommended-info .card-swatches { margin-top: 2px; }
 @media (max-width: 960px) { .recommended-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .recommended { padding: 28px 16px 44px; } .recommended-grid { gap: 10px; } .recommended-info { padding: 10px; } .recommended-info b { font-size: 13px; } }
+/* SVG icons inside text links and buttons */
+.back-to-shop svg, .account-contact svg, .details-link svg, .order-whatsapp svg, .theme-toggle svg, .cart-content a svg { vertical-align: -3px; }
+.back-to-shop, .details-link { display: inline-flex; align-items: center; gap: 6px; }

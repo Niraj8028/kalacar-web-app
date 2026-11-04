@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import AddressBook from "@/components/address-book";
+import { ArrowLeft, External } from "@/components/icons";
 
 type User = { id: string; name: string; email: string; phone: string };
 type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; variant?: string; price: number; quantity: number }>; giftWrap?: boolean; giftWrapPrice?: number };
@@ -128,7 +129,7 @@ export default function AccountPanel() {
   }
 
   return <main className="account-page">
-    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><Link className="back-to-shop" href="/#catalogue">← Continue shopping</Link></header>
+    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></header>
     <section className="account-content">
       <p className="eyebrow">KALACAR CUSTOMER ACCOUNT</p>
       <h1>{user ? `Namaste, ${user.name.split(" ")[0]}` : "Your orders, in one place."}</h1>
@@ -159,7 +160,7 @@ export default function AccountPanel() {
             {order.status === "refunded" && <p className="customer-order-note">Refunded {order.refundAmount ? money(order.refundAmount) : ""}{order.refundAmount && order.refundAmount < order.amount ? ` of ${money(order.amount)}` : ""}. Refunds usually reach your account in 5–7 working days.</p>}
             {(order.status === "cancelled" || order.status === "paid_after_cancel") && <p className="customer-order-note">{order.status === "cancelled" ? "This order was cancelled. No payment was taken." : "This order was cancelled, but a payment arrived afterwards. We’ll refund it; message us on WhatsApp if you have questions."}</p>}
             <details className="order-delivery"><summary>Delivery address</summary><p>{order.address} · PIN {order.pincode}</p></details>
-            <div className="order-status-row"><span className={`order-status ${order.status === "paid" ? "paid" : ["refunded", "cancelled"].includes(order.status) ? "closed" : "pending"}`}>{({ paid_after_cancel: "On hold", payment_pending: "Awaiting payment" } as Record<string, string>)[order.status] ?? status}</span><div>{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help ↗</a></div></div>
+            <div className="order-status-row"><span className={`order-status ${order.status === "paid" ? "paid" : ["refunded", "cancelled"].includes(order.status) ? "closed" : "pending"}`}>{({ paid_after_cancel: "On hold", payment_pending: "Awaiting payment" } as Record<string, string>)[order.status] ?? status}</span><div>{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help <External /></a></div></div>
           </article>;
         })}</div>}
       </div>}
