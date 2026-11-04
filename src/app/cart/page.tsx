@@ -13,6 +13,17 @@ const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "curre
 
 type SavedCheckout = { fingerprint: string; idempotencyKey: string; orderId: string; razorpayOrderId: string; amount: number };
 const SAVED_CHECKOUT_KEY = "kalacar.pending-checkout.v1";
+// A new address being typed at checkout, kept for this tab only so a refresh or back/forward doesn't lose it.
+const ADDRESS_DRAFT_KEY = "kalacar.checkout-draft.v1";
+type AddressDraftStore = { customer: AddressDraft; saveAddress: boolean };
+function readAddressDraft(): AddressDraftStore | null {
+  try {
+    const raw = sessionStorage.getItem(ADDRESS_DRAFT_KEY);
+    const draft = raw ? JSON.parse(raw) as AddressDraftStore : null;
+    return draft && typeof draft.customer === "object" && typeof draft.customer.address === "string" ? draft : null;
+  } catch { return null; }
+}
+const clearAddressDraft = () => { try { sessionStorage.removeItem(ADDRESS_DRAFT_KEY); } catch { /* storage unavailable */ } };
 function readSavedCheckout(): SavedCheckout | null {
   try {
     const value = localStorage.getItem(SAVED_CHECKOUT_KEY);
@@ -46,6 +57,8 @@ export default function CartPage() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddress, setSelectedAddress] = useState("new");
   const [saveAddress, setSaveAddress] = useState(true);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const draftReady = useRef(false); // don't overwrite a stored draft before it has been restored
   const [accountLoaded, setAccountLoaded] = useState(false);
   const [account, setAccount] = useState<{ name: string; email: string; phone: string } | null>(null);
   const [savedCheckout, setSavedCheckout] = useState<SavedCheckout | null>(null);
@@ -57,6 +70,15 @@ export default function CartPage() {
   });
   // A success message belongs to the completed order, not to any items added afterward.
   const showSuccess = Boolean(success) && products.length === 0;
+
+  useEffect(() => {
+    if (!draftReady.current) return;
+    const typed = [customer.address, customer.city, customer.state, customer.pincode, customer.landmark, customer.instructions].some(part => part.trim());
+    try {
+      if (selectedAddress === "new" && typed) sessionStorage.setItem(ADDRESS_DRAFT_KEY, JSON.stringify({ customer, saveAddress }));
+      else sessionStorage.removeItem(ADDRESS_DRAFT_KEY);
+    } catch { /* storage unavailable: nothing to keep */ }
+  }, [customer, selectedAddress, saveAddress]);
 
   useEffect(() => {
     if (success && products.length > 0) setSuccess("");
@@ -72,7 +94,10 @@ export default function CartPage() {
           const list = book.addresses ?? [];
           setSavedAddresses(list);
           const preferred = list.find(a => a.isDefault) ?? list[0];
-          if (preferred) { setSelectedAddress(preferred.id); setCustomer(toDraft(preferred)); setSaveAddress(false); }
+          const stored = readAddressDraft();
+          if (stored) { setSelectedAddress("new"); setCustomer(stored.customer); setSaveAddress(stored.saveAddress); setDraftRestored(true); }
+          else if (preferred) { setSelectedAddress(preferred.id); setCustomer(toDraft(preferred)); setSaveAddress(false); }
+          draftReady.current = true;
         }).catch(() => undefined);
       }
       const saved = readSavedCheckout();
@@ -102,7 +127,7 @@ export default function CartPage() {
       if (!response.ok) throw new Error(result.error || "Could not check payment status.");
       setPaymentStatus(result.status || "payment_pending");
       if (result.status === "paid") {
-        localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); if (clearCurrentCart) clear();
+        localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (clearCurrentCart) clear();
         setError(""); setSuccess(`Payment confirmed. Order ${saved.orderId.slice(0, 8)} is recorded.`);
       } else if (!quiet) {
         setError(`The order is still saved as ${result.status?.replaceAll("_", " ")}. Check your account or retry this same order.`);
@@ -121,7 +146,7 @@ export default function CartPage() {
       const verification = await result.json() as { error?: string; status?: string };
       if (!result.ok || verification.status !== "paid") throw new Error(verification.error || "Payment is still being verified.");
       const confirmation = `Payment confirmed in test mode. Order ${orderId.slice(0, 8)} is recorded.`;
-      localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null);
+      localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft();
       setVerificationData(null); clear(); checkoutKey.current = { fingerprint: "", value: "" };
       setSuccess(confirmation);
     } catch (verificationError) {
@@ -228,6 +253,7 @@ export default function CartPage() {
                   <h3>Delivery details</h3>
                   {!accountLoaded ? <p className="demo-checkout-message">Loading account…</p> : !account ? <div className="account-checkout-gate"><p>Sign in or create an account before checkout. Your payment status and order history will stay linked to you.</p><Link className="checkout-demo-button" href="/account?next=%2Fcart">Sign in to continue</Link></div> : <>
                   <p className="account-checkout-note">Order updates will be saved to {account.email}.</p>
+                  {draftRestored && selectedAddress === "new" && <p className="draft-restored" role="status">We kept the address you were typing.<button type="button" className="address-link" onClick={() => { clearAddressDraft(); setDraftRestored(false); setCustomer(emptyAddress(account.name, account.phone)); }}>Clear it</button></p>}
                   {savedAddresses.length > 0 && <fieldset className="checkout-address-picker">
                     <legend>Deliver to</legend>
                     {savedAddresses.map(address => (
