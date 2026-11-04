@@ -1,0 +1,47 @@
+// Colours: dashboard APIs, conflicts, gift packaging and a Razorpay TEST-MODE checkout per colour.
+import { q, ok, finish, customer, owner, fixtureProduct, colourStock, productStock, SHOP, ORIGIN, onCleanup } from "../lib.mjs";
+import { randomUUID } from "node:crypto";
+try {
+  const product = await fixtureProduct({ colours: [{ name: "Standard", price: 699, originalPrice: 899, stock: 10 }] });
+  const own = await owner(), buyer = await customer("colour", "9000000004");
+  const OH = { ...ORIGIN, Cookie: own.cookie }, CH = { ...ORIGIN, Cookie: buyer.cookie, "Content-Type": "application/json" };
+  const gift = await q("SELECT value FROM kalacar_settings WHERE name='gift_wrap'");
+  onCleanup(() => gift.length ? q("UPDATE kalacar_settings SET value=? WHERE name='gift_wrap'", [typeof gift[0].value === "string" ? gift[0].value : JSON.stringify(gift[0].value)]) : q("DELETE FROM kalacar_settings WHERE name='gift_wrap'"));
+  const admin = async () => (await (await fetch(`${SHOP}/api/admin/products`, { headers: OH })).json()).products.find(p => p.id === product.id);
+  const form = (colours) => { const f = new FormData(); f.set("name", product.name); f.set("deity", "QA"); f.set("badge", "Flagship"); f.set("tagline", "QA tagline"); f.set("placement", ""); f.set("accordions", "[]"); f.set("colours", JSON.stringify(colours)); return f; };
+  const asExisting = (c) => ({ ...c, gallery: c.gallery.map(src => ({ kind: "existing", src })) });
+  let p = await admin(); const std = p.variants[0];
+  const blue = { name: "Blue", swatch: "#2f5da8", price: 799, originalPrice: 1299, stock: 4, active: true, gallery: [{ kind: "existing", src: std.gallery[0] }] };
+  let r = await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([{ ...asExisting(std), expectedPrice: std.price, expectedStock: std.stock }, blue]) });
+  ok("Edit details saves two colours + badge/tagline", r.status === 200, r.status === 200 ? "" : (await r.json()).error);
+  p = await admin(); const b = p.variants.find(v => v.name === "Blue");
+  ok("summary: total stock and lowest price", p.stock === 14 && p.price === 699 && p.badge === "Flagship");
+  await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([asExisting(std), { ...asExisting(b), active: false }]) });
+  const pub = (await (await fetch(`${SHOP}/api/products`)).json()).products.find(x => x.id === product.id);
+  ok("hidden colour not shown in the shop", pub.variants.length === 1 && pub.stock === 10);
+  await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([asExisting(std), { ...asExisting(b), active: true }]) });
+  ok("duplicate colour names refused", (await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([{ ...blue, name: "Std" }, { ...blue, name: "std" }]) })).status === 400);
+  ok("photo from elsewhere refused", (await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([{ ...blue, gallery: [{ kind: "existing", src: "/uploads/someone-elses.jpg" }] }]) })).status === 400);
+  ok("one visible colour required", (await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([{ ...blue, active: false }]) })).status === 400);
+  ok("regular price below selling price refused", (await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([{ ...blue, originalPrice: 500 }]) })).status === 400);
+  const quick = (body) => fetch(`${SHOP}/api/admin/products/${product.id}/variants/${b.id}`, { method: "PATCH", headers: { ...OH, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  ok("quick colour stock edit", (await quick({ stock: 6, expectedStock: 4 })).status === 200 && await colourStock(b.id) === 6);
+  r = await quick({ stock: 9, expectedStock: 4 }); ok("stale colour edit refused", r.status === 409 && (await r.json()).current.stock === 6);
+  r = await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "PATCH", headers: OH, body: form([asExisting(std), { ...asExisting(b), stock: 2, expectedStock: 4 }]) });
+  ok("stale Edit details refused per colour", r.status === 409 && (await r.json()).colour === "Blue");
+  ok("owner sets gift packaging", (await fetch(`${SHOP}/api/admin/settings`, { method: "PATCH", headers: { ...OH, "Content-Type": "application/json" }, body: JSON.stringify({ giftWrap: { enabled: true, price: 59, title: "Gift-ready packaging", description: "QA" } }) })).status === 200 && (await (await fetch(`${SHOP}/api/settings`)).json()).giftWrap?.price === 59);
+  const address = { label: "Home", fullName: "QA Colour", phone: "9000000004", address: "QA test address, Pune", city: "Pune", state: "Maharashtra", pincode: "411004" };
+  const before = { std: await colourStock(std.id), blue: await colourStock(b.id) };
+  r = await fetch(`${SHOP}/api/checkout/orders`, { method: "POST", headers: CH, body: JSON.stringify({ idempotencyKey: randomUUID(), items: [{ id: product.id, variantId: b.id, quantity: 2 }], customer: address, giftWrap: true }) });
+  const order = await r.json();
+  ok("test-mode checkout for one colour + gift", r.status === 200 && order.amount === (799 * 2 + 59) * 100, r.status + " " + (order.error ?? order.amount));
+  ok("only that colour's stock drops", await colourStock(b.id) === before.blue - 2 && await colourStock(std.id) === before.std && await productStock(product.id) === before.std + before.blue - 2);
+  const [item] = await q("SELECT variant_name, unit_price FROM kalacar_order_items WHERE order_id=?", [order.orderId]); const [o] = await q("SELECT gift_wrap, gift_wrap_price FROM kalacar_orders WHERE id=?", [order.orderId]);
+  ok("order stores colour and gift packaging", item.variant_name === "Blue" && item.unit_price === 799 && o.gift_wrap === 1 && o.gift_wrap_price === 59);
+  ok("more than the colour's stock refused", (await fetch(`${SHOP}/api/checkout/orders`, { method: "POST", headers: CH, body: JSON.stringify({ idempotencyKey: randomUUID(), items: [{ id: product.id, variantId: b.id, quantity: 10 }], customer: address }) })).status === 409);
+  ok("cancel returns stock to the same colour", (await fetch(`${SHOP}/api/admin/orders/${order.orderId}`, { method: "PATCH", headers: { ...OH, "Content-Type": "application/json" }, body: JSON.stringify({ action: "cancel" }) })).status === 200 && await colourStock(b.id) === before.blue);
+  r = await fetch(`${SHOP}/api/checkout/orders`, { method: "POST", headers: CH, body: JSON.stringify({ idempotencyKey: randomUUID(), items: [{ id: product.id, quantity: 1 }], customer: address }) });
+  const old = await r.json(); const [oldItem] = old.orderId ? await q("SELECT variant_name FROM kalacar_order_items WHERE order_id=?", [old.orderId]) : [{}];
+  ok("old cart line (no colour) uses the first colour", r.status === 200 && oldItem.variant_name === "Standard");
+  ok("Delete product refused while an order is open", (await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "DELETE", headers: OH })).status === 409);
+} finally { await finish(); }
