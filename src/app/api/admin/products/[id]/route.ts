@@ -74,3 +74,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Product update could not be saved." }, { status: 503 });
   }
 }
+
+/** Deletes a product and its colours. Refused while an open order still needs this product. */
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
+  const denied = await requireOwner();
+  if (denied) return denied;
+  const { id } = await params;
+  if (!/^[a-z0-9-]{1,64}$/.test(id)) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  try {
+    const db = await addressDb();
+    const [open] = await db.execute(`SELECT COUNT(*) n FROM kalacar_order_items i JOIN kalacar_orders o ON o.id=i.order_id
+      WHERE i.product_id=? AND (o.status IN ('payment_pending','payment_failed','paid_after_cancel') OR (o.status='paid' AND o.fulfillment_status<>'completed'))`, [id]) as unknown as [Array<{ n: number }>];
+    if (Number(open[0].n) > 0) return NextResponse.json({ error: `This product is in ${open[0].n} open order(s). Finish or cancel those orders first, or hide its colours instead.` }, { status: 409 });
+    const [result] = await db.execute("DELETE FROM kalacar_products WHERE id=?", [id]) as unknown as [{ affectedRows: number }];
+    if (!result.affectedRows) return NextResponse.json({ error: "Product not found." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Product delete failed:", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "Could not delete the product right now." }, { status: 503 });
+  }
+}
