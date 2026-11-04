@@ -2,7 +2,8 @@ import type { RowDataPacket } from "mysql2/promise";
 import { addressDb } from "@/lib/catalogue-db";
 import { ownerEmails } from "@/lib/google-oauth";
 
-// Customers for the owner dashboard, derived from accounts + orders. The owner's own account is excluded.
+// Customers for the owner dashboard, derived from accounts + orders. Owner accounts are included but flagged
+// (isOwner) so the dashboard can show the owner's own test orders without counting them as customers.
 // "Paid" means money was received: paid, refunded (paid then refunded) or paid after cancel.
 const PAID = "('paid','refunded','paid_after_cancel')";
 
@@ -26,10 +27,10 @@ export async function listCustomers() {
       (SELECT a.city FROM kalacar_addresses a WHERE a.user_id=u.id ORDER BY a.is_default DESC, a.updated_at DESC LIMIT 1) AS addr_city,
       (SELECT a.pincode FROM kalacar_addresses a WHERE a.user_id=u.id ORDER BY a.is_default DESC, a.updated_at DESC LIMIT 1) AS addr_pincode
     FROM kalacar_users u LEFT JOIN kalacar_orders o ON o.user_id=u.id
-    ${owners.length ? "WHERE LOWER(u.email) NOT IN (?)" : ""}
-    GROUP BY u.id ORDER BY u.created_at DESC`, owners.length ? [owners] : []);
+    GROUP BY u.id ORDER BY u.created_at DESC`);
   return rows.map(r => ({
     id: r.id, name: r.name, email: r.email, phone: r.phone, google: Boolean(r.google), joined: r.created_at,
+    isOwner: owners.includes(r.email.toLowerCase()),
     paidOrders: Number(r.paid_orders), allOrders: Number(r.all_orders),
     spent: Number(r.gross) - Number(r.refunded), refunded: Number(r.refunded), lastOrder: r.last_order,
     city: r.addr_city ?? "", pincode: r.addr_pincode ?? r.last_pincode ?? "",
@@ -44,13 +45,14 @@ export async function getCustomer(id: string) {
   const db = await addressDb();
   const [users] = await db.execute<(RowDataPacket & { id: string; name: string; email: string; phone: string; google: number; created_at: Date })[]>("SELECT id, name, email, phone, google_sub IS NOT NULL AS google, created_at FROM kalacar_users WHERE id=?", [id]);
   const user = users[0];
-  if (!user || ownerEmails().includes(user.email.toLowerCase())) return null;
+  if (!user) return null;
   const [orders] = await db.execute<OrderRow[]>("SELECT id, created_at, amount, status, fulfillment_status, refund_amount, gift_wrap, pincode, address FROM kalacar_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 200", [id]);
   const [items] = orders.length ? await db.query<ItemRow[]>("SELECT order_id, product_name, variant_name, unit_price, quantity FROM kalacar_order_items WHERE order_id IN (?) ORDER BY id", [orders.map(o => o.id)]) : [[] as ItemRow[]];
   const [addresses] = await db.execute<AddressRow[]>("SELECT label, full_name, phone, address, city, state, pincode, is_default FROM kalacar_addresses WHERE user_id=? ORDER BY is_default DESC, updated_at DESC", [id]);
   const paid = orders.filter(o => ["paid", "refunded", "paid_after_cancel"].includes(o.status));
   return {
     id: user.id, name: user.name, email: user.email, phone: user.phone, google: Boolean(user.google), joined: user.created_at,
+    isOwner: ownerEmails().includes(user.email.toLowerCase()),
     totals: {
       paidOrders: paid.length, allOrders: orders.length,
       spent: paid.reduce((s, o) => s + Number(o.amount) - Number(o.refund_amount ?? 0), 0),
