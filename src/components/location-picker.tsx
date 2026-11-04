@@ -14,7 +14,7 @@ type GoogleMap = {
   addListener(event: string, handler: () => void): { remove(): void };
 };
 type MapsNamespace = { maps: { Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMap } };
-declare global { interface Window { google?: MapsNamespace; __kalacarMapsReady?: () => void } }
+declare global { interface Window { google?: MapsNamespace; __kalacarMapsReady?: () => void; gm_authFailure?: () => void } }
 
 const BROWSER_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
 const INDIA_CENTER = { lat: 20.5937, lng: 78.9629 };
@@ -59,7 +59,15 @@ export function LocationPicker({ onUse }: { onUse: (address: LocationAddress) =>
   const lookup = useRef(0);
   const debounce = useRef<number | undefined>(undefined);
 
-  useEffect(() => () => window.clearTimeout(debounce.current), []);
+  useEffect(() => {
+    // Google calls this when the browser key is rejected (wrong website restriction, API off, billing).
+    window.gm_authFailure = () => {
+      console.error("Google Maps rejected the browser key (check its website restrictions, Maps JavaScript API and billing).");
+      setStatus("error"); setFound(null);
+      setMessage("The map couldn't load. Please type your address below.");
+    };
+    return () => { window.clearTimeout(debounce.current); window.gm_authFailure = undefined; };
+  }, []);
 
   if (!BROWSER_KEY) return null;
 
@@ -107,6 +115,12 @@ export function LocationPicker({ onUse }: { onUse: (address: LocationAddress) =>
         });
       } else { map.current.setCenter(center); map.current.setZoom(zoom); }
       setStatus("ready");
+      const loadedMap = map.current;
+      let painted = false;
+      const tiles = loadedMap.addListener("tilesloaded", () => { painted = true; tiles.remove(); });
+      window.setTimeout(() => {
+        if (!painted && map.current === loadedMap) setMessage(m => m || "The map is taking a while. If it stays blank, a browser shield or ad blocker may be blocking Google Maps. You can still type your address below.");
+      }, 8000);
     } catch {
       setStatus("error");
       setMessage("The map couldn't load. Please type your address below.");
