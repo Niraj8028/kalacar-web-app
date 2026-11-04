@@ -1,5 +1,5 @@
 // Rate limits on sign-in, sign-up, Google start and checkout (fake IPs keep your own limits clear).
-import { q, ok, finish, SHOP, ORIGIN, onCleanup, session } from "../lib.mjs";
+import { crash, q, ok, finish, SHOP, ORIGIN, onCleanup, session } from "../lib.mjs";
 try {
   const RUN = Math.floor(Math.random() * 200) + 20, ip = (n) => `10.${RUN}.0.${n}`;
   const email = `qa-rl-${RUN}@example.invalid`, email2 = `qa-rl2-${RUN}@example.invalid`, pw = `QaLimit-${RUN}-pass!`;
@@ -22,4 +22,4 @@ try {
   const [u] = await q("SELECT id FROM kalacar_users WHERE email=?", [email2]); const s = await session(u.id);
   codes = []; for (let i = 0; i < 11; i++) codes.push((await post("/api/checkout/orders", { idempotencyKey: "bad" }, ip(7), { Cookie: s.cookie })).status);
   ok("checkout: 11th per account → 429", codes[10] === 429 && codes.slice(0, 10).every(c => c === 400));
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

@@ -1,5 +1,5 @@
 // Input validation: oversized auth input, fake images, ₹0 price, request size limits.
-import { q, ok, finish, owner, fixtureProduct, colourStock, SHOP, ORIGIN, onCleanup } from "../lib.mjs";
+import { crash, q, ok, finish, owner, fixtureProduct, colourStock, SHOP, ORIGIN, onCleanup } from "../lib.mjs";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 try {
@@ -27,4 +27,4 @@ try {
   for (const [label, headers] of [["no Origin", {}], ["foreign Origin", { Origin: "https://evil.example" }]]) ok(`write with ${label} blocked`, (await fetch(`${SHOP}/api/auth/logout`, { method: "POST", headers })).status === 403);
   ok("same-origin write allowed", (await fetch(`${SHOP}/api/auth/logout`, { method: "POST", headers: ORIGIN })).status === 200);
   ok("colour stock unchanged by these tests", await colourStock(v.id) === 12);
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

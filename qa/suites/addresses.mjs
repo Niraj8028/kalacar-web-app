@@ -1,5 +1,5 @@
 // Saved addresses: validation, default handling, 10-address limit, other users blocked.
-import { q, ok, finish, customer, SHOP, ORIGIN } from "../lib.mjs";
+import { crash, q, ok, finish, customer, SHOP, ORIGIN } from "../lib.mjs";
 import { randomUUID } from "node:crypto";
 try {
   const a = await customer("addr-a"), b = await customer("addr-b");
@@ -22,4 +22,4 @@ try {
   for (let i = 0; i < 9; i++) await api(a, "/api/account/addresses", "POST", addr(i + 3));
   ok("11th address refused (limit 10)", (await api(a, "/api/account/addresses", "POST", addr(99))).status === 409);
   ok("checkout rejects bad phone before reserving", (await api(a, "/api/checkout/orders", "POST", { idempotencyKey: randomUUID(), items: [{ id: "qa-none", quantity: 1 }], customer: { ...addr(1), phone: "12" } })).status === 400);
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

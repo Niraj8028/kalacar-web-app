@@ -8,6 +8,7 @@ import { AddToBagButton, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
 import { DeliveryLine, ProductHighlights, SpecCards } from "@/components/product-facts";
+import { RecommendedProducts } from "@/components/recommended-products";
 
 const LOW_STOCK = 3;
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -96,5 +97,6 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
       </div>
     </section>
     <ProductDetailAccordions sections={item.accordions ?? []} />
+    <RecommendedProducts current={item} products={products} />
   </main>;
 }

@@ -1,9 +1,10 @@
 # Kalacar regression tests
 
-Runs against the **local** shop (`npm run dev`, port 3000) and dashboard (port 5173) using the
-development database in `.env.local`. Every suite creates its own `QA Fixture …` products and
-`qa-…@example.invalid` accounts and removes them afterwards, so your real catalogue, customers
-and orders are never changed.
+> **Locked (owner rule, 2026-11-04):** these suites create temporary test products, accounts and
+> orders, which must **never** be written to the shop's own database — not even briefly — because
+> they show up in the dashboard and storefront. The runner refuses to start unless a **separate
+> test database** is configured (`QA_DB_NAME` in `.env.local`, different from `DB_NAME`) and both
+> dev servers are running against that test database.
 
 ```bash
 npm run qa                       # everything

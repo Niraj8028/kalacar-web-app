@@ -14,8 +14,15 @@ export const ORIGIN = { Origin: SHOP };
 export const OUT = fileURLToPath(new URL("./output/", import.meta.url));
 mkdirSync(OUT, { recursive: true });
 
-if (process.env.DB_NAME !== "u480209824_temp_db") throw new Error("QA suites only run against the development database (check .env.local).");
-export const pool = mysql.createPool({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT ?? 3306), user: process.env.DB_USER, password: process.env.DB_PASSWORD, database: process.env.DB_NAME, connectionLimit: 8, enableKeepAlive: true });
+// OWNER RULE (2026-11-04): no fake products, accounts or orders may ever be written to the shop's
+// own database — not even temporarily — because they appear in the live dashboard and storefront.
+// These suites therefore refuse to run unless a SEPARATE, dedicated test database is configured
+// (QA_DB_NAME, different from DB_NAME) and the dev servers are pointed at it.
+if (!process.env.QA_DB_NAME || process.env.QA_DB_NAME === process.env.DB_NAME) {
+  console.log("Refusing to run: QA suites create test products/accounts and must use a separate test database (set QA_DB_NAME, different from DB_NAME, and run the dev servers against it). Your shop's data is never used for tests.");
+  process.exit(2);
+}
+export const pool = mysql.createPool({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT ?? 3306), user: process.env.DB_USER, password: process.env.DB_PASSWORD, database: process.env.QA_DB_NAME, connectionLimit: 8, enableKeepAlive: true });
 export const q = async (sql, args = []) => (await pool.query(sql, args))[0];
 
 let passed = 0, failed = 0;
@@ -24,6 +31,9 @@ export const results = () => ({ passed, failed });
 
 const cleanups = [];
 export const onCleanup = (fn) => cleanups.push(fn);
+let crashedWith = null;
+process.on("uncaughtException", error => { crashedWith = error; });
+export const crash = (error) => { failed++; console.log("CRASH " + (error?.stack ?? error)); };
 export async function finish() {
   for (const fn of cleanups.reverse()) { try { await fn(); } catch (error) { console.log("cleanup error:", error.message); } }
   await pool.end();
@@ -79,7 +89,7 @@ export async function fixtureProduct({ name, deity = "QA", colours = [{ name: "S
   const made = colours.map((c, i) => ({ id: `${id}-${i}`, swatch: c.swatch ?? "#b08d57", originalPrice: c.originalPrice ?? c.price, active: c.active ?? true, gallery: [photo().url], ...c }));
   const first = made.find(c => c.active) ?? made[0];
   await q("INSERT INTO kalacar_products (id,name,deity,image,gallery,image_alt,placement,accordions,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-    [id, title, deity, first.gallery[0], JSON.stringify(first.gallery), `${title} product photo`, "", "[]", Math.min(...made.filter(c => c.active).map(c => c.price)), first.originalPrice, made.filter(c => c.active).reduce((s, c) => s + c.stock, 0)]);
+    [id, title, deity, first.gallery[0], JSON.stringify(first.gallery), `${title} product photo`, "", "[]", Math.min(...(made.some(c => c.active) ? made.filter(c => c.active) : made).map(c => c.price)), first.originalPrice, made.filter(c => c.active).reduce((s, c) => s + c.stock, 0)]);
   for (const [i, c] of made.entries()) await q("INSERT INTO kalacar_product_variants (id,product_id,name,swatch,gallery,price,original_price,stock,sort,active) VALUES (?,?,?,?,?,?,?,?,?,?)", [c.id, id, c.name, c.swatch, JSON.stringify(c.gallery), c.price, c.originalPrice, c.stock, i, c.active ? 1 : 0]);
   onCleanup(async () => {
     const items = await q("SELECT DISTINCT order_id FROM kalacar_order_items WHERE product_id=?", [id]);

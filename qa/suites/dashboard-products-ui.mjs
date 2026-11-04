@@ -1,5 +1,5 @@
 // Browser: dashboard Products tab per-colour save, highlight, undo, stepper (desktop + phone).
-import { ok, finish, owner, fixtureProduct, colourStock, browser, DASHBOARD } from "../lib.mjs";
+import { crash, ok, finish, owner, fixtureProduct, colourStock, browser, DASHBOARD } from "../lib.mjs";
 try {
   const single = await fixtureProduct({ colours: [{ name: "Standard", price: 749, stock: 14 }] });
   const multi = await fixtureProduct({ colours: [{ name: "Gold", price: 699, stock: 10 }, { name: "Blue", price: 799, originalPrice: 1299, stock: 4 }] });
@@ -25,4 +25,4 @@ try {
   b.shot("dashboard-products-desktop.png");
   ab("set", "viewport", "390", "844"); ab("wait", "600");
   ok("phone: no sideways scroll", b.noSidewaysScroll());
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

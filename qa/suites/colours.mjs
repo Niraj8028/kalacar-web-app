@@ -1,5 +1,5 @@
 // Colours: dashboard APIs, conflicts, gift packaging and a Razorpay TEST-MODE checkout per colour.
-import { q, ok, finish, customer, owner, fixtureProduct, colourStock, productStock, SHOP, ORIGIN, onCleanup } from "../lib.mjs";
+import { crash, q, ok, finish, customer, owner, fixtureProduct, colourStock, productStock, SHOP, ORIGIN, onCleanup } from "../lib.mjs";
 import { randomUUID } from "node:crypto";
 try {
   const product = await fixtureProduct({ colours: [{ name: "Standard", price: 699, originalPrice: 899, stock: 10 }] });
@@ -44,4 +44,4 @@ try {
   const old = await r.json(); const [oldItem] = old.orderId ? await q("SELECT variant_name FROM kalacar_order_items WHERE order_id=?", [old.orderId]) : [{}];
   ok("old cart line (no colour) uses the first colour", r.status === 200 && oldItem.variant_name === "Standard");
   ok("Delete product refused while an order is open", (await fetch(`${SHOP}/api/admin/products/${product.id}`, { method: "DELETE", headers: OH })).status === 409);
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

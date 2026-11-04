@@ -13,7 +13,9 @@ for (const name of suites) {
   catch (error) { out = String(error.stdout ?? "") + String(error.stderr ?? ""); failed = true; }
   process.stdout.write(out);
   const m = out.match(/(\d+) passed, (\d+) failed/);
-  summary.push({ suite: name, passed: m ? Number(m[1]) : 0, failed: m ? Number(m[2]) : 1, crashed: failed && !m });
+  // A suite that exits with an error but reports no failures still crashed (e.g. setup threw before any check).
+  const crashed = failed && (!m || Number(m[2]) === 0);
+  summary.push({ suite: name, passed: m ? Number(m[1]) : 0, failed: m ? Number(m[2]) : 1, crashed });
 }
 console.log("\n=== summary"); console.table(summary);
 process.exitCode = summary.some(s => s.failed || s.crashed) ? 1 : 0;

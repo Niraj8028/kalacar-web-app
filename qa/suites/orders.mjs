@@ -1,5 +1,5 @@
 // Owner order lifecycle: cancel unpaid, refund paid, tracking note, no "mark paid".
-import { q, ok, finish, customer, owner, fixtureProduct, colourStock, SHOP, ORIGIN } from "../lib.mjs";
+import { crash, q, ok, finish, customer, owner, fixtureProduct, colourStock, SHOP, ORIGIN } from "../lib.mjs";
 import { randomUUID } from "node:crypto";
 try {
   const product = await fixtureProduct({ colours: [{ name: "Standard", price: 600, stock: 50 }] }); const colour = product.colours[0];
@@ -41,4 +41,4 @@ try {
   ok("no way to mark an order paid", (await patch(pending, { action: "paid" }))[0] === 400 && (await row(pending)).status === "cancelled");
   const detail = await (await fetch(`${SHOP}/api/admin/orders/${paid}`, { headers: { Cookie: own.cookie } })).json();
   ok("dashboard order shows refund and colour", detail.order?.refundAmount === 1800 && detail.order?.items?.[0]?.variant === colour.name);
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

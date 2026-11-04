@@ -1,5 +1,5 @@
 // Specification cards, highlights and the delivery line: dashboard editor → API → product page.
-import { q, ok, finish, owner, fixtureProduct, browser, SHOP, DASHBOARD, ORIGIN } from "../lib.mjs";
+import { crash, q, ok, finish, owner, fixtureProduct, browser, SHOP, DASHBOARD, ORIGIN } from "../lib.mjs";
 try {
   const product = await fixtureProduct({ colours: [{ name: "Standard", price: 799, stock: 9 }] });
   const plain = await fixtureProduct({ colours: [{ name: "Standard", price: 500, stock: 3 }] });
@@ -40,4 +40,4 @@ try {
   }
   b.go(`${SHOP}/products/${plain.id}`);
   ok("product without facts shows no empty sections", js("String(document.querySelectorAll('.spec-cards, .product-highlights').length)") === "0" && js("String(Boolean(document.querySelector('.delivery-line')))") === "true");
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

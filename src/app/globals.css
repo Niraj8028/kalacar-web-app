@@ -520,3 +520,20 @@ button { color: inherit; }
 .spec-card dd { margin: 2px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
 @media (max-width: 620px) { .product-highlights { grid-template-columns: 1fr; } .spec-cards dl { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 360px) { .spec-cards dl { grid-template-columns: 1fr; } }
+/* You may also like */
+.recommended { max-width: 1320px; margin: 0 auto; padding: 36px clamp(18px, 5vw, 76px) 60px; border-top: 1px solid var(--line); }
+.recommended-head h2 { margin: 4px 0 18px; font: 400 clamp(26px, 3vw, 34px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.recommended-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.recommended-card { display: grid; height: 100%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; transition: border-color .15s; }
+.recommended-card:hover { border-color: var(--accent); }
+.recommended-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.recommended-image { position: relative; display: block; aspect-ratio: 1 / 1.05; overflow: hidden; background: var(--surface-soft); }
+.recommended-image img { object-fit: cover; }
+.recommended-info { display: grid; gap: 4px; padding: 12px; }
+.recommended-info small { color: var(--accent); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.recommended-info b { font-size: 14px; font-weight: 500; line-height: 1.3; }
+.recommended-price { font-size: 14px; font-weight: 600; }
+.recommended-price del { margin-left: 6px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.recommended-info .card-swatches { margin-top: 2px; }
+@media (max-width: 960px) { .recommended-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .recommended { padding: 28px 16px 44px; } .recommended-grid { gap: 10px; } .recommended-info { padding: 10px; } .recommended-info b { font-size: 13px; } }

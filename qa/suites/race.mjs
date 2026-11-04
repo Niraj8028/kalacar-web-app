@@ -1,5 +1,5 @@
 // Dashboard stock edits vs checkouts: expected-value check under the same row locks.
-import { q, pool, ok, finish, owner, fixtureProduct, colourStock, SHOP, ORIGIN } from "../lib.mjs";
+import { crash, q, pool, ok, finish, owner, fixtureProduct, colourStock, SHOP, ORIGIN } from "../lib.mjs";
 try {
   const product = await fixtureProduct({ colours: [{ name: "Standard", price: 899, stock: 60 }] }); const v = product.colours[0];
   const own = await owner(); const H = { ...ORIGIN, Cookie: own.cookie, "Content-Type": "application/json" };
@@ -24,4 +24,4 @@ try {
     if (!((code === 200 && final === 50 - sold) || (code === 409 && final === 20 - sold))) bad++;
   }
   ok("8 rounds of 4 checkouts racing a save: no lost sales", bad === 0);
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }

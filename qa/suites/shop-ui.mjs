@@ -1,5 +1,5 @@
 // Browser: shop card, colour picker, Buy now, cart colour change, gift packaging (phone + desktop).
-import { q, ok, finish, customer, fixtureProduct, colourStock, browser, SHOP, onCleanup } from "../lib.mjs";
+import { crash, q, ok, finish, customer, fixtureProduct, colourStock, browser, SHOP, onCleanup } from "../lib.mjs";
 try {
   const product = await fixtureProduct({ colours: [{ name: "Gold", swatch: "#b08d57", price: 1219, stock: 50 }, { name: "Blue", swatch: "#4821d4", price: 1219, stock: 4 }] });
   const [gold, blue] = product.colours; const shopper = await customer("shop", "9000000005");
@@ -30,4 +30,4 @@ try {
     ok(`${tag}: no sideways scroll`, b.noSidewaysScroll());
   }
   ok("browsing created no order and kept stock", await colourStock(gold.id) === 50 && await colourStock(blue.id) === 4);
-} finally { await finish(); }
+} catch (error) { crash(error); } finally { await finish(); }
