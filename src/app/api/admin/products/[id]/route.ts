@@ -19,6 +19,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const contentType = request.headers.get("content-type") || "";
     let update: Parameters<typeof updateProduct>[1] = {};
+    const expected: { price?: number; stock?: number } = {};
+    const readExpected = (raw: unknown, key: "price" | "stock") => {
+      if (raw === undefined || raw === null || raw === "") return true;
+      const value = Number(raw);
+      if (!Number.isSafeInteger(value) || value < 0) return false;
+      expected[key] = value; return true;
+    };
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
       const name = String(form.get("name") ?? "").trim();
@@ -27,6 +34,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const price = Number(form.get("price"));
       const stock = Number(form.get("stock"));
       const accordions = parseProductAccordions(form.get("accordions"));
+      if (!readExpected(form.get("expectedPrice"), "price") || !readExpected(form.get("expectedStock"), "stock")) return NextResponse.json({ error: "Invalid expected values." }, { status: 400 });
       const files = form.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
       if (name.length < 2 || name.length > 160 || deity.length < 2 || deity.length > 80) return NextResponse.json({ error: "Enter a product name and deity (2–160 characters)." }, { status: 400 });
       if (placement.length > 255) return NextResponse.json({ error: "Description must be 255 characters or fewer." }, { status: 400 });
@@ -91,7 +99,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       let body: unknown;
       try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
       if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid update." }, { status: 400 });
-      const values = body as { price?: unknown; stock?: unknown };
+      const values = body as { price?: unknown; stock?: unknown; expectedPrice?: unknown; expectedStock?: unknown };
+      if (!readExpected(values.expectedPrice, "price") || !readExpected(values.expectedStock, "stock")) return NextResponse.json({ error: "Invalid expected values." }, { status: 400 });
       for (const key of ["price", "stock"] as const) {
         const value = values[key];
         if (value === undefined) continue;
@@ -101,10 +110,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
       if (!Object.keys(update).length) return NextResponse.json({ error: "Provide product fields to update." }, { status: 400 });
     }
-    const updated = await updateProduct(id, update);
-    if (!updated) {
-      await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
-      return NextResponse.json({ error: "Product not found." }, { status: 404 });
+    const result = await updateProduct(id, update, expected);
+    if (result.status !== "ok") await Promise.all(savedFiles.map(file => unlink(file).catch(() => undefined)));
+    if (result.status === "not_found") return NextResponse.json({ error: "Product not found." }, { status: 404 });
+    if (result.status === "conflict") {
+      return NextResponse.json({ error: "This product changed while you were editing (for example, an order came in). Nothing was saved.", conflict: true, current: result.current }, { status: 409, headers: { "Cache-Control": "no-store" } });
     }
     return NextResponse.json({ ok: true, id, ...update }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

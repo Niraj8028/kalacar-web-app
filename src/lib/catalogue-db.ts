@@ -480,7 +480,14 @@ export async function updateOrderFulfillment(id: string, fulfillmentStatus: "pro
   return result.affectedRows > 0;
 }
 
-export async function updateProduct(id: string, values: { name?: string; deity?: string; placement?: string; price?: number; stock?: number; image?: string; gallery?: string[]; accordions?: ProductAccordion[] }) {
+export type ProductUpdateResult = { status: "ok" } | { status: "not_found" } | { status: "conflict"; current: { price: number; stock: number } };
+
+/**
+ * Updates a product. When `expected` is given, the write only happens if the stored price/stock
+ * still equal what the owner was looking at (optimistic concurrency). The row is locked with the
+ * same FOR UPDATE lock checkout uses, so a sale and a dashboard edit can't overwrite each other.
+ */
+export async function updateProduct(id: string, values: { name?: string; deity?: string; placement?: string; price?: number; stock?: number; image?: string; gallery?: string[]; accordions?: ProductAccordion[] }, expected: { price?: number; stock?: number } = {}): Promise<ProductUpdateResult> {
   await ensureCatalogue();
   const fields: string[] = [];
   const params: (string | number)[] = [];
@@ -494,10 +501,22 @@ export async function updateProduct(id: string, values: { name?: string; deity?:
   if (values.name !== undefined) { fields.push("image_alt=?"); params.push(`${values.name} product photo`); }
   if (values.accordions !== undefined) { fields.push("accordions=?"); params.push(JSON.stringify(values.accordions)); }
   if (!fields.length) throw new Error("No changes provided.");
-  params.push(id);
-  await database().execute<mysql.ResultSetHeader>(`UPDATE kalacar_products SET ${fields.join(",")} WHERE id=?`, params);
-  const [rows] = await database().execute<(RowDataPacket & { id: string })[]>("SELECT id FROM kalacar_products WHERE id=? LIMIT 1", [id]);
-  return rows.length > 0;
+  const connection = await database().getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute<(RowDataPacket & { price: number; stock: number })[]>("SELECT price,stock FROM kalacar_products WHERE id=? FOR UPDATE", [id]);
+    const row = rows[0];
+    if (!row) { await connection.rollback(); return { status: "not_found" }; }
+    const current = { price: Number(row.price), stock: Number(row.stock) };
+    if ((expected.stock !== undefined && current.stock !== expected.stock) || (expected.price !== undefined && current.price !== expected.price)) {
+      await connection.rollback();
+      return { status: "conflict", current };
+    }
+    await connection.execute<mysql.ResultSetHeader>(`UPDATE kalacar_products SET ${fields.join(",")} WHERE id=?`, [...params, id]);
+    await connection.commit();
+    return { status: "ok" };
+  } catch (error) { await connection.rollback(); throw error; }
+  finally { connection.release(); }
 }
 
 /** Puts an order's items back into stock once (guarded by stock_restored). Call inside a transaction holding the order row lock. */
