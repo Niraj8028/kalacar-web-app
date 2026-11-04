@@ -236,6 +236,29 @@ button { color: inherit; }
 .account-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; }
 .account-form input { min-height: 42px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 2px; background: var(--page); color: var(--ink); font-size: 13px; }
 .account-form .checkout-demo-button { width: 100%; margin-top: 3px; }
+/* "Use my current location" map picker */
+.location-picker { display: grid; gap: 10px; }
+.location-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 14px; border: 1px dashed var(--accent); border-radius: 2px; background: var(--surface-soft); color: var(--accent); cursor: pointer; font-size: 13px; font-weight: 600; }
+.location-button:hover { background: var(--page); }
+.location-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.location-panel { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); background: var(--page); }
+.location-map-wrap { position: relative; height: clamp(240px, 45vh, 360px); overflow: hidden; border: 1px solid var(--line); background: var(--surface-soft); }
+.location-map { position: absolute; inset: 0; }
+.location-pin { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -30px 0 0 -15px; border-radius: 50% 50% 50% 0; background: var(--accent); transform: rotate(-45deg); box-shadow: 0 3px 8px #0004; pointer-events: none; }
+.location-pin::after { content: ""; position: absolute; left: 9px; top: 9px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+.location-overlay { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--page) 80%, transparent); color: var(--ink); font-size: 13px; }
+.location-hint, .location-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.location-result { min-height: 44px; font-size: 13px; line-height: 1.5; color: var(--ink); }
+.location-result strong { display: block; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.location-result p { margin: 2px 0 0; }
+.location-message { color: var(--muted); }
+.location-actions { display: flex; align-items: center; gap: 16px; }
+.location-actions .checkout-demo-button { width: auto; margin: 0; padding: 0 20px; min-height: 44px; }
+.location-actions .checkout-demo-button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 620px) {
+  .location-actions { flex-direction: column; align-items: stretch; gap: 4px; }
+  .location-actions .checkout-demo-button { width: 100%; }
+}
 /* Saved addresses (account address book + checkout picker) */
 .address-book { margin: 26px 0 8px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .address-book-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

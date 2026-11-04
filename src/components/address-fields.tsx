@@ -1,5 +1,9 @@
 "use client";
 
+import { useRef } from "react";
+import { LocationPicker } from "@/components/location-picker";
+import type { LocationAddress } from "@/components/location-picker";
+
 export type AddressDraft = {
   label: "Home" | "Work" | "Other"; fullName: string; phone: string; address: string; city: string;
   state: string; landmark: string; instructions: string; pincode: string;
@@ -20,7 +24,19 @@ export const addressSummary = (a: AddressDraft) =>
 /** Controlled delivery-address inputs shared by checkout and the account address book. */
 export function AddressFields({ value, onChange, idPrefix }: { value: AddressDraft; onChange: (next: AddressDraft) => void; idPrefix: string }) {
   const set = (key: keyof AddressDraft) => (event: { target: { value: string } }) => onChange({ ...value, [key]: event.target.value });
+  // Values last filled from the map; a field is only replaced if it is empty or still holds that value,
+  // so anything the customer typed themselves is never overwritten.
+  const autofilled = useRef<Partial<Record<"address" | "city" | "state" | "pincode", string>>>({});
+  const applyLocation = (found: LocationAddress) => {
+    const next = { ...value };
+    for (const key of ["address", "city", "state", "pincode"] as const) {
+      if (!found[key]) continue;
+      if (!next[key].trim() || next[key] === autofilled.current[key]) { next[key] = found[key]; autofilled.current[key] = found[key]; }
+    }
+    onChange(next);
+  };
   return <>
+    <LocationPicker onUse={applyLocation} />
     <fieldset className="address-label-picker">
       <legend>Save as</legend>
       {(["Home", "Work", "Other"] as const).map(label => (
