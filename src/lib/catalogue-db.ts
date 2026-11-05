@@ -129,6 +129,8 @@ async function initialize() {
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(80) NOT NULL UNIQUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [trackingColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'tracking_id'");
+  if (!trackingColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN tracking_courier VARCHAR(20) NULL AFTER tracking_note, ADD COLUMN tracking_id VARCHAR(30) NULL AFTER tracking_courier");
   // Product photos live here so they survive redeploys and every server sees them.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_photos (
     file_name VARCHAR(190) PRIMARY KEY, content_type VARCHAR(40) NOT NULL, bytes MEDIUMBLOB NOT NULL,
@@ -242,7 +244,7 @@ export async function createProduct(product: { id: string; name: string; deity: 
 
 type CheckoutLine = { id: string; variantId?: string; quantity: number };
 type CheckoutCustomer = { name: string; email: string; phone: string; address: string; pincode: string };
-type OrderRow = RowDataPacket & { id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; gift_wrap: number; gift_wrap_price: number; coupon_code: string | null; discount: number; tracking_note: string | null; cancel_reason: string | null; cancelled_at: Date | null; refund_amount: number | null; refund_reason: string | null; refund_reference: string | null; refunded_at: Date | null; stock_restored: number; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
+type OrderRow = RowDataPacket & { tracking_courier: string | null; tracking_id: string | null; id: string; user_id: string | null; idempotency_key: string; razorpay_order_id: string | null; razorpay_payment_id: string | null; amount: number; status: string; fulfillment_status: string; gift_wrap: number; gift_wrap_price: number; coupon_code: string | null; discount: number; tracking_note: string | null; cancel_reason: string | null; cancelled_at: Date | null; refund_amount: number | null; refund_reason: string | null; refund_reference: string | null; refunded_at: Date | null; stock_restored: number; customer_name: string; email: string; phone: string; address: string; pincode: string; created_at: Date };
 
 export type OrderStatusFilter = "all" | "pending_payment" | "processing" | "on_hold" | "dispatched" | "completed" | "cancelled" | "refunded";
 type OrderStatusCounts = Record<OrderStatusFilter, number>;
@@ -392,7 +394,7 @@ const statusLabel = (status: string) => statusLabels[status] ?? status.replaceAl
 const lifecycle = (order: OrderRow) => ({
   giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0),
   couponCode: order.coupon_code ?? "", discount: Number(order.discount ?? 0),
-  rawStatus: order.status, trackingNote: order.tracking_note ?? "", cancelReason: order.cancel_reason ?? "", cancelledAt: order.cancelled_at,
+  rawStatus: order.status, trackingNote: order.tracking_note ?? "", trackingCourier: order.tracking_courier ?? "", trackingId: order.tracking_id ?? "", cancelReason: order.cancel_reason ?? "", cancelledAt: order.cancelled_at,
   refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), refundReason: order.refund_reason ?? "",
   refundReference: order.refund_reference ?? "", refundedAt: order.refunded_at, stockRestored: Boolean(order.stock_restored),
 });
@@ -490,7 +492,7 @@ export async function listCustomerOrders(userId: string) {
   const [orders] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100", [userId]);
   return Promise.all(orders.map(async (order) => {
     const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; variant_name: string | null; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,variant_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
-    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0), couponCode: order.coupon_code ?? "", discount: Number(order.discount ?? 0), trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
+    return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, trackingCourier: order.tracking_courier ?? "", trackingId: order.tracking_id ?? "", giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0), couponCode: order.coupon_code ?? "", discount: Number(order.discount ?? 0), trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
   }));
 }
 
@@ -542,7 +544,7 @@ export async function listOrders(filter: OrderStatusFilter = "all") {
   return Promise.all(orders.map(async order => {
     const [items] = await database().execute<(RowDataPacket & { product_name: string; variant_name: string | null; quantity: number })[]>("SELECT product_name,variant_name,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
     const status = statusLabel(order.status);
-    return { rawStatus: order.status, id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, trackingNote: order.tracking_note ?? "", item: items.map(row => `${row.product_name}${row.variant_name && row.variant_name !== "Standard" ? ` (${row.variant_name})` : ""} · ${row.quantity}`).join(", ") };
+    return { rawStatus: order.status, id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, trackingNote: order.tracking_note ?? "", trackingCourier: order.tracking_courier ?? "", trackingId: order.tracking_id ?? "", giftWrap: Boolean(order.gift_wrap), item: items.map(row => `${row.product_name}${row.variant_name && row.variant_name !== "Standard" ? ` (${row.variant_name})` : ""} · ${row.quantity}`).join(", ") };
   }));
 }
 
@@ -672,8 +674,8 @@ export async function recordOrderRefund(id: string, refund: { amount: number; re
 }
 
 /** Courier/tracking note shown to the customer. Only for paid orders. Empty text clears it. */
-export async function setOrderTrackingNote(id: string, note: string) {
+export async function setOrderTracking(id: string, tracking: { note: string; courier: string | null; trackingId: string | null }) {
   await ensureCatalogue();
-  const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET tracking_note=? WHERE id=? AND status='paid'", [note || null, id]);
+  const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET tracking_note=?,tracking_courier=?,tracking_id=? WHERE id=? AND status='paid'", [tracking.note || null, tracking.courier, tracking.trackingId, id]);
   return result.affectedRows > 0;
 }

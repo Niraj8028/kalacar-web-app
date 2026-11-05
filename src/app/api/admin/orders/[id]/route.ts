@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { isCourier, isTrackingId, normalizeTrackingId } from "@/lib/couriers";
 import { requireOwner } from "@/lib/customer-auth";
-import { cancelUnpaidOrder, getAdminOrderDetails, recordOrderRefund, setOrderTrackingNote, updateOrderFulfillment, type FulfillmentStatus } from "@/lib/catalogue-db";
+import { cancelUnpaidOrder, getAdminOrderDetails, recordOrderRefund, setOrderTracking, updateOrderFulfillment, type FulfillmentStatus } from "@/lib/catalogue-db";
 
 const allowed = new Set(["unfulfilled", "processing", "dispatched", "completed"]);
 
@@ -26,7 +27,7 @@ const text = (value: unknown, max: number) => (typeof value === "string" ? value
  *  { fulfillmentStatus, expected } — either: "unfulfilled" | "processing" | "dispatched" | "completed"
  *  { action: "cancel", reason? }                       — unpaid orders only; releases stock
  *  { action: "refund", amount, reason, reference?, restock? } — records a refund issued in Razorpay
- *  { action: "tracking", note }                        — courier/tracking note shown to the customer
+ *  { action: "tracking", courier, trackingId, note }   — shown to the customer; courier and ID go together
  * There is deliberately no way to mark an order paid from the dashboard.
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -49,8 +50,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return result.ok ? NextResponse.json({ success: true }) : NextResponse.json({ error: result.error }, { status: result.status });
     }
     if (body.action === "tracking") {
-      const updated = await setOrderTrackingNote(id, text(body.note, 300));
-      return updated ? NextResponse.json({ success: true }) : NextResponse.json({ error: "Tracking notes can only be added to paid orders." }, { status: 409 });
+      const trackingId = normalizeTrackingId(body.trackingId);
+      const courier = body.courier === "" || body.courier === undefined ? null : body.courier;
+      if (courier !== null && !isCourier(courier)) return NextResponse.json({ error: "Choose Trackon or India Post." }, { status: 400 });
+      if (Boolean(courier) !== Boolean(trackingId)) return NextResponse.json({ error: "Choose the courier and enter its tracking ID together." }, { status: 400 });
+      if (trackingId && !isTrackingId(trackingId)) return NextResponse.json({ error: "Tracking IDs use 6–30 letters, numbers or dashes." }, { status: 400 });
+      const updated = await setOrderTracking(id, { note: text(body.note, 300), courier, trackingId: trackingId || null });
+      return updated ? NextResponse.json({ success: true }) : NextResponse.json({ error: "Tracking can only be added to paid orders." }, { status: 409 });
     }
     if (typeof body.fulfillmentStatus !== "string" || !allowed.has(body.fulfillmentStatus) || typeof body.expected !== "string" || !allowed.has(body.expected)) {
       return NextResponse.json({ error: "Choose a valid delivery status." }, { status: 400 });

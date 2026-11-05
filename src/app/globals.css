@@ -654,3 +654,13 @@ button { color: inherit; }
   .account-order .order-status-row { flex-direction: row; align-items: center; justify-content: flex-start; }
   .account-order .order-status-row .retry-order-button, .account-order .order-status-row .sync-order-button { flex: 1 1 100%; text-align: center; }
 }
+
+.tracking-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); background: var(--surface-soft); }
+.tracking-card-label, .tracking-card-status { margin: 0; color: var(--muted); font-size: 13px; }
+.tracking-card-id { display: grid; gap: 2px; margin: 0; overflow-wrap: anywhere; }
+.tracking-card-id span { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.tracking-card-id strong { font-size: 16px; letter-spacing: .03em; user-select: all; }
+.tracking-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tracking-card-actions form { margin: 0; }
+.tracking-card a.retry-order-button { display: inline-flex; align-items: center; color: #fff; text-decoration: none; }
+.account-order .customer-tracking { font-size: 14px; line-height: 1.5; }

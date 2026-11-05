@@ -15,6 +15,9 @@ export const MESSAGE_VARIABLES = [
   { key: "order_id", label: "Order ID" },
   { key: "order_total", label: "Order total" },
   { key: "status", label: "Status" },
+  { key: "courier", label: "Courier" },
+  { key: "tracking_id", label: "Tracking ID" },
+  { key: "tracking_link", label: "Tracking page" },
   { key: "tracking_note", label: "Tracking note" },
   { key: "shop_name", label: "Shop name" },
 ] as const;
@@ -36,9 +39,9 @@ export const DEFAULT_TEMPLATES: Record<MessageStatus, MessageTemplate> = {
     emailBody: `Hi {customer_name},\n\nYour order {order_id} ({product_names}) is now being prepared. We will update you when it is dispatched.${signOff}`,
   },
   dispatched: {
-    whatsapp: "Hi {first_name}, your {shop_name} order {order_id} ({product_names}) has been dispatched. Tracking: {tracking_note}",
+    whatsapp: "Hi {first_name}, your {shop_name} order {order_id} ({product_names}) has been dispatched by {courier}. Tracking ID: {tracking_id}. Track it here: {tracking_link}",
     emailSubject: "Your {shop_name} order {order_id} has been dispatched",
-    emailBody: `Hi {customer_name},\n\nYour order {order_id} ({product_names}) has been dispatched.\n\nTracking: {tracking_note}${signOff}`,
+    emailBody: `Hi {customer_name},\n\nYour order {order_id} ({product_names}) has been dispatched by {courier}.\n\nTracking ID: {tracking_id}\nTrack it here: {tracking_link}${signOff}`,
   },
   completed: {
     whatsapp: "Hi {first_name}, your {shop_name} order {order_id} ({product_names}) has been delivered. Thank you for shopping with us.",

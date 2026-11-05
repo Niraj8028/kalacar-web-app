@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import AddressBook from "@/components/address-book";
+import { COURIERS, isCourier } from "@/lib/couriers";
+import type { CourierKey } from "@/lib/couriers";
 import { ArrowLeft, CheckMark, External } from "@/components/icons";
 
 type User = { id: string; name: string; email: string; phone: string };
-type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; variant?: string; price: number; quantity: number }>; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number };
+type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; trackingCourier?: string; trackingId?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; variant?: string; price: number; quantity: number }>; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number };
 type CheckoutOrder = { orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const noSubscribe = () => () => {};
@@ -15,6 +17,27 @@ const orderDate = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "nu
 const DELIVERY_STEPS = ["Order placed", "Preparing", "Dispatched", "Delivered"];
 const deliveryStep = (status: string) => ({ dispatched: 2, completed: 3 } as Record<string, number>)[status] ?? 1;
 const waLink = (orderId?: string) => `https://wa.me/918830646308?text=${encodeURIComponent(orderId ? `Hi Kalacar, I need help with order ${orderId}. Please check its payment or delivery status.` : "Hi Kalacar, I have a question about an order.")}`;
+
+/** Shows the courier and ID. Trackon opens with the result; India Post needs a captcha, so the ID is copied for pasting. */
+function TrackingCard({ courier, trackingId }: { courier: CourierKey; trackingId: string }) {
+  const [status, setStatus] = useState("");
+  const info = COURIERS[courier];
+  async function copy(message: string) {
+    try { await navigator.clipboard.writeText(trackingId); setStatus(message); }
+    catch { setStatus("Couldn’t copy it automatically. Select the tracking ID above and copy it."); }
+  }
+  return <div className="tracking-card">
+    <p className="tracking-card-label">Shipped with {info.label}</p>
+    <p className="tracking-card-id"><span>Tracking ID</span><strong>{trackingId}</strong></p>
+    <div className="tracking-card-actions">
+      <button type="button" className="sync-order-button" onClick={() => void copy("Tracking ID copied.")}>Copy ID</button>
+      {info.formField
+        ? <form action={info.trackUrl} method="post" target="_blank" rel="noreferrer"><input type="hidden" name={info.formField} value={trackingId} /><button type="submit" className="retry-order-button">Track parcel</button></form>
+        : <a className="retry-order-button" href={info.trackUrl} target="_blank" rel="noreferrer" onClick={() => void copy(`Tracking ID copied. Paste it on the ${info.label} page and enter its captcha.`)}>Track parcel</a>}
+    </div>
+    {status && <p className="tracking-card-status" role="status">{status}</p>}
+  </div>;
+}
 
 export default function AccountPanel() {
   const [user, setUser] = useState<User | null>(null);
@@ -177,7 +200,8 @@ export default function AccountPanel() {
             <div className="order-heading"><div><span>Order {order.id.slice(0, 8).toUpperCase()}</span><small>{orderDate(order.createdAt)}</small></div><div className="order-heading-side"><strong>{money(order.amount)}</strong><span className={`order-status ${order.status === "paid" ? "paid" : ["refunded", "cancelled"].includes(order.status) ? "closed" : "pending"}`}>{({ paid_after_cancel: "On hold", payment_pending: "Awaiting payment" } as Record<string, string>)[order.status] ?? status}</span></div></div>
             <ul className="order-lines">{order.items.map((item, index) => <li key={`${item.id}-${index}`}><span>{item.name}{item.variant && item.variant !== "Standard" ? ` (${item.variant})` : ""}</span><span>× {item.quantity}</span></li>)}{order.giftWrap && <li><span>Gift packaging</span>{order.giftWrapPrice ? <span>{money(order.giftWrapPrice)}</span> : null}</li>}{order.couponCode && order.discount ? <li><span>Coupon {order.couponCode}</span><span>−{money(order.discount)}</span></li> : null}</ul>
             {order.status === "paid" && <ol className="delivery-steps" aria-label={`Delivery progress: ${DELIVERY_STEPS[step]}`}>{DELIVERY_STEPS.map((label, index) => <li key={label} className={index < step || order.fulfillmentStatus === "completed" ? "done" : index === step ? "current" : ""} aria-current={index === step ? "step" : undefined}><i>{(index < step || order.fulfillmentStatus === "completed") && <CheckMark />}</i><span>{label}</span></li>)}</ol>}
-            {order.status === "paid" && order.trackingNote && <p className="customer-tracking"><span>Tracking</span>{order.trackingNote}</p>}
+            {order.status === "paid" && order.trackingId && isCourier(order.trackingCourier) && <TrackingCard courier={order.trackingCourier} trackingId={order.trackingId} />}
+            {order.status === "paid" && order.trackingNote && <p className="customer-tracking"><span>Note from Kalacar</span>{order.trackingNote}</p>}
             {order.status === "refunded" && <p className="customer-order-note">Refunded {order.refundAmount ? money(order.refundAmount) : ""}{order.refundAmount && order.refundAmount < order.amount ? ` of ${money(order.amount)}` : ""}. Refunds usually reach your account in 5–7 working days.</p>}
             {(order.status === "cancelled" || order.status === "paid_after_cancel") && <p className="customer-order-note">{order.status === "cancelled" ? "This order was cancelled. No payment was taken." : "This order was cancelled, but a payment arrived afterwards. We’ll refund it; message us on WhatsApp if you have questions."}</p>}
             <details className="order-delivery"><summary>Delivery address</summary><p>{order.address} · PIN {order.pincode}</p></details>
