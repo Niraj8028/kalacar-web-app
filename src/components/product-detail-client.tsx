@@ -94,7 +94,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
         <SpecCards specs={item.specs ?? []} />
 
         <div className="detail-rule" /><h2>Product details</h2>
-        <dl className="product-facts"><div><dt>Deity</dt><dd>{item.deity}</dd></div>{colours.length > 1 && <div><dt>Colours</dt><dd>{colours.map(c => c.name).join(", ")}</dd></div>}<div><dt>Availability</dt><dd>{colour && colour.stock > 0 ? `${colour.stock} in stock${colours.length > 1 ? ` in ${colour.name}` : ""}` : "Out of stock"}</dd></div></dl>
+        <dl className="product-facts"><div><dt>Category</dt><dd>{item.deity}</dd></div>{colours.length > 1 && <div><dt>Colours</dt><dd>{colours.map(c => c.name).join(", ")}</dd></div>}<div><dt>Availability</dt><dd>{colour && colour.stock > 0 ? `${colour.stock} in stock${colours.length > 1 ? ` in ${colour.name}` : ""}` : "Out of stock"}</dd></div></dl>
       </div>
     </section>
     <ProductDetailAccordions sections={item.accordions ?? []} />

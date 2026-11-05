@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { addressDb, listProducts } from "@/lib/catalogue-db";
 import { saveColours } from "@/lib/colours";
+import { findCategoryName } from "@/lib/categories";
 import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
 
 const noStore = { "Cache-Control": "no-store" };
@@ -27,6 +28,9 @@ export async function POST(request: Request) {
     const form = parsed.value;
     if (form.colours.some(colour => colour.gallery.some(photo => photo.kind === "existing"))) return NextResponse.json({ error: "Upload photos for each colour of a new product." }, { status: 400 });
     const id = form.name.normalize("NFKD").toLowerCase().replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 54) || `murti-${crypto.randomUUID().slice(0, 8)}`;
+    const category = await findCategoryName(form.deity);
+    if (!category) return NextResponse.json({ error: "Choose a category from the list. You can add categories in Settings." }, { status: 400 });
+    form.deity = category;
     const photos = await savePhotos(id, form.files); saved = photos;
     const first = form.colours.find(colour => colour.active) ?? form.colours[0];
     const firstGallery = first.gallery.map(photo => photo.kind === "upload" ? photos.urls[photo.uploadIndex] : photo.src);

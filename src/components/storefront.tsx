@@ -100,14 +100,14 @@ export default function Storefront() {
       <section className="catalogue-section" id="catalogue" aria-labelledby="catalogue-title">
         <div className="catalogue-heading">
           <div>
-            <p className="eyebrow">SHOP BY DEITY</p>
+            <p className="eyebrow">SHOP BY CATEGORY</p>
             <h2 id="catalogue-title">Murtis for everyday spaces</h2>
           </div>
           <p className="result-count">{catalogueLoading ? "Loading…" : catalogueError ? "Unavailable" : `${visibleItems.length} ${visibleItems.length === 1 ? "item" : "items"}`}</p>
         </div>
 
         <div className="catalogue-controls">
-          <div className="filter-list" role="group" aria-label="Filter by deity">
+          <div className="filter-list" role="group" aria-label="Filter by category">
             {deityFilters.map((filter) => (
               <button
                 className={selectedFilter === filter ? "filter-chip active" : "filter-chip"}

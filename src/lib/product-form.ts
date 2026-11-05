@@ -40,7 +40,7 @@ export class InvalidImageError extends Error {}
 export function parseProductForm(form: FormData): { error: string } | { value: ProductForm } {
   const text = (key: string) => String(form.get(key) ?? "").trim();
   const name = text("name"), deity = text("deity"), badge = text("badge"), tagline = text("tagline"), placement = text("placement");
-  if (name.length < 2 || name.length > 160 || deity.length < 2 || deity.length > 80) return { error: "Enter a product name and deity (2–160 characters)." };
+  if (name.length < 2 || name.length > 160 || deity.length < 2 || deity.length > 80) return { error: "Enter a product name and choose a category." };
   if (badge.length > 40) return { error: "Keep the badge to 40 characters (e.g. Flagship)." };
   if (tagline.length > 120) return { error: "Keep the tagline to 120 characters." };
   if (placement.length > 255) return { error: "Description must be 255 characters or fewer." };

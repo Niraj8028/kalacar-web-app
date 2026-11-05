@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { addressDb } from "@/lib/catalogue-db";
 import { saveColours, updateColourQuick } from "@/lib/colours";
+import { findCategoryName } from "@/lib/categories";
 import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
 
 /**
- * Edit details: product fields (name, deity, badge, tagline, description, detail sections) and the
+ * Edit details: product fields (name, category, badge, tagline, description, detail sections) and the
  * full list of colours with their photos, prices and stock. Quick price/stock edits for one colour
  * go to /api/admin/products/[id]/variants/[variantId].
  */
@@ -44,6 +45,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const parsed = parseProductForm(await request.formData());
     if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
     const form = parsed.value;
+    const category = await findCategoryName(form.deity);
+    if (!category) return NextResponse.json({ error: "Choose a category from the list. You can add categories in Settings." }, { status: 400 });
+    form.deity = category;
     const photos = await savePhotos(id, form.files); saved = photos;
     const db = await addressDb();
     const connection = await db.getConnection();

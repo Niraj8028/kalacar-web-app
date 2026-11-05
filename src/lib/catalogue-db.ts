@@ -124,6 +124,11 @@ async function initialize() {
     starts_on DATE NULL, expires_on DATE NULL, active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Categories the owner manages in Settings; products store the category's name in `deity`.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_categories (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(80) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   // Product photos live here so they survive redeploys and every server sees them.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_photos (
     file_name VARCHAR(190) PRIMARY KEY, content_type VARCHAR(40) NOT NULL, bytes MEDIUMBLOB NOT NULL,

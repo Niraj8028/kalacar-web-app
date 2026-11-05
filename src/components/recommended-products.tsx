@@ -5,7 +5,7 @@ import type { StoreItem } from "@/data/catalogue";
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 
 /**
- * Picks up to `limit` other products customers can buy: same deity first, then the rest,
+ * Picks up to `limit` other products customers can buy: same category first, then the rest,
  * keeping the catalogue's order (newest first) within each group.
  */
 export function pickRecommendations(current: StoreItem, all: StoreItem[], limit = 4) {
