@@ -105,9 +105,10 @@ export default function AccountPanel() {
   async function retry(order: Order) {
     setSyncing(order.id); setError(""); setNotice("");
     try {
-      const response = await fetch(`/api/account/orders/${order.id}/retry`, { cache: "no-store" });
-      const checkout = await response.json() as CheckoutOrder & { error?: string };
+      const response = await fetch(`/api/account/orders/${order.id}/retry`, { method: "POST" });
+      const checkout = await response.json() as CheckoutOrder & { status?: string; error?: string };
       if (!response.ok) throw new Error(checkout.error || "Could not reopen payment.");
+      if (checkout.status === "paid") { setNotice(`This order is already paid. Payment confirmed for order ${order.id.slice(0, 8)}.`); await refresh(); return; }
       if (!window.Razorpay) {
         const script = document.createElement("script"); script.src = "https://checkout.razorpay.com/v1/checkout.js";
         await new Promise<void>((resolve, reject) => { script.onload = () => resolve(); script.onerror = () => reject(new Error("Razorpay Checkout could not load.")); document.body.appendChild(script); });

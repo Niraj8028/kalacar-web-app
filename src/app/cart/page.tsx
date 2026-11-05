@@ -37,6 +37,14 @@ function readSavedCheckout(): SavedCheckout | null {
   } catch { return null; }
 }
 
+/** Does the bag still hold the same items as the saved order? If not, paying the old order mustn't empty it. */
+function sameBag(fingerprint: string, lines: Array<{ id: string; variantId?: string }>) {
+  try {
+    const key = (items: Array<{ id: string; variantId?: string }>) => JSON.stringify([...items].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)));
+    return key((JSON.parse(fingerprint) as { items: Array<{ id: string; variantId?: string }> }).items) === key(lines);
+  } catch { return false; }
+}
+
 function loadRazorpay() {
   if (window.Razorpay) return Promise.resolve(true);
   return new Promise<boolean>((resolve) => {
@@ -150,7 +158,40 @@ export default function CartPage() {
     } finally { if (!quiet) setBusy(false); }
   }
 
-  async function verifyPayment(orderId: string, payment: RazorpayPaymentSuccess) {
+  /** Pays the saved order again. The server asks Razorpay first, so a paid order is never charged twice. */
+  async function retrySavedCheckout() {
+    if (!savedCheckout?.orderId) return;
+    const saved = savedCheckout;
+    setBusy(true); setError(""); setSuccess("");
+    const sameItems = sameBag(saved.fingerprint, lines);
+    try {
+      const response = await fetch(`/api/account/orders/${saved.orderId}/retry`, { method: "POST" });
+      const retry = await response.json() as { status?: string; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
+      if (!response.ok) throw new Error(retry.error || "Could not reopen payment.");
+      if (retry.status === "paid") {
+        localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (sameItems) clear();
+        setPaymentStatus("paid"); setSuccess(`This order is already paid. Order ${saved.orderId.slice(0, 8)} is recorded.`);
+        return;
+      }
+      if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
+      const digits = retry.customer.phone.replace(/\D/g, "");
+      const checkout = new window.Razorpay({
+        key: retry.keyId, amount: retry.amount, currency: retry.currency, name: "Kalacar",
+        description: "Small devotional murti order", order_id: retry.razorpayOrderId,
+        prefill: { name: retry.customer.name, email: retry.customer.email, contact: digits.length === 10 ? `+91${digits}` : retry.customer.phone },
+        handler: (payment) => void verifyPayment(retry.orderId, payment, sameItems),
+        modal: {
+          backdropclose: false, escape: false, handleback: false, confirm_close: true,
+          ondismiss: () => { setError("Checkout closed. We’re checking the saved order status; don’t place another order while it is being confirmed."); void syncSavedCheckout(saved, true, sameItems); },
+        },
+      });
+      checkout.on("payment.failed", result => { setPaymentStatus("payment_failed"); setError(result.error?.description || "Payment failed. You can retry this order."); });
+      checkout.open();
+    } catch (retryError) { setError(retryError instanceof Error ? retryError.message : "Could not reopen payment."); }
+    finally { setBusy(false); }
+  }
+
+  async function verifyPayment(orderId: string, payment: RazorpayPaymentSuccess, clearBag = true) {
     setBusy(true); setError("");
     try {
       const result = await fetch("/api/checkout/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, ...payment }) });
@@ -158,7 +199,7 @@ export default function CartPage() {
       if (!result.ok || verification.status !== "paid") throw new Error(verification.error || "Payment is still being verified.");
       const confirmation = `Payment confirmed in test mode. Order ${orderId.slice(0, 8)} is recorded.`;
       localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft();
-      setVerificationData(null); clear(); checkoutKey.current = { fingerprint: "", value: "" };
+      setVerificationData(null); if (clearBag) clear(); checkoutKey.current = { fingerprint: "", value: "" };
       setSuccess(confirmation);
     } catch (verificationError) {
       setVerificationData({ orderId, payment });
@@ -175,7 +216,7 @@ export default function CartPage() {
       if (existing && existing.fingerprint !== fingerprint) {
         if (existing.orderId) await syncSavedCheckout(existing, true, false);
         const status = readSavedCheckout();
-        if (status) throw new Error("You already have an unpaid order. Check its payment status or retry it from Account & orders before starting a different checkout.");
+        if (status) throw new Error("You already have an unpaid order. Use Retry payment above to pay it, or check its status, before starting a different checkout.");
       }
       if (!checkoutKey.current.value || checkoutKey.current.fingerprint !== fingerprint) {
         checkoutKey.current = { fingerprint, value: existing?.fingerprint === fingerprint ? existing.idempotencyKey : crypto.randomUUID() };
@@ -218,7 +259,7 @@ export default function CartPage() {
         <p className="eyebrow">YOUR SELECTION</p>
         <h1>Your bag</h1>
         <p className="cart-demo-banner">RAZORPAY TEST MODE · Preview prices only. No live payment will be taken.</p>
-        {savedCheckout && !success && <div className="saved-checkout-banner" role="status"><div><strong>{savedCheckout.orderId ? `Saved checkout · ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout request saved"}</strong><p>{paymentStatus ? `Latest status: ${paymentStatus.replaceAll("_", " ")}.` : savedCheckout.orderId ? "If you left the payment window, the order is still saved." : "Continue checkout with the same cart so the server can resume the saved request."} Check the status before attempting payment again.</p></div><div>{savedCheckout.orderId && <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>}<Link href="/account">Account & orders</Link></div></div>}
+        {savedCheckout && !success && <div className="saved-checkout-banner" role="status"><div><strong>{savedCheckout.orderId ? `Saved checkout · ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout request saved"}</strong><p>{paymentStatus ? `Latest status: ${paymentStatus.replaceAll("_", " ")}.` : savedCheckout.orderId ? "If you left the payment window, the order is still saved." : "Continue checkout with the same cart so the server can resume the saved request."} Check the status before attempting payment again.</p></div><div>{savedCheckout.orderId && <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>}{savedCheckout.orderId && account && <button type="button" className="retry-order-button" disabled={busy} onClick={() => void retrySavedCheckout()}>Retry payment</button>}<Link href="/account">Account & orders</Link></div></div>}
         {showSuccess && <p className="cart-success" role="status">{success}</p>}
 
         {catalogueError ? (

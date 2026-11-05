@@ -6,10 +6,15 @@ import { getGiftWrap } from "@/lib/settings";
 import { currentCustomer } from "@/lib/customer-auth";
 import { parseCartItems } from "@/lib/cart-items";
 import { CouponError, normalizeCode } from "@/lib/coupons";
+import { SHOP_CLOSED_MESSAGE, visitorStoreAccess } from "@/lib/store-status";
 
 export async function POST(request: Request) {
   const account = await currentCustomer();
   if (!account) return NextResponse.json({ error: "Sign in before checkout. Your orders are saved to your account." }, { status: 401 });
+  // A database problem here refuses the order too, rather than letting one through a closed shop.
+  const access = await visitorStoreAccess().catch(() => null);
+  if (!access) return NextResponse.json({ error: "Checkout is temporarily unavailable. Please try again shortly." }, { status: 503 });
+  if (access.closed) return NextResponse.json({ error: SHOP_CLOSED_MESSAGE }, { status: 403 });
   const limited = limitOrNull([{ key: `checkout:user:${account.id}`, limit: 10, windowMs: 10 * MINUTE }], "Too many checkout attempts. Please wait a few minutes, or check your existing order in Account & orders.");
   if (limited) return limited;
   const keyId = process.env.RAZORPAY_KEY_ID;
