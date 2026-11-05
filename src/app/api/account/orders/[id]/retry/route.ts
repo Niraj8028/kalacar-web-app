@@ -3,7 +3,6 @@ import { currentCustomer } from "@/lib/customer-auth";
 import { findCustomerOrder } from "@/lib/catalogue-db";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Local test checkout is disabled." }, { status: 403 });
   const customer = await currentCustomer();
   if (!customer) return NextResponse.json({ error: "Sign in to retry this order." }, { status: 401 });
   const { id } = await context.params;

@@ -8,7 +8,6 @@ const noStore = { "Cache-Control": "no-store" };
 
 /** Dashboard catalogue: every product with all colours, including hidden ones. */
 export async function GET() {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   try { return NextResponse.json({ products: await listProducts({ includeHidden: true }) }, { headers: noStore }); }
@@ -19,7 +18,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   let saved: { paths: string[] } = { paths: [] };

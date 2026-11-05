@@ -3,7 +3,6 @@ import { requireOwner } from "@/lib/customer-auth";
 import { getGiftWrap, parseGiftWrap, saveGiftWrap } from "@/lib/settings";
 
 export async function GET() {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   try { return NextResponse.json({ giftWrap: await getGiftWrap() }, { headers: { "Cache-Control": "no-store" } }); }
@@ -11,7 +10,6 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const body = await request.json().catch(() => null) as { giftWrap?: unknown } | null;

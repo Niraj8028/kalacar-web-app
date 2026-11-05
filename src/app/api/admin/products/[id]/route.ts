@@ -10,7 +10,6 @@ import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/
  * go to /api/admin/products/[id]/variants/[variantId].
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const { id } = await params;
@@ -77,7 +76,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 /** Deletes a product and its colours. Refused while an open order still needs this product. */
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const { id } = await params;

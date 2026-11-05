@@ -4,7 +4,6 @@ import { updateColourQuick } from "@/lib/colours";
 
 /** Products tab quick edit for one colour: { price?, stock?, expectedPrice, expectedStock }. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const { id, variantId } = await params;

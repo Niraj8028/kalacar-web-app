@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { deleteCoupon, parseCoupon, setCouponActive, updateCoupon } from "@/lib/coupons";
 
-const devOnly = () => process.env.NODE_ENV !== "development" ? NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 }) : null;
 const idFrom = async (params: Promise<{ id: string }>) => { const { id } = await params; return /^\d{1,10}$/.test(id) ? Number(id) : null; };
 
 /** Body `{ active }` alone switches a coupon on/off; otherwise the whole coupon is replaced. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const blocked = devOnly() ?? await requireOwner();
+  const blocked = await requireOwner();
   if (blocked) return blocked;
   const id = await idFrom(params);
   if (id === null) return NextResponse.json({ error: "Coupon not found." }, { status: 404 });
@@ -25,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const blocked = devOnly() ?? await requireOwner();
+  const blocked = await requireOwner();
   if (blocked) return blocked;
   const id = await idFrom(params);
   if (id === null) return NextResponse.json({ error: "Coupon not found." }, { status: 404 });

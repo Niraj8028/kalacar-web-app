@@ -7,7 +7,6 @@ const validId = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
 
 /** PATCH body: { setDefault: true } alone, or a full address (optionally with isDefault). */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Accounts are disabled outside development." }, { status: 403 });
   const { id } = await params;
   if (!validId(id)) return NextResponse.json({ error: "Address not found." }, { status: 404 });
   let body: Record<string, unknown>;
@@ -34,7 +33,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Accounts are disabled outside development." }, { status: 403 });
   const { id } = await params;
   if (!validId(id)) return NextResponse.json({ error: "Address not found." }, { status: 404 });
   try {

@@ -8,7 +8,6 @@ import { getGiftWrap } from "@/lib/settings";
 
 /** Cart preview: does this code work for this bag, and how much does it take off? Checkout checks again. */
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Coupons are only enabled in local development for now." }, { status: 403 });
   const account = await currentCustomer().catch(() => null);
   // Limits guessing codes: per IP, and per account when signed in.
   const limited = limitOrNull([{ key: `coupon:ip:${clientIp(request)}`, limit: 30, windowMs: 10 * MINUTE }, ...(account ? [{ key: `coupon:user:${account.id}`, limit: 20, windowMs: 10 * MINUTE }] : [])], "Too many coupon attempts. Please wait a few minutes and try again.");

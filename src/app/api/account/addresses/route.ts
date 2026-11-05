@@ -6,7 +6,6 @@ import { createAddress, listAddresses, parseAddress } from "@/lib/addresses";
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET() {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Accounts are disabled outside development." }, { status: 403 });
   try {
     const user = await currentCustomer();
     if (!user) return NextResponse.json({ error: "Sign in to see your saved addresses." }, { status: 401 });
@@ -17,7 +16,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Accounts are disabled outside development." }, { status: 403 });
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid address." }, { status: 400 }); }
   const parsed = parseAddress(body);

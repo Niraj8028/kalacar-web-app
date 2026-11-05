@@ -3,17 +3,16 @@ import { requireOwner } from "@/lib/customer-auth";
 import { createCoupon, listCoupons, parseCoupon } from "@/lib/coupons";
 
 const noStore = { "Cache-Control": "no-store" };
-const devOnly = () => process.env.NODE_ENV !== "development" ? NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 }) : null;
 
 export async function GET() {
-  const blocked = devOnly() ?? await requireOwner();
+  const blocked = await requireOwner();
   if (blocked) return blocked;
   try { return NextResponse.json({ coupons: await listCoupons() }, { headers: noStore }); }
   catch (error) { console.error("Coupons unavailable:", error instanceof Error ? error.message : "unknown error"); return NextResponse.json({ error: "Coupons are temporarily unavailable." }, { status: 503, headers: noStore }); }
 }
 
 export async function POST(request: Request) {
-  const blocked = devOnly() ?? await requireOwner();
+  const blocked = await requireOwner();
   if (blocked) return blocked;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid coupon." }, { status: 400 }); }

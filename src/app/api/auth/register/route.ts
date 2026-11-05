@@ -4,7 +4,6 @@ import { createCustomer, createCustomerSession } from "@/lib/catalogue-db";
 import { CUSTOMER_COOKIE, SECURE_COOKIES } from "@/lib/customer-auth";
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Local customer accounts are disabled outside development." }, { status: 403 });
   const limited = limitOrNull([{ key: `register:ip:${clientIp(request)}`, limit: 5, windowMs: 60 * MINUTE }], "Too many accounts created from this connection. Please try again later.");
   if (limited) return limited;
   let body: Record<string, unknown>;

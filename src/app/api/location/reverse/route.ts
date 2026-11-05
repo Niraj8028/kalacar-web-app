@@ -12,7 +12,6 @@ const noStore = { "Cache-Control": "no-store" };
 const inIndia = (lat: number, lng: number) => lat >= 6 && lat <= 37.6 && lng >= 68 && lng <= 97.5;
 
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Location lookup is only enabled in local development for now." }, { status: 403 });
   const key = process.env.GOOGLE_MAPS_SERVER_KEY;
   if (!key) return NextResponse.json({ error: "Location lookup is not configured." }, { status: 503 });
 

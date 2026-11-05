@@ -4,7 +4,6 @@ import { findOrder, markOrderPaid } from "@/lib/catalogue-db";
 import { currentCustomer } from "@/lib/customer-auth";
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Local test payment verification is disabled outside development." }, { status: 403 });
   const account = await currentCustomer();
   if (!account) return NextResponse.json({ error: "Sign in to verify this order." }, { status: 401 });
   const keyId = process.env.RAZORPAY_KEY_ID;

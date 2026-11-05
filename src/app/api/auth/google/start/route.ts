@@ -4,12 +4,11 @@ import { SECURE_COOKIES, scopeFrom } from "@/lib/customer-auth";
 import { CALLBACK_PATH, OAUTH_STATE_COOKIE, googleConfig, newOAuthRequest, requestOrigin, safeNextPath } from "@/lib/google-oauth";
 
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Google sign-in is only enabled in local development for now." }, { status: 403 });
 
   const config = googleConfig();
-  if (!config) return NextResponse.json({ error: "Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.local." }, { status: 503 });
+  if (!config) return NextResponse.json({ error: "Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET." }, { status: 503 });
   const origin = requestOrigin(request);
-  if (!origin) return NextResponse.json({ error: "Open the site at http://localhost:3000 (or the dashboard at http://localhost:5173) to use Google sign-in." }, { status: 400 });
+  if (!origin) return NextResponse.json({ error: "Google sign-in isn't set up for this address." }, { status: 400 });
 
   const params = new URL(request.url).searchParams;
   const next = safeNextPath(params.get("next"));

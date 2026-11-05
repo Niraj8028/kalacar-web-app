@@ -5,7 +5,6 @@ import { listCustomers } from "@/lib/customers";
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET() {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   try { return NextResponse.json({ customers: await listCustomers() }, { headers: noStore }); }

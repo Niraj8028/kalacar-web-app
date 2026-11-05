@@ -1,9 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
+import { allowedOrigin } from "@/lib/public-origin";
 
-// Only these origins may receive Google's redirect. Each needs a matching
-// "Authorized redirect URI" (origin + CALLBACK_PATH) in Google Cloud Console.
-// localhost:3000 = shop site (Next.js); localhost:5173 = owner dashboard (Vite proxy).
-const ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:5173"];
 export const CALLBACK_PATH = "/api/auth/google/callback";
 export const OAUTH_STATE_COOKIE = "kalacar_google_oauth";
 
@@ -14,11 +11,9 @@ export function googleConfig() {
   return { clientId, clientSecret };
 }
 
-/** Origin the browser is on, taken from the Host header and checked against the allowlist. */
+/** Origin the browser is on, checked against the allowlist in public-origin.ts. */
 export function requestOrigin(request: Request) {
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
-  const origin = `http://${host}`;
-  return ALLOWED_ORIGINS.includes(origin) ? origin : null;
+  return allowedOrigin(request.headers);
 }
 
 /** Only allow same-site relative paths as the post-login destination. */

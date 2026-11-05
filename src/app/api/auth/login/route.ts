@@ -4,7 +4,6 @@ import { authenticateCustomer, createCustomerSession } from "@/lib/catalogue-db"
 import { CUSTOMER_COOKIE, SECURE_COOKIES } from "@/lib/customer-auth";
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Local customer accounts are disabled outside development." }, { status: 403 });
   let body: Record<string, unknown>;
   try { body = await request.json() as Record<string, unknown>; } catch { return NextResponse.json({ error: "Invalid form." }, { status: 400 }); }
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";

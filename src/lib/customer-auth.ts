@@ -16,14 +16,12 @@ export const cookieFor = (scope: AuthScope) => scope === "owner" ? OWNER_COOKIE 
 /** Cookies are HTTPS-only in production; localhost uses plain http in development. */
 export const SECURE_COOKIES = process.env.NODE_ENV === "production";
 export async function currentCustomer() {
-  if (process.env.NODE_ENV !== "development") return null;
   const token = (await cookies()).get(CUSTOMER_COOKIE)?.value;
   return token ? findCustomerBySession(token) : null;
 }
 
 /** The account signed in to the owner dashboard (separate from whoever is signed in to the shop). */
 export async function currentOwnerSession() {
-  if (process.env.NODE_ENV !== "development") return null;
   const token = (await cookies()).get(OWNER_COOKIE)?.value;
   return token ? findCustomerBySession(token) : null;
 }

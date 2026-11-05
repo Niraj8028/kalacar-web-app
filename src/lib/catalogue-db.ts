@@ -124,6 +124,11 @@ async function initialize() {
     starts_on DATE NULL, expires_on DATE NULL, active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Product photos live here so they survive redeploys and every server sees them.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_photos (
+    file_name VARCHAR(190) PRIMARY KEY, content_type VARCHAR(40) NOT NULL, bytes MEDIUMBLOB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [couponColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'coupon_id'");
   if (!couponColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN coupon_id INT UNSIGNED NULL AFTER gift_wrap_price, ADD COLUMN coupon_code VARCHAR(32) NULL AFTER coupon_id, ADD COLUMN discount INT UNSIGNED NOT NULL DEFAULT 0 AFTER coupon_code, ADD KEY orders_coupon_id (coupon_id)");
 }
@@ -131,6 +136,23 @@ async function initialize() {
 export async function ensureCatalogue() {
   ready ??= initialize();
   try { await ready; } catch (error) { ready = undefined; throw error; }
+}
+
+export async function savePhoto(fileName: string, contentType: string, bytes: Buffer) {
+  await ensureCatalogue();
+  await database().execute("INSERT INTO kalacar_photos (file_name,content_type,bytes) VALUES (?,?,?)", [fileName, contentType, bytes]);
+}
+
+export async function deletePhotos(fileNames: string[]) {
+  if (!fileNames.length) return;
+  await ensureCatalogue();
+  await database().query("DELETE FROM kalacar_photos WHERE file_name IN (?)", [fileNames]);
+}
+
+export async function findPhoto(fileName: string) {
+  await ensureCatalogue();
+  const [rows] = await database().execute<RowDataPacket[]>("SELECT content_type,bytes FROM kalacar_photos WHERE file_name=?", [fileName]);
+  return rows.length ? { contentType: String(rows[0].content_type), bytes: rows[0].bytes as Buffer } : null;
 }
 
 export type { VariantRow };

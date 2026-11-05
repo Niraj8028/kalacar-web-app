@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { deletePhotos, savePhoto } from "@/lib/catalogue-db";
 import { readVerifiedImage } from "@/lib/image-signature";
 import { parseProductAccordions } from "@/lib/product-accordions";
 import { parseColours } from "@/lib/colours";
@@ -59,22 +58,21 @@ export function parseProductForm(form: FormData): { error: string } | { value: P
   return { value: { name, deity, badge, tagline, placement, accordions, specs: specs.value, highlights: highlights.value, colours: colours.value, files } };
 }
 
-/** Writes verified photos to /public/uploads; returns their URLs and disk paths (for cleanup on failure). */
+const PHOTO_TYPES: Record<string, string> = { ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".avif": "image/avif" };
+
+/** Saves verified photos in the database; returns their URLs and names (for cleanup on failure). */
 export async function savePhotos(productId: string, files: File[]) {
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadDir, { recursive: true });
   const urls: string[] = []; const paths: string[] = [];
   try {
     for (const file of files) {
       const verified = await readVerifiedImage(file);
       if (!verified) throw new InvalidImageError();
       const fileName = `${productId}-${randomUUID()}${verified.extension}`;
-      const diskPath = path.join(uploadDir, fileName);
-      await writeFile(diskPath, verified.bytes, { flag: "wx" });
-      paths.push(diskPath); urls.push(`/uploads/${fileName}`);
+      await savePhoto(fileName, PHOTO_TYPES[verified.extension], Buffer.from(verified.bytes));
+      paths.push(fileName); urls.push(`/uploads/${fileName}`);
     }
   } catch (error) { await removeFiles(paths); throw error; }
   return { urls, paths };
 }
 
-export const removeFiles = (paths: string[]) => Promise.all(paths.map(file => unlink(file).catch(() => undefined)));
+export const removeFiles = (fileNames: string[]) => deletePhotos(fileNames).catch(() => undefined);

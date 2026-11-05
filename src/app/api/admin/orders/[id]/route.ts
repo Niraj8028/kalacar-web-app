@@ -5,7 +5,6 @@ import { cancelUnpaidOrder, getAdminOrderDetails, recordOrderRefund, setOrderTra
 const allowed = new Set(["processing", "dispatched", "completed"]);
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const { id } = await params;
@@ -31,7 +30,6 @@ const text = (value: unknown, max: number) => (typeof value === "string" ? value
  * There is deliberately no way to mark an order paid from the dashboard.
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const { id } = await params;

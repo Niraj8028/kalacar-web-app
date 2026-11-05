@@ -17,7 +17,6 @@ function fail(origin: string, next: string, reason: string) {
 }
 
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Google sign-in is only enabled in local development for now." }, { status: 403 });
   const config = googleConfig();
   const origin = requestOrigin(request);
   if (!config || !origin) return NextResponse.json({ error: "Google sign-in is not configured for this address." }, { status: 503 });

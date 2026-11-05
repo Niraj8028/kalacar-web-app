@@ -3,7 +3,6 @@ import { requireOwner } from "@/lib/customer-auth";
 import { getAdminMetrics } from "@/lib/catalogue-db";
 
 export async function GET() {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   try {

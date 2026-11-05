@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { publicHost } from "@/lib/public-origin";
 
 // CSRF protection for the API: a request that changes data (POST/PUT/PATCH/DELETE) must come from
 // a Kalacar page — the browser's Origin must match the host it is talking to. Session cookies are
@@ -11,7 +12,7 @@ const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const EXEMPT_PREFIXES = ["/api/webhooks/"];
 
 function sameOrigin(request: NextRequest) {
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const host = publicHost(request.headers);
   if (!host) return false;
   const origin = request.headers.get("origin");
   if (origin) {

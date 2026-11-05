@@ -5,7 +5,6 @@ import { getOrderStatusCounts, listOrders, type OrderStatusFilter } from "@/lib/
 const filters = new Set<OrderStatusFilter>(["all", "pending_payment", "processing", "on_hold", "dispatched", "completed", "cancelled", "refunded"]);
 
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Owner authentication is not configured." }, { status: 403 });
   const denied = await requireOwner();
   if (denied) return denied;
   const requestedFilter = new URL(request.url).searchParams.get("status") ?? "all";
