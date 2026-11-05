@@ -1,18 +1,18 @@
 import type mysql from "mysql2/promise";
 import type { RowDataPacket } from "mysql2/promise";
 import { addressDb } from "@/lib/catalogue-db";
+import { RESERVED_STATUSES, USED_STATUSES, limitStatus, oncePerCustomerError, usageLimitError } from "@/lib/coupon-uses";
 
 // Coupons are created in the owner dashboard and checked on the server at checkout.
 // Rules (owner decisions 2026-11-04): the discount applies to murtis only, not gift packaging;
-// a use is counted when the order is placed and given back if payment setup fails or the order is
-// cancelled; a refund does not give the use back; "once per customer" is on by default.
+// a use counts only once payment succeeds (owner decision 2026-11-05); until then an unpaid order
+// reserves it for Retry, and setup failure or cancelling releases it. A refund doesn't give the use
+// back. "Once per customer" is on by default.
 
 export type CouponType = "percent" | "fixed";
 export type CouponInput = { code: string; type: CouponType; amount: number; maxDiscount: number | null; minSpend: number; usageLimit: number | null; oncePerCustomer: boolean; startsOn: string | null; expiresOn: string | null; active: boolean };
 export type Coupon = CouponInput & { id: number };
 
-/** Order statuses that hold a coupon use. Failed payments can be retried, so they keep the use too. */
-const HOLDING = "('payment_pending','payment_failed','paid','paid_after_cancel','refunded')";
 const CODE = /^[A-Z0-9][A-Z0-9-]{2,31}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const money = (n: number) => `₹${n.toLocaleString("en-IN")}`;
@@ -42,6 +42,11 @@ export function discountFor(c: Coupon, itemsSubtotal: number, extras = 0) {
 
 type Check = { ok: true; coupon: Coupon; discount: number; description: string } | { ok: false; error: string };
 
+async function countUses(db: mysql.Pool | mysql.PoolConnection, where: string, values: Array<string | number>) {
+  const [[row]] = await db.execute<(RowDataPacket & { used: number | null; reserved: number | null })[]>(`SELECT COALESCE(SUM(status IN ${USED_STATUSES}),0) AS used, COALESCE(SUM(status IN ${RESERVED_STATUSES}),0) AS reserved FROM kalacar_orders WHERE ${where}`, values);
+  return { used: Number(row.used), reserved: Number(row.reserved) };
+}
+
 /** Checks a code for a cart. With a connection it locks the coupon row (use inside the checkout transaction). */
 async function check(db: mysql.Pool | mysql.PoolConnection, rawCode: string, userId: string | null, itemsSubtotal: number, extras: number, lock: boolean): Promise<Check> {
   const code = normalizeCode(rawCode);
@@ -55,12 +60,14 @@ async function check(db: mysql.Pool | mysql.PoolConnection, rawCode: string, use
   if (coupon.expiresOn && today > coupon.expiresOn) return { ok: false, error: `This coupon expired on ${prettyDate(coupon.expiresOn)}.` };
   if (itemsSubtotal < coupon.minSpend) return { ok: false, error: `Add ${money(coupon.minSpend - itemsSubtotal)} more of murtis to use this coupon (minimum ${money(coupon.minSpend)}).` };
   if (coupon.usageLimit !== null) {
-    const [[used]] = await db.execute<(RowDataPacket & { n: number })[]>(`SELECT COUNT(*) AS n FROM kalacar_orders WHERE coupon_id=? AND status IN ${HOLDING}`, [coupon.id]);
-    if (Number(used.n) >= coupon.usageLimit) return { ok: false, error: "This coupon has been fully used." };
+    const counts = await countUses(db, "coupon_id=?", [coupon.id]);
+    const error = usageLimitError(coupon.usageLimit, counts.used, counts.reserved);
+    if (error) return { ok: false, error };
   }
   if (coupon.oncePerCustomer && userId) {
-    const [[mine]] = await db.execute<(RowDataPacket & { n: number })[]>(`SELECT COUNT(*) AS n FROM kalacar_orders WHERE coupon_id=? AND user_id=? AND status IN ${HOLDING}`, [coupon.id, userId]);
-    if (Number(mine.n) > 0) return { ok: false, error: "You've already used this coupon." };
+    const mine = await countUses(db, "coupon_id=? AND user_id=?", [coupon.id, userId]);
+    const error = oncePerCustomerError(mine.used, mine.reserved);
+    if (error) return { ok: false, error };
   }
   const discount = discountFor(coupon, itemsSubtotal, extras);
   if (discount < 1) return { ok: false, error: "This coupon doesn't lower the price of this bag." };
@@ -99,20 +106,20 @@ export function parseCoupon(body: unknown): { value: CouponInput } | { error: st
   return { value: { code, type, amount, maxDiscount, minSpend, usageLimit, oncePerCustomer: b.oncePerCustomer !== false, startsOn, expiresOn, active: b.active !== false } };
 }
 
-type ListRow = CouponRow & { uses: number; paid_uses: number; given: number };
+type ListRow = CouponRow & { used_uses: number; reserved_uses: number; given: number };
 export async function listCoupons() {
   const db = await addressDb();
   const [rows] = await db.query<ListRow[]>(`SELECT c.id, c.code, c.type, c.amount, c.max_discount, c.min_spend, c.usage_limit, c.once_per_customer,
       DATE_FORMAT(c.starts_on,'%Y-%m-%d') AS starts_on, DATE_FORMAT(c.expires_on,'%Y-%m-%d') AS expires_on, c.active,
-      COALESCE(SUM(o.status IN ${HOLDING}), 0) AS uses,
-      COALESCE(SUM(o.status IN ('paid','paid_after_cancel','refunded')), 0) AS paid_uses,
-      COALESCE(SUM(CASE WHEN o.status IN ('paid','paid_after_cancel','refunded') THEN o.discount ELSE 0 END), 0) AS given
+      COALESCE(SUM(o.status IN ${USED_STATUSES}), 0) AS used_uses,
+      COALESCE(SUM(o.status IN ${RESERVED_STATUSES}), 0) AS reserved_uses,
+      COALESCE(SUM(CASE WHEN o.status IN ${USED_STATUSES} THEN o.discount ELSE 0 END), 0) AS given
     FROM kalacar_coupons c LEFT JOIN kalacar_orders o ON o.coupon_id=c.id GROUP BY c.id ORDER BY c.created_at DESC`);
   const today = todayIST();
   return rows.map(r => {
-    const c = fromRow(r); const uses = Number(r.uses);
-    const status = !c.active ? "off" : c.expiresOn && today > c.expiresOn ? "expired" : c.startsOn && today < c.startsOn ? "scheduled" : c.usageLimit !== null && uses >= c.usageLimit ? "used_up" : "active";
-    return { ...c, uses, paidUses: Number(r.paid_uses), discountGiven: Number(r.given), status, description: describeCoupon(c) };
+    const c = fromRow(r); const used = Number(r.used_uses); const reserved = Number(r.reserved_uses);
+    const status = !c.active ? "off" : c.expiresOn && today > c.expiresOn ? "expired" : c.startsOn && today < c.startsOn ? "scheduled" : limitStatus(c.usageLimit, used, reserved);
+    return { ...c, used, reserved, discountGiven: Number(r.given), status, description: describeCoupon(c) };
   });
 }
 
