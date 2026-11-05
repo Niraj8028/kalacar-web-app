@@ -216,17 +216,19 @@ export function AddToBagButton({ id, variantId, quantity = 1, className = "add-b
   const { add, canAdd, openDrawer, products, colourOf } = useCart();
   const product = products.find(item => item.id === id);
   const stock = (product && colourOf(product, variantId)?.stock) ?? 0;
-  const unavailable = disabled || !canAdd(id, variantId);
+  const soldOut = disabled || stock < 1;
+  const allInBag = !soldOut && !canAdd(id, variantId);
   return (
     <button
       className={className}
       type="button"
-      disabled={unavailable}
+      disabled={soldOut}
       onClick={() => {
-        if (add(id, variantId, quantity)) openDrawer();
+        if (allInBag) openDrawer();
+        else if (add(id, variantId, quantity)) openDrawer();
       }}
     >
-      {!unavailable ? label : stock > 0 ? "In your bag" : "Out of stock"}
+      {soldOut ? "Out of stock" : allInBag ? "In your bag" : label}
     </button>
   );
 }

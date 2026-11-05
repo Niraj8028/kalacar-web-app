@@ -87,7 +87,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
           </div>
           <p className={`stock-message ${stockMessage.tone}`} role="status">{stockMessage.text}</p>
           <div className="buy-buttons">
-            <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" disabled={canBuy < 1} label="Add to bag" />
+            <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" label="Add to bag" />
             <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}>Buy now</button>
           </div>
           <DeliveryLine />

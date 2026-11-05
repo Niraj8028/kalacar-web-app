@@ -10,6 +10,7 @@ import { useCart } from "@/components/cart-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
 import { AddressFields, addressSummary, emptyAddress, toDraft } from "@/components/address-fields";
 import type { AddressDraft, SavedAddress } from "@/components/address-fields";
+import { OrderConfirmation } from "@/components/order-confirmation";
 import { DeliveryLine } from "@/components/product-facts";
 import { BagIcon, External } from "@/components/icons";
 
@@ -62,6 +63,7 @@ export default function BagFlow() {
   const { lines, resolved, subtotal, clear, catalogueLoading, catalogueError, giftOffer, wantGift, setWantGift } = useCart();
   const router = useRouter();
   const [notice, setNotice] = useState("");
+  const [paidOrderId, setPaidOrderId] = useState("");
   const giftTotal = giftOffer && wantGift ? giftOffer.price : 0;
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [couponNote, setCouponNote] = useState("");
@@ -139,8 +141,8 @@ export default function BagFlow() {
   }, [savedCheckout?.orderId, account?.email]);
 
   /** With the bag emptied, the confirmation screen shows. If it still holds other items, a notice shows instead. */
-  function confirmPaid(message: string, bagCleared: boolean) {
-    if (bagCleared) setSuccess(message); else setNotice(message);
+  function confirmPaid(message: string, bagCleared: boolean, orderId: string) {
+    if (bagCleared) { setPaidOrderId(orderId); setSuccess(message); } else setNotice(message);
   }
 
   async function syncSavedCheckout(saved = savedCheckout, quiet = false, clearCurrentCart = true) {
@@ -154,7 +156,7 @@ export default function BagFlow() {
       setPaymentStatus(result.status || "payment_pending");
       if (result.status === "paid") {
         localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (clearCurrentCart) { clear(); setWantGift(false); }
-        setError(""); confirmPaid(`Payment confirmed. Order ${saved.orderId.slice(0, 8)} is recorded.`, clearCurrentCart);
+        setError(""); confirmPaid(`Payment confirmed. Order ${saved.orderId.slice(0, 8)} is recorded.`, clearCurrentCart, saved.orderId);
       } else if (!quiet) {
         setError(`The order is still saved as ${result.status?.replaceAll("_", " ")}. Check your account or retry this same order.`);
       } else {
@@ -177,7 +179,7 @@ export default function BagFlow() {
       if (!response.ok) throw new Error(retry.error || "Could not reopen payment.");
       if (retry.status === "paid") {
         localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (sameItems) { clear(); setWantGift(false); }
-        setPaymentStatus("paid"); confirmPaid(`This order is already paid. Order ${saved.orderId.slice(0, 8)} is recorded.`, sameItems);
+        setPaymentStatus("paid"); confirmPaid(`This order is already paid. Order ${saved.orderId.slice(0, 8)} is recorded.`, sameItems, saved.orderId);
         return;
       }
       if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
@@ -207,7 +209,7 @@ export default function BagFlow() {
       const confirmation = `Payment confirmed in test mode. Order ${orderId.slice(0, 8)} is recorded.`;
       localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft();
       setVerificationData(null); if (clearBag) { clear(); setWantGift(false); } checkoutKey.current = { fingerprint: "", value: "" };
-      confirmPaid(confirmation, clearBag);
+      confirmPaid(confirmation, clearBag, orderId);
     } catch (verificationError) {
       setVerificationData({ orderId, payment });
       setError(verificationError instanceof Error ? verificationError.message : "Payment verification is pending. Keep this page open and retry.");
@@ -275,6 +277,8 @@ export default function BagFlow() {
     </div>}
   </div>;
   const help = <a className="bag-help" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20need%20help%20with%20my%20order%20or%20payment." target="_blank" rel="noreferrer">Need help? WhatsApp +91 88306 46308 <External /></a>;
+
+  if (showSuccess && paidOrderId) return <div className="bag-page"><OrderConfirmation orderId={paidOrderId} email={account?.email} /></div>;
 
   return <div className="bag-page">
     <p className="eyebrow">YOUR SELECTION</p>

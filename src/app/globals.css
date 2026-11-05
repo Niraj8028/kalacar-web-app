@@ -808,3 +808,28 @@ button { color: inherit; }
 .account-bag-link b { padding: 1px 7px; border-radius: 999px; background: var(--surface-soft); font-size: 11px; font-weight: 600; }
 .account-views { flex-wrap: wrap; }
 @media (max-width: 860px) { .bag-page-grid { grid-template-columns: minmax(0, 1fr); } .bag-page-side { position: static; } .bag-page .bag-line { grid-template-columns: 84px minmax(0, 1fr) auto; } .bag-page .bag-line-image { width: 84px; height: 84px; } .account-bag-link { margin-left: 0; } }
+
+/* Order confirmation */
+.order-confirmed { display: grid; gap: 20px; }
+.order-confirmed-head { display: grid; justify-items: center; gap: 8px; padding: 12px 0 4px; text-align: center; }
+.order-confirmed-mark { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #e5efe2; color: #315b35; }
+.order-confirmed-head h1 { margin: 4px 0 0; font: 400 clamp(28px, 4vw, 38px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; outline: none; }
+.order-confirmed-head p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.order-confirmed-head strong { color: var(--ink); letter-spacing: .03em; }
+.order-confirmed-head .order-confirmed-test { padding: 5px 10px; border: 1px solid var(--gold); background: var(--surface-soft); color: var(--ink); font-size: 12px; }
+.order-confirmed-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.order-confirmed-card { padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.order-confirmed-card h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.order-confirmed-card .order-lines { border-top: 0; padding-top: 0; }
+.order-confirmed-total { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 0 18px; font-size: 15px; }
+.order-confirmed-total strong { font-size: 20px; }
+.order-confirmed-address { margin: 0; font-size: 14px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.order-next { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; counter-reset: next; }
+.order-next li { position: relative; display: grid; gap: 2px; padding-left: 36px; counter-increment: next; font-size: 14px; }
+.order-next li::before { content: counter(next); position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-soft); color: var(--ink); font-size: 13px; font-weight: 600; }
+.order-next span { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.order-confirmed-actions { display: grid; justify-items: center; gap: 12px; }
+.order-confirmed-actions .checkout-demo-button { width: auto; min-width: 240px; margin: 0; padding: 0 22px; border-radius: 6px; color: #fffdfa; }
+:root[data-theme="dark"] .order-confirmed-actions .checkout-demo-button { color: #1c1712; }
+:root[data-theme="dark"] .order-confirmed-mark { background: #2c3a2b; color: #bcd9b5; }
+@media (max-width: 760px) { .order-confirmed-grid { grid-template-columns: minmax(0, 1fr); } }
