@@ -542,7 +542,7 @@ export async function listOrders(filter: OrderStatusFilter = "all") {
   return Promise.all(orders.map(async order => {
     const [items] = await database().execute<(RowDataPacket & { product_name: string; variant_name: string | null; quantity: number })[]>("SELECT product_name,variant_name,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
     const status = statusLabel(order.status);
-    return { rawStatus: order.status, id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, item: items.map(row => `${row.product_name}${row.variant_name && row.variant_name !== "Standard" ? ` (${row.variant_name})` : ""} · ${row.quantity}`).join(", ") };
+    return { rawStatus: order.status, id: order.id, date: order.created_at, customer: order.customer_name, email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, total: Number(order.amount), status, fulfillmentStatus: order.fulfillment_status, trackingNote: order.tracking_note ?? "", item: items.map(row => `${row.product_name}${row.variant_name && row.variant_name !== "Standard" ? ` (${row.variant_name})` : ""} · ${row.quantity}`).join(", ") };
   }));
 }
 
