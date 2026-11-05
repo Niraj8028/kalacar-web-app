@@ -600,10 +600,12 @@ export async function getAdminMetrics() {
   }
 }
 
-export async function updateOrderFulfillment(id: string, fulfillmentStatus: "processing" | "dispatched" | "completed") {
+export type FulfillmentStatus = "unfulfilled" | "processing" | "dispatched" | "completed";
+
+/** The owner may set any delivery status on a paid order, and go back to correct a mistake. Refuses if it changed since the owner last saw it. */
+export async function updateOrderFulfillment(id: string, fulfillmentStatus: FulfillmentStatus, expected: FulfillmentStatus) {
   await ensureCatalogue();
-  const priorStatuses = { processing: ["unfulfilled", "processing"], dispatched: ["processing", "dispatched"], completed: ["dispatched", "completed"] }[fulfillmentStatus];
-  const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET fulfillment_status=? WHERE id=? AND status='paid' AND fulfillment_status IN (?,?)", [fulfillmentStatus, id, ...priorStatuses]);
+  const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET fulfillment_status=? WHERE id=? AND status='paid' AND fulfillment_status=?", [fulfillmentStatus, id, expected]);
   return result.affectedRows > 0;
 }
 
