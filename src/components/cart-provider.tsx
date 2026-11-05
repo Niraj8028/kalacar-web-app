@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { BagIcon } from "@/components/icons";
 import type { StoreColour, StoreItem } from "@/data/catalogue";
 
 /** A cart line is one colour of one product. Old saved carts have no variantId: they use the first colour. */
@@ -23,7 +23,15 @@ type CartContextValue = {
   catalogueLoading: boolean;
   catalogueError: string;
   clear: () => void;
+  drawerView: DrawerView | null;
+  openDrawer: (view: DrawerView) => void;
+  closeDrawer: (leaveHistory?: boolean) => void;
 };
+
+export type DrawerView = "bag" | "checkout";
+const RETURN_KEY = "kalacar.checkout-return.v1";
+/** Remember to reopen checkout after signing in. Only honoured for 15 minutes. */
+export function rememberCheckoutReturn() { try { sessionStorage.setItem(RETURN_KEY, String(Date.now())); } catch { /* storage unavailable */ } }
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "kalacar-demo-cart-v1";
@@ -35,6 +43,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<StoreItem[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState("");
+  const [drawerView, setDrawerView] = useState<DrawerView | null>(null);
+  const drawerOpen = useRef(false);
+
+  // Opening adds a history step, so a phone's Back button closes the drawer instead of leaving the page.
+  const openDrawer = useCallback((view: DrawerView) => {
+    if (!drawerOpen.current && window.location.pathname !== "/cart") window.history.pushState({ kalacarDrawer: true }, "");
+    drawerOpen.current = true;
+    setDrawerView(view);
+  }, []);
+  const closeDrawer = useCallback((leaveHistory = false) => {
+    drawerOpen.current = false;
+    setDrawerView(null);
+    if (!leaveHistory && (window.history.state as { kalacarDrawer?: boolean } | null)?.kalacarDrawer) window.history.back();
+  }, []);
+  useEffect(() => {
+    const onHistory = () => { if (!(window.history.state as { kalacarDrawer?: boolean } | null)?.kalacarDrawer) { drawerOpen.current = false; setDrawerView(null); } };
+    window.addEventListener("popstate", onHistory);
+    return () => window.removeEventListener("popstate", onHistory);
+  }, []);
+  useEffect(() => {
+    try {
+      const at = Number(sessionStorage.getItem(RETURN_KEY));
+      if (!at || window.location.pathname.startsWith("/account")) return;
+      sessionStorage.removeItem(RETURN_KEY);
+      if (Date.now() - at < 15 * 60 * 1000) window.setTimeout(() => openDrawer("checkout"));
+    } catch { /* storage unavailable */ }
+  }, [openDrawer]);
 
   useEffect(() => {
     let active = true;
@@ -136,8 +171,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return Boolean(colour) && inCart(lines, id, colour!.id, products) < colour!.stock;
     };
     const clear = () => setLines([]);
-    return { lines, resolved, count, subtotal, add, setQuantity, remove, changeColour, canAdd, colourOf, products, clear, catalogueLoading, catalogueError };
-  }, [lines, products, add, setQuantity, remove, changeColour, colourOf, inCart, catalogueLoading, catalogueError]);
+    return { lines, resolved, count, subtotal, add, setQuantity, remove, changeColour, canAdd, colourOf, products, clear, catalogueLoading, catalogueError, drawerView, openDrawer, closeDrawer };
+  }, [lines, products, add, setQuantity, remove, changeColour, colourOf, inCart, catalogueLoading, catalogueError, drawerView, openDrawer, closeDrawer]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -148,11 +183,8 @@ export function useCart() {
   return cart;
 }
 
-const CheckIcon = () => <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 8.5 6.5 11.5 12.5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-
 export function AddToBagButton({ id, variantId, quantity = 1, className = "add-button", disabled = false, label = "Add to bag" }: { id: string; variantId?: string; quantity?: number; className?: string; disabled?: boolean; label?: string }) {
-  const { add, canAdd } = useCart();
-  const [added, setAdded] = useState(false);
+  const { add, canAdd, openDrawer } = useCart();
   const unavailable = disabled || !canAdd(id, variantId);
   return (
     <button
@@ -160,22 +192,18 @@ export function AddToBagButton({ id, variantId, quantity = 1, className = "add-b
       type="button"
       disabled={unavailable}
       onClick={() => {
-        if (add(id, variantId, quantity)) { setAdded(true); window.setTimeout(() => setAdded(false), 1500); }
+        if (add(id, variantId, quantity)) openDrawer("bag");
       }}
     >
-      {unavailable ? "Out of stock" : added ? <><CheckIcon /> Added</> : label}
+      {unavailable ? "Out of stock" : label}
     </button>
   );
 }
 
 export function CartLink() {
-  const { count } = useCart();
-  return (
-    <Link className="bag-link" href="/cart" aria-label={`Shopping bag, ${count} ${count === 1 ? "item" : "items"}`}>
-      <svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M5 8h14l1 12H4L5 8Z" /><path d="M9 9V6a3 3 0 0 1 6 0v3" />
-      </svg>
-      <span>Bag{count > 0 ? ` (${count})` : ""}</span>
-    </Link>
-  );
+  const { count, openDrawer } = useCart();
+  return <button className="bag-link" type="button" onClick={() => openDrawer("bag")} aria-label={`Open your bag, ${count} ${count === 1 ? "item" : "items"}`}>
+    <BagIcon size={21} />
+    {count > 0 && <span className="bag-link-count">{count > 99 ? "99+" : count}</span>}
+  </button>;
 }

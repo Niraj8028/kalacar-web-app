@@ -2,9 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AddToBagButton, useCart } from "@/components/cart-provider";
+import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
 import { DeliveryLine, ProductHighlights, SpecCards } from "@/components/product-facts";
@@ -17,8 +16,7 @@ const savePercent = (price: number, regular: number) => regular > price ? Math.r
 
 /** `initialColour` comes from ?colour= so a shared link (or "change" from the cart) opens that colour. */
 export default function ProductDetailClient({ slug, initialColour = "" }: { slug: string; initialColour?: string }) {
-  const router = useRouter();
-  const { products, catalogueLoading, catalogueError, add, lines } = useCart();
+  const { products, catalogueLoading, catalogueError, add, lines, openDrawer } = useCart();
   const item: StoreItem | undefined = products.find(product => product.id === slug);
   const [chosenId, setChosenId] = useState(initialColour);
   const [imageIndex, setImageIndex] = useState(0);
@@ -41,11 +39,11 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
   };
   const stockMessage = !colour || colour.stock < 1 ? { tone: "out", text: colours.length > 1 ? `${colour?.name ?? "This colour"} is out of stock — try another colour.` : "Out of stock" }
     : colour.stock <= LOW_STOCK ? { tone: "low", text: `Only ${colour.stock} left — order soon` } : { tone: "ok", text: "In stock" };
-  const buyNow = () => { if (canBuy < 1 && inCart < 1) return; if (canBuy > 0) add(item.id, colour.id, qty); router.push("/cart"); };
+  const buyNow = () => { if (canBuy < 1 && inCart < 1) return; if (canBuy > 0) add(item.id, colour.id, qty); openDrawer("checkout"); };
 
   return <main className="product-page">
     {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Confirm this database product’s details, price, and stock before launch. Payments remain in test mode.</p>}
-    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><div className="detail-header-links"><Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></div></header>
+    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><div className="detail-header-links"><Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link><CartLink /><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></div></header>
     <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span>/</span><Link href="/#catalogue">Murtis</Link><span>/</span><span>{item.name}</span></nav>
     <section className="detail-layout">
       <div className="detail-gallery">
