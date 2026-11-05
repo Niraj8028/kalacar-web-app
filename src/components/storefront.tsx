@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/theme-toggle";
 import { AddToBagButton, CartLink } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
-import { ArrowRight, Search } from "@/components/icons";
+import { ArrowRight, Search, UserCircle } from "@/components/icons";
 
 export default function Storefront() {
   const [products, setProducts] = useState<StoreItem[]>([]);
@@ -68,7 +68,7 @@ export default function Storefront() {
         </nav>
 
         <div className="header-tools">
-          <Link className="account-link" href="/account">Account</Link>
+          <Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link>
           <label className="header-search">
             <Search />
             <input

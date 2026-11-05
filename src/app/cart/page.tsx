@@ -9,7 +9,7 @@ import { useCart } from "@/components/cart-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
 import { AddressFields, addressSummary, emptyAddress, toDraft } from "@/components/address-fields";
 import type { AddressDraft, SavedAddress } from "@/components/address-fields";
-import { ArrowLeft, ArrowRight, External } from "@/components/icons";
+import { ArrowLeft, ArrowRight, External, UserCircle } from "@/components/icons";
 
 const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 
@@ -253,7 +253,7 @@ export default function CartPage() {
     <main className="cart-page">
       <header className="detail-header">
         <Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link>
-        <div className="detail-header-links"><Link className="back-to-shop" href="/account">Account & orders</Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></div>
+        <div className="detail-header-links"><Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></div>
       </header>
       <section className="cart-content">
         <p className="eyebrow">YOUR SELECTION</p>

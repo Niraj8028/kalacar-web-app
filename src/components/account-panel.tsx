@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import AddressBook from "@/components/address-book";
-import { ArrowLeft, External } from "@/components/icons";
+import { ArrowLeft, CheckMark, External } from "@/components/icons";
 
 type User = { id: string; name: string; email: string; phone: string };
 type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; variant?: string; price: number; quantity: number }>; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number };
 type CheckoutOrder = { orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const noSubscribe = () => () => {};
+const orderDate = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
+const DELIVERY_STEPS = ["Order placed", "Preparing", "Dispatched", "Delivered"];
+const deliveryStep = (status: string) => ({ dispatched: 2, completed: 3 } as Record<string, number>)[status] ?? 1;
 const waLink = (orderId?: string) => `https://wa.me/918830646308?text=${encodeURIComponent(orderId ? `Hi Kalacar, I need help with order ${orderId}. Please check its payment or delivery status.` : "Hi Kalacar, I have a question about an order.")}`;
 
 export default function AccountPanel() {
@@ -18,6 +21,7 @@ export default function AccountPanel() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [showEmail, setShowEmail] = useState(false);
+  const [view, setView] = useState<"orders" | "addresses">("orders");
   // Where to return after sign-in (e.g. back to the bag). The server renders the default, so hydration matches.
   const nextPath = useSyncExternalStore(noSubscribe, () => { const value = new URLSearchParams(window.location.search).get("next"); return value && /^\/(?!\/)/.test(value) ? value : "/account"; }, () => "/account");
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
@@ -138,8 +142,8 @@ export default function AccountPanel() {
     <section className="account-content">
       <p className="eyebrow">KALACAR CUSTOMER ACCOUNT</p>
       <h1>{user ? `Namaste, ${user.name.split(" ")[0]}` : "Your orders, in one place."}</h1>
-      <p className="account-lede">Payment status and order records stay attached to your account, even if you close the payment window.</p>
-      <p className="account-demo-banner">LOCAL DEVELOPMENT · Razorpay test mode only. No live payment is taken.</p>
+      <p className="account-lede">{user ? "Track your orders and manage your delivery addresses." : "Sign in to track your orders and save delivery addresses."}</p>
+      <p className="account-demo-banner">Test mode: no real payment is taken.</p>
       {error && <p className="account-message error" role="alert">{error}</p>}{notice && <p className="account-message" role="status">{notice}</p>}
       {!user ? <div className="account-card">
         <a className="google-signin primary" href={`/api/auth/google/start?next=${encodeURIComponent(nextPath)}`}><svg aria-hidden="true" viewBox="0 0 18 18" width="18" height="18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>Continue with Google</a>
@@ -154,24 +158,34 @@ export default function AccountPanel() {
           <button className="checkout-demo-button" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
         </form>
         </div>}
-      </div> : <div className="account-card">
-        <div className="account-profile"><div><strong>{user.name}</strong><span>{user.email}{user.phone ? ` · ${user.phone}` : ""}</span></div><button type="button" className="account-signout" onClick={() => void logout()}>Sign out</button></div>
-        <AddressBook defaultName={user.name} defaultPhone={user.phone} />
-        <h2 className="account-orders-title">Your orders</h2>
-        {orders.length === 0 ? <p className="empty-orders">No orders yet. Your checkout orders will appear here.</p> : <div className="account-orders">{orders.map(order => {
+      </div> : <>
+        <div className="account-card account-profile-card">
+          <span className="account-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase()}</span>
+          <div className="account-profile-text"><strong>{user.name}</strong><span>{user.email}</span>{user.phone && <span>{user.phone}</span>}</div>
+          <button type="button" className="account-signout" onClick={() => void logout()}>Sign out</button>
+        </div>
+        <div className="account-views" role="group" aria-label="Account sections">
+          <button type="button" className={view === "orders" ? "selected" : ""} aria-pressed={view === "orders"} onClick={() => setView("orders")}>Orders{orders.length > 0 && <b>{orders.length}</b>}</button>
+          <button type="button" className={view === "addresses" ? "selected" : ""} aria-pressed={view === "addresses"} onClick={() => setView("addresses")}>Addresses</button>
+        </div>
+        <div className="account-card" hidden={view !== "addresses"}><AddressBook defaultName={user.name} defaultPhone={user.phone} /></div>
+        <div hidden={view !== "orders"}>
+        {orders.length === 0 ? <div className="account-card account-empty"><p>You haven&apos;t placed an order yet.</p><Link className="checkout-demo-button" href="/#catalogue">Browse murtis</Link></div> : <div className="account-orders">{orders.map(order => {
           const status = order.status.replaceAll("_", " ");
+          const step = deliveryStep(order.fulfillmentStatus);
           return <article className="account-order" key={order.id}>
-            <div className="order-heading"><div><span>Order {order.id.slice(0, 8).toUpperCase()}</span><small>{new Date(order.createdAt).toLocaleString("en-IN")}</small></div><strong>{money(order.amount)}</strong></div>
-            <p>{order.items.map(item => `${item.name}${item.variant && item.variant !== "Standard" ? ` (${item.variant})` : ""} × ${item.quantity}`).join(" · ")}{order.giftWrap && ` · Gift packaging${order.giftWrapPrice ? ` ${money(order.giftWrapPrice)}` : ""}`}{order.couponCode && order.discount ? ` · Coupon ${order.couponCode} −${money(order.discount)}` : ""}</p>
-            {order.status === "paid" && <p className="customer-fulfillment-status">Delivery progress: {({ unfulfilled: "Preparing for packing", processing: "Being prepared", dispatched: "Dispatched", completed: "Delivered" } as Record<string, string>)[order.fulfillmentStatus] || "Being prepared"}</p>}
+            <div className="order-heading"><div><span>Order {order.id.slice(0, 8).toUpperCase()}</span><small>{orderDate(order.createdAt)}</small></div><div className="order-heading-side"><strong>{money(order.amount)}</strong><span className={`order-status ${order.status === "paid" ? "paid" : ["refunded", "cancelled"].includes(order.status) ? "closed" : "pending"}`}>{({ paid_after_cancel: "On hold", payment_pending: "Awaiting payment" } as Record<string, string>)[order.status] ?? status}</span></div></div>
+            <ul className="order-lines">{order.items.map((item, index) => <li key={`${item.id}-${index}`}><span>{item.name}{item.variant && item.variant !== "Standard" ? ` (${item.variant})` : ""}</span><span>× {item.quantity}</span></li>)}{order.giftWrap && <li><span>Gift packaging</span>{order.giftWrapPrice ? <span>{money(order.giftWrapPrice)}</span> : null}</li>}{order.couponCode && order.discount ? <li><span>Coupon {order.couponCode}</span><span>−{money(order.discount)}</span></li> : null}</ul>
+            {order.status === "paid" && <ol className="delivery-steps" aria-label={`Delivery progress: ${DELIVERY_STEPS[step]}`}>{DELIVERY_STEPS.map((label, index) => <li key={label} className={index < step || order.fulfillmentStatus === "completed" ? "done" : index === step ? "current" : ""} aria-current={index === step ? "step" : undefined}><i>{(index < step || order.fulfillmentStatus === "completed") && <CheckMark />}</i><span>{label}</span></li>)}</ol>}
             {order.status === "paid" && order.trackingNote && <p className="customer-tracking"><span>Tracking</span>{order.trackingNote}</p>}
             {order.status === "refunded" && <p className="customer-order-note">Refunded {order.refundAmount ? money(order.refundAmount) : ""}{order.refundAmount && order.refundAmount < order.amount ? ` of ${money(order.amount)}` : ""}. Refunds usually reach your account in 5–7 working days.</p>}
             {(order.status === "cancelled" || order.status === "paid_after_cancel") && <p className="customer-order-note">{order.status === "cancelled" ? "This order was cancelled. No payment was taken." : "This order was cancelled, but a payment arrived afterwards. We’ll refund it; message us on WhatsApp if you have questions."}</p>}
             <details className="order-delivery"><summary>Delivery address</summary><p>{order.address} · PIN {order.pincode}</p></details>
-            <div className="order-status-row"><span className={`order-status ${order.status === "paid" ? "paid" : ["refunded", "cancelled"].includes(order.status) ? "closed" : "pending"}`}>{({ paid_after_cancel: "On hold", payment_pending: "Awaiting payment" } as Record<string, string>)[order.status] ?? status}</span><div>{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help <External /></a></div></div>
+            <div className="order-status-row">{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="retry-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help <External /></a></div>
           </article>;
         })}</div>}
-      </div>}
+        </div>
+      </>}
       <a className="account-contact" href={waLink()} target="_blank" rel="noreferrer">Questions about an order? WhatsApp Kalacar · +91 88306 46308</a>
     </section>
   </main>;

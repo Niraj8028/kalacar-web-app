@@ -599,3 +599,58 @@ button { color: inherit; }
 .store-announcement, .store-preview-note { margin: 0; padding: 9px 16px; text-align: center; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
 .store-announcement { background: var(--accent-dark); color: #fff; }
 .store-preview-note { background: var(--surface-soft); color: var(--ink); }
+
+.account-link { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; color: var(--ink); font-size: 12px; }
+.account-link:hover { color: var(--accent); }
+.account-content [hidden] { display: none; }
+.account-lede { font-size: 15px; }
+.account-demo-banner { margin: 14px 0; padding: 8px 12px; font-size: 12px; }
+.account-message { font-size: 13px; }
+.account-profile-card { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.account-avatar { display: grid; place-items: center; width: 52px; height: 52px; flex: none; border-radius: 50%; background: var(--accent); color: #fff; font-size: 22px; }
+.account-profile-text { display: grid; gap: 3px; flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.account-profile-text strong { font-size: 16px; }
+.account-profile-text span { color: var(--muted); font-size: 13px; }
+.account-signout, .sync-order-button, .retry-order-button { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+.account-views { display: flex; gap: 8px; margin: 22px 0 14px; }
+.account-views button { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; padding: 8px 16px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; }
+.account-views button.selected { border-color: var(--ink); background: var(--ink); color: var(--page); }
+.account-views b { padding: 1px 7px; border-radius: 999px; background: var(--surface-soft); color: var(--ink); font-size: 11px; font-weight: 600; }
+.account-empty { display: grid; justify-items: start; gap: 14px; margin-top: 0; font-size: 14px; }
+.account-orders { display: grid; gap: 14px; }
+.account-order { display: grid; gap: 14px; padding: clamp(16px, 3vw, 24px); border: 1px solid var(--line); background: var(--surface); }
+.account-order .order-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin: 0; }
+.account-order .order-heading span { font-size: 14px; font-weight: 600; }
+.account-order .order-heading small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.order-heading-side { display: grid; justify-items: end; gap: 6px; }
+.order-heading-side strong { font-size: 16px; }
+.order-heading-side .order-status { font-size: 11px; font-weight: 500; text-transform: capitalize; }
+.order-lines { display: grid; gap: 6px; margin: 0; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); list-style: none; font-size: 14px; }
+.order-lines li { display: flex; justify-content: space-between; gap: 14px; overflow-wrap: anywhere; }
+.order-lines li span:last-child { flex: none; color: var(--muted); }
+.delivery-steps { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 0; list-style: none; }
+.delivery-steps li { position: relative; display: grid; justify-items: center; gap: 6px; color: var(--muted); font-size: 11px; line-height: 1.25; text-align: center; }
+.delivery-steps li::before { content: ""; position: absolute; top: 10px; right: 50%; width: 100%; height: 2px; background: var(--line); }
+.delivery-steps li:first-child::before { display: none; }
+.delivery-steps li.done::before, .delivery-steps li.current::before { background: var(--accent); }
+.delivery-steps i { position: relative; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid var(--line); border-radius: 50%; background: var(--surface); }
+.delivery-steps .done i { border-color: var(--accent); background: var(--accent); color: #fff; }
+.delivery-steps .current i { border-color: var(--accent); }
+.delivery-steps .current, .delivery-steps .done { color: var(--ink); }
+.delivery-steps .current { font-weight: 600; }
+.customer-tracking { margin: 0; font-size: 13px; }
+.customer-order-note { margin: 0; font-size: 13px; }
+.order-delivery { font-size: 13px; }
+.order-delivery summary { min-height: 28px; cursor: pointer; }
+.order-delivery p { margin: 6px 0 0; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.account-order .order-status-row { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 8px; margin: 0; }
+.order-whatsapp { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; font-size: 13px; }
+.account-contact { font-size: 13px; }
+@media (max-width: 620px) { .shop-header .account-link span { display: none; } }
+.customer-tracking { font-size: 14px; }
+.customer-tracking span { font-size: 11px; }
+.account-order .order-status-row > * { margin: 0; text-align: left; }
+@media (max-width: 680px) {
+  .account-order .order-status-row { flex-direction: row; align-items: center; justify-content: flex-start; }
+  .account-order .order-status-row .retry-order-button, .account-order .order-status-row .sync-order-button { flex: 1 1 100%; text-align: center; }
+}
