@@ -1,5 +1,6 @@
 "use client";
 
+import { PolicyLinks } from "@/components/policy-page";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -185,6 +186,7 @@ export default function Storefront() {
         </Link>
         <p>Prices and availability reflect the current catalogue.</p>
         <a className="footer-whatsapp" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20have%20a%20question%20about%20an%20order." target="_blank" rel="noreferrer">WhatsApp · +91 88306 46308</a>
+        <PolicyLinks />
       </footer>
     </main>
   );

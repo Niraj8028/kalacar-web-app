@@ -561,3 +561,31 @@ button { color: inherit; }
 .coupon-applied .address-link { font-size: 12px; }
 .cart-discount span:last-child { color: var(--accent); }
 @media (max-width: 420px) { .coupon-applied { grid-template-columns: auto 1fr auto; } .coupon-applied .address-link { grid-column: 2 / -1; justify-self: end; } }
+
+/* Store policy pages */
+.policy-page { min-height: 100vh; background: var(--page); color: var(--ink); }
+.policy-content { max-width: 720px; margin: 0 auto; padding: 40px 18px 56px; }
+.policy-content h1 { margin: 6px 0 12px; font: 400 clamp(32px, 6vw, 46px)/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.policy-intro { margin: 0 0 18px; color: var(--muted); font-size: 16px; line-height: 1.6; }
+.policy-draft { margin: 0 0 28px; padding: 12px 14px; border: 1px solid #c2922e; background: rgba(194, 146, 46, .12); font-size: 13px; line-height: 1.5; }
+.policy-content section { padding: 20px 0; border-top: 1px solid var(--line); }
+.policy-content h2 { margin: 0 0 10px; font: 400 22px/1.25 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.policy-content p, .policy-content li { margin: 0 0 10px; font-size: 15px; line-height: 1.7; }
+.policy-content ul, .policy-content ol { margin: 0; padding-left: 22px; }
+.policy-content ul { list-style: disc; }
+.policy-content ol { list-style: decimal; }
+.policy-content a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.policy-confirm { padding: 1px 5px; background: #f6e3a8; color: #4c3700; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.policy-details summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 15px; font-weight: 600; }
+.policy-footer { padding: 22px 18px 32px; border-top: 1px solid var(--line); }
+.policy-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.policy-links a { display: inline-flex; align-items: center; min-height: 32px; font-size: 13px; text-decoration: underline; text-underline-offset: 2px; }
+.policy-footer .policy-links { justify-content: center; color: var(--muted); }
+.shop-footer .policy-links { grid-column: 1 / -1; color: #e5d8c6; }
+.checkout-policy-note { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.checkout-policy-note a { text-decoration: underline; text-underline-offset: 2px; }
+.google-signin.primary { max-width: 480px; min-height: 48px; font-size: 14px; font-weight: 600; }
+.account-signin-note { max-width: 480px; margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.account-signin-note a { text-decoration: underline; text-underline-offset: 2px; }
+.account-email-toggle { min-height: 44px; margin-top: 12px; padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; font-size: 13px; text-decoration: underline; text-underline-offset: 2px; }
+.account-email-area { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }

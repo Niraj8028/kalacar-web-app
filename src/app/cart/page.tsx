@@ -307,6 +307,7 @@ export default function CartPage() {
                   {error && <p className="demo-checkout-message" role="alert">{error}</p>}
                   {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
                   <button className="checkout-demo-button" type="submit" disabled={!account || busy || products.some(({ colour, quantity }) => colour.stock < quantity)}>{busy ? "Starting secure checkout…" : "Pay with Razorpay · Test mode"}</button>
+                  <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms">Terms</Link>. See <Link href="/shipping">Shipping</Link>, <Link href="/returns">Returns and refunds</Link> and <Link href="/privacy">Privacy</Link>.</p>
                   </>}
                 </form>}
               </aside>
