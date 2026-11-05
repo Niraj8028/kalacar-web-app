@@ -39,7 +39,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
     setChosenId(id); setImageIndex(0); setQuantity(1);
     try { const url = new URL(window.location.href); url.searchParams.set("colour", id); window.history.replaceState(null, "", url); } catch { /* address bar unchanged */ }
   };
-  const stockMessage = !colour || colour.stock < 1 ? { tone: "out", text: colours.length > 1 ? `${colour?.name ?? "This colour"} is out of stock — try another colour.` : "Out of stock" }
+  const stockMessage = !colour || colour.stock < 1 ? { tone: "out", text: colours.some(option => option.stock > 0) ? `${colour?.name ?? "This colour"} is out of stock. Try another colour.` : "This murti is currently out of stock." }
     : canBuy < 1 ? { tone: "low", text: `All ${colour.stock} available ${colour.stock === 1 ? "is" : "are"} in your bag.` }
     : colour.stock - inCart <= LOW_STOCK ? { tone: "low", text: `Only ${colour.stock - inCart} ${inCart > 0 ? "more available" : "left — order soon"}` } : { tone: "ok", text: "In stock" };
   // Add and Buy now only work for pieces not already in the bag; what's in the bag is reachable from the note below.

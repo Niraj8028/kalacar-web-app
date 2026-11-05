@@ -833,3 +833,6 @@ button { color: inherit; }
 :root[data-theme="dark"] .order-confirmed-actions .checkout-demo-button { color: #1c1712; }
 :root[data-theme="dark"] .order-confirmed-mark { background: #2c3a2b; color: #bcd9b5; }
 @media (max-width: 760px) { .order-confirmed-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.detail-add-button:disabled, .add-button:disabled { border-color: var(--disabled); background: var(--disabled); color: var(--muted); opacity: 1; cursor: not-allowed; }
+@media (max-width: 760px) { .detail-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .detail-header .account-link span { display: none; } .detail-header-links { gap: 6px; } .detail-header .wordmark small { display: none; } }
