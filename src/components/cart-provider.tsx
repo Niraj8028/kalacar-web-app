@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { BagIcon } from "@/components/icons";
@@ -23,15 +24,25 @@ type CartContextValue = {
   catalogueLoading: boolean;
   catalogueError: string;
   clear: () => void;
-  drawerView: DrawerView | null;
-  openDrawer: (view: DrawerView) => void;
+  drawerOpen: boolean;
+  openDrawer: () => void;
   closeDrawer: (leaveHistory?: boolean) => void;
+  giftOffer: GiftOffer | null;
+  wantGift: boolean;
+  setWantGift: (want: boolean) => void;
 };
 
-export type DrawerView = "bag" | "checkout";
-const RETURN_KEY = "kalacar.checkout-return.v1";
-/** Remember to reopen checkout after signing in. Only honoured for 15 minutes. */
-export function rememberCheckoutReturn() { try { sessionStorage.setItem(RETURN_KEY, String(Date.now())); } catch { /* storage unavailable */ } }
+export type GiftOffer = { price: number; title: string; description: string };
+const GIFT_KEY = "kalacar.want-gift.v1";
+
+function validLines(saved: unknown): CartLine[] {
+  if (!Array.isArray(saved)) return [];
+  return saved.filter((line): line is CartLine =>
+    Boolean(line) && typeof line.id === "string" && /^[a-z0-9-]{1,64}$/.test(line.id) &&
+    (line.variantId === undefined || (typeof line.variantId === "string" && /^[a-z0-9-]{1,80}$/.test(line.variantId))) &&
+    Number.isInteger(line.quantity) && line.quantity > 0,
+  );
+}
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "kalacar-demo-cart-v1";
@@ -43,33 +54,49 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<StoreItem[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState("");
-  const [drawerView, setDrawerView] = useState<DrawerView | null>(null);
-  const drawerOpen = useRef(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerRef = useRef(false);
+  const [giftOffer, setGiftOffer] = useState<GiftOffer | null>(null);
+  const [wantGift, setWantGiftState] = useState(false);
 
   // Opening adds a history step, so a phone's Back button closes the drawer instead of leaving the page.
-  const openDrawer = useCallback((view: DrawerView) => {
-    if (!drawerOpen.current && window.location.pathname !== "/cart") window.history.pushState({ kalacarDrawer: true }, "");
-    drawerOpen.current = true;
-    setDrawerView(view);
+  const openDrawer = useCallback(() => {
+    if (!drawerRef.current && window.location.pathname !== "/cart") window.history.pushState({ kalacarDrawer: true }, "");
+    drawerRef.current = true;
+    setDrawerOpen(true);
   }, []);
   const closeDrawer = useCallback((leaveHistory = false) => {
-    drawerOpen.current = false;
-    setDrawerView(null);
+    drawerRef.current = false;
+    setDrawerOpen(false);
     if (!leaveHistory && (window.history.state as { kalacarDrawer?: boolean } | null)?.kalacarDrawer) window.history.back();
   }, []);
   useEffect(() => {
-    const onHistory = () => { if (!(window.history.state as { kalacarDrawer?: boolean } | null)?.kalacarDrawer) { drawerOpen.current = false; setDrawerView(null); } };
+    const onHistory = () => { if (!(window.history.state as { kalacarDrawer?: boolean } | null)?.kalacarDrawer) { drawerRef.current = false; setDrawerOpen(false); } };
     window.addEventListener("popstate", onHistory);
     return () => window.removeEventListener("popstate", onHistory);
   }, []);
+
+  // The one bag: drawer, bag page and product pages all read this state, and other tabs follow through storage events.
   useEffect(() => {
-    try {
-      const at = Number(sessionStorage.getItem(RETURN_KEY));
-      if (!at || window.location.pathname.startsWith("/account")) return;
-      sessionStorage.removeItem(RETURN_KEY);
-      if (Date.now() - at < 15 * 60 * 1000) window.setTimeout(() => openDrawer("checkout"));
-    } catch { /* storage unavailable */ }
-  }, [openDrawer]);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      try { setLines(validLines(JSON.parse(event.newValue ?? "[]"))); } catch { setLines([]); }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const setWantGift = useCallback((want: boolean) => {
+    setWantGiftState(want);
+    try { if (want) sessionStorage.setItem(GIFT_KEY, "1"); else sessionStorage.removeItem(GIFT_KEY); } catch { /* storage unavailable */ }
+  }, []);
+  useEffect(() => {
+    let active = true;
+    try { if (sessionStorage.getItem(GIFT_KEY)) window.setTimeout(() => { if (active) setWantGiftState(true); }); } catch { /* storage unavailable */ }
+    const load = () => fetch("/api/settings", { cache: "no-store" }).then(r => r.json()).then((data: { giftWrap?: GiftOffer | null }) => { if (active) setGiftOffer(data.giftWrap ?? null); }).catch(() => undefined);
+    void load();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -90,14 +117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-      if (Array.isArray(saved)) {
-        const valid = saved.filter((line): line is CartLine =>
-          Boolean(line) && typeof line.id === "string" && /^[a-z0-9-]{1,64}$/.test(line.id) &&
-          (line.variantId === undefined || (typeof line.variantId === "string" && /^[a-z0-9-]{1,80}$/.test(line.variantId))) &&
-          Number.isInteger(line.quantity) && line.quantity > 0,
-        );
-        setLines(valid);
-      }
+      setLines(validLines(saved));
     } catch {
       localStorage.removeItem(STORAGE_KEY);
     }
@@ -105,7 +125,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
+    if (!ready) return;
+    // Skip identical writes, so a change that came from another tab isn't sent back to it.
+    const next = JSON.stringify(lines);
+    if (localStorage.getItem(STORAGE_KEY) !== next) localStorage.setItem(STORAGE_KEY, next);
   }, [lines, ready]);
 
   const colourOf = useCallback((product: StoreItem, variantId?: string) =>
@@ -136,8 +159,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const setQuantity = useCallback((key: string, quantity: number) => {
     if (quantity <= 0) { setLines(current => current.filter(line => lineKey(line) !== key)); return; }
-    setLines(current => current.map(line => lineKey(line) === key ? { ...line, quantity } : line));
-  }, []);
+    setLines(current => current.map(line => {
+      if (lineKey(line) !== key) return line;
+      const product = products.find(item => item.id === line.id);
+      const colour = product && colourOf(product, line.variantId);
+      // Never above live stock, but a lower quantity is always allowed.
+      return { ...line, quantity: colour && quantity > line.quantity ? Math.min(quantity, Math.max(line.quantity, colour.stock)) : quantity };
+    }));
+  }, [products, colourOf]);
 
   const remove = useCallback((key: string) => setLines(current => current.filter(line => lineKey(line) !== key)), []);
 
@@ -171,8 +200,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return Boolean(colour) && inCart(lines, id, colour!.id, products) < colour!.stock;
     };
     const clear = () => setLines([]);
-    return { lines, resolved, count, subtotal, add, setQuantity, remove, changeColour, canAdd, colourOf, products, clear, catalogueLoading, catalogueError, drawerView, openDrawer, closeDrawer };
-  }, [lines, products, add, setQuantity, remove, changeColour, colourOf, inCart, catalogueLoading, catalogueError, drawerView, openDrawer, closeDrawer]);
+    return { lines, resolved, count, subtotal, add, setQuantity, remove, changeColour, canAdd, colourOf, products, clear, catalogueLoading, catalogueError, drawerOpen, openDrawer, closeDrawer, giftOffer, wantGift, setWantGift };
+  }, [lines, products, add, setQuantity, remove, changeColour, colourOf, inCart, catalogueLoading, catalogueError, drawerOpen, openDrawer, closeDrawer, giftOffer, wantGift, setWantGift]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -184,7 +213,9 @@ export function useCart() {
 }
 
 export function AddToBagButton({ id, variantId, quantity = 1, className = "add-button", disabled = false, label = "Add to bag" }: { id: string; variantId?: string; quantity?: number; className?: string; disabled?: boolean; label?: string }) {
-  const { add, canAdd, openDrawer } = useCart();
+  const { add, canAdd, openDrawer, products, colourOf } = useCart();
+  const product = products.find(item => item.id === id);
+  const stock = (product && colourOf(product, variantId)?.stock) ?? 0;
   const unavailable = disabled || !canAdd(id, variantId);
   return (
     <button
@@ -192,18 +223,19 @@ export function AddToBagButton({ id, variantId, quantity = 1, className = "add-b
       type="button"
       disabled={unavailable}
       onClick={() => {
-        if (add(id, variantId, quantity)) openDrawer("bag");
+        if (add(id, variantId, quantity)) openDrawer();
       }}
     >
-      {unavailable ? "Out of stock" : label}
+      {!unavailable ? label : stock > 0 ? "In your bag" : "Out of stock"}
     </button>
   );
 }
 
+/** The top bar's bag button opens the full bag page. */
 export function CartLink() {
-  const { count, openDrawer } = useCart();
-  return <button className="bag-link" type="button" onClick={() => openDrawer("bag")} aria-label={`Open your bag, ${count} ${count === 1 ? "item" : "items"}`}>
+  const { count } = useCart();
+  return <Link className="bag-link" href="/cart" aria-label={`Open your bag, ${count} ${count === 1 ? "item" : "items"}`}>
     <BagIcon size={21} />
     {count > 0 && <span className="bag-link-count">{count > 99 ? "99+" : count}</span>}
-  </button>;
+  </Link>;
 }

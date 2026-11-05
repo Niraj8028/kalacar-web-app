@@ -1,19 +1,18 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { CouponBox, type AppliedCoupon } from "@/components/coupon-box";
-import { rememberCheckoutReturn, useCart } from "@/components/cart-provider";
+import { BagLines, GiftChoice, money } from "@/components/bag-lines";
+import { useCart } from "@/components/cart-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
 import { AddressFields, addressSummary, emptyAddress, toDraft } from "@/components/address-fields";
 import type { AddressDraft, SavedAddress } from "@/components/address-fields";
 import { DeliveryLine } from "@/components/product-facts";
-import { ArrowLeft, ArrowRight, BagIcon, CloseMark, External, GiftIcon } from "@/components/icons";
+import { BagIcon, External } from "@/components/icons";
 
-const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 
 type SavedCheckout = { fingerprint: string; idempotencyKey: string; orderId: string; razorpayOrderId: string; amount: number };
 const SAVED_CHECKOUT_KEY = "kalacar.pending-checkout.v1";
@@ -58,20 +57,11 @@ function loadRazorpay() {
   });
 }
 
-/** The bag and checkout, shown in the side drawer and on /cart. All prices and stock are decided again by the server at payment. */
-export default function BagFlow({ mode, active = true }: { mode: "drawer" | "page"; active?: boolean }) {
-  const { lines, resolved, subtotal, setQuantity, remove, changeColour, clear, canAdd, catalogueLoading, catalogueError, drawerView, openDrawer, closeDrawer } = useCart();
+/** The full bag page: items on the left, summary and checkout on the right. All prices and stock are decided again by the server at payment. */
+export default function BagFlow() {
+  const { lines, resolved, subtotal, clear, catalogueLoading, catalogueError, giftOffer, wantGift, setWantGift } = useCart();
   const router = useRouter();
-  const view = drawerView === "checkout" ? "checkout" : "bag";
   const [notice, setNotice] = useState("");
-  // Gift packaging offer comes from dashboard Settings; the server re-reads the price at checkout.
-  const [giftOffer, setGiftOffer] = useState<{ price: number; title: string; description: string } | null>(null);
-  const [wantGift, setWantGift] = useState(false);
-  useEffect(() => {
-    let active = true;
-    fetch("/api/settings", { cache: "no-store" }).then(r => r.json()).then((data: { giftWrap?: { price: number; title: string; description: string } | null }) => { if (active) setGiftOffer(data.giftWrap ?? null); }).catch(() => undefined);
-    return () => { active = false; };
-  }, []);
   const giftTotal = giftOffer && wantGift ? giftOffer.price : 0;
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [couponNote, setCouponNote] = useState("");
@@ -109,11 +99,9 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
     if (success && products.length > 0) setSuccess("");
   }, [success, products.length]);
 
-  // Runs each time the drawer opens, so signing in or out elsewhere is noticed. Addresses load once per
-  // account, so typed details and the chosen address stay when the drawer is closed and reopened.
+  // Addresses load once per account, so typed details and the chosen address stay.
   const addressesFor = useRef("");
   useEffect(() => {
-    if (!active) return;
     void fetch("/api/auth/session", { cache: "no-store" }).then(response => response.json()).then((data: { user: { name: string; email: string; phone: string } | null }) => {
       setAccount(data.user);
       if (data.user && addressesFor.current !== data.user.email) {
@@ -136,10 +124,10 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
       if (saved?.orderId && data.user) void syncSavedCheckout(saved, true);
     }).catch(() => undefined).finally(() => setAccountLoaded(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, []);
 
   useEffect(() => {
-    if (!active || !savedCheckout?.orderId || !account) return;
+    if (!savedCheckout?.orderId || !account) return;
     const onReturnToPage = () => {
       if (document.visibilityState !== "visible" || Date.now() - lastAutoSyncAt.current < 5000) return;
       lastAutoSyncAt.current = Date.now();
@@ -148,7 +136,7 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
     window.addEventListener("focus", onReturnToPage);
     document.addEventListener("visibilitychange", onReturnToPage);
     return () => { window.removeEventListener("focus", onReturnToPage); document.removeEventListener("visibilitychange", onReturnToPage); };
-  }, [active, savedCheckout?.orderId, account?.email]);
+  }, [savedCheckout?.orderId, account?.email]);
 
   /** With the bag emptied, the confirmation screen shows. If it still holds other items, a notice shows instead. */
   function confirmPaid(message: string, bagCleared: boolean) {
@@ -165,7 +153,7 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
       if (!response.ok) throw new Error(result.error || "Could not check payment status.");
       setPaymentStatus(result.status || "payment_pending");
       if (result.status === "paid") {
-        localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (clearCurrentCart) clear();
+        localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (clearCurrentCart) { clear(); setWantGift(false); }
         setError(""); confirmPaid(`Payment confirmed. Order ${saved.orderId.slice(0, 8)} is recorded.`, clearCurrentCart);
       } else if (!quiet) {
         setError(`The order is still saved as ${result.status?.replaceAll("_", " ")}. Check your account or retry this same order.`);
@@ -188,7 +176,7 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
       const retry = await response.json() as { status?: string; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
       if (!response.ok) throw new Error(retry.error || "Could not reopen payment.");
       if (retry.status === "paid") {
-        localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (sameItems) clear();
+        localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (sameItems) { clear(); setWantGift(false); }
         setPaymentStatus("paid"); confirmPaid(`This order is already paid. Order ${saved.orderId.slice(0, 8)} is recorded.`, sameItems);
         return;
       }
@@ -218,7 +206,7 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
       if (!result.ok || verification.status !== "paid") throw new Error(verification.error || "Payment is still being verified.");
       const confirmation = `Payment confirmed in test mode. Order ${orderId.slice(0, 8)} is recorded.`;
       localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft();
-      setVerificationData(null); if (clearBag) clear(); checkoutKey.current = { fingerprint: "", value: "" };
+      setVerificationData(null); if (clearBag) { clear(); setWantGift(false); } checkoutKey.current = { fingerprint: "", value: "" };
       confirmPaid(confirmation, clearBag);
     } catch (verificationError) {
       setVerificationData({ orderId, payment });
@@ -271,18 +259,7 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
   const total = subtotal - discount + giftTotal;
   const items = resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity }));
   const stockProblem = products.some(({ colour, quantity }) => colour.stock < quantity);
-  const leave = () => { if (mode === "drawer") closeDrawer(true); };
-  const signIn = () => {
-    rememberCheckoutReturn();
-    leave();
-    router.push(`/account?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-  };
-  const giftChoice = giftOffer && <label className={`gift-option${wantGift ? " selected" : ""}`}>
-    <input type="checkbox" checked={wantGift} onChange={e => setWantGift(e.target.checked)} />
-    <GiftIcon />
-    <span><b>{giftOffer.title}</b>{giftOffer.description && <small>{giftOffer.description}</small>}</span>
-    <strong>{giftOffer.price > 0 ? `+${money(giftOffer.price)}` : "Free"}</strong>
-  </label>;
+  const signIn = () => router.push("/account?next=%2Fcart");
   const totals = <div className="bag-totals">
     <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
     {discount > 0 && <div className="cart-discount"><span>Coupon {coupon?.code}</span><span>−{money(discount)}</span></div>}
@@ -297,106 +274,71 @@ export default function BagFlow({ mode, active = true }: { mode: "drawer" | "pag
       <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>
     </div>}
   </div>;
+  const help = <a className="bag-help" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20need%20help%20with%20my%20order%20or%20payment." target="_blank" rel="noreferrer">Need help? WhatsApp +91 88306 46308 <External /></a>;
 
-  return <div className={`bag-flow ${mode}`}>
-    <header className="bag-head">
-      {view === "checkout" && !showSuccess && products.length > 0
-        ? <button type="button" className="bag-back" onClick={() => openDrawer("bag")}><ArrowLeft /> Back to bag</button>
-        : <h2 id="bag-title"><BagIcon /> Your bag{products.length > 0 && <span className="bag-count">{products.reduce((sum, line) => sum + line.quantity, 0)}</span>}</h2>}
-      {view === "checkout" && !showSuccess && products.length > 0 && <h2 id="bag-title" className="bag-head-title">Checkout</h2>}
-      {mode === "drawer" && <button type="button" className="bag-close" aria-label="Close" onClick={() => closeDrawer()}><CloseMark /></button>}
-    </header>
-
-    <div className="bag-body">
-      <p className="bag-test-note">Test mode: no real payment is taken.</p>
-      {notice && <p className="account-message" role="status">{notice}</p>}
-      {unpaid}
-      {showSuccess ? <div className="bag-done" role="status">
-        <h3>Thank you</h3>
-        <p>{success}</p>
-        <Link className="checkout-demo-button" href="/account" onClick={leave}>View your orders</Link>
-        <Link className="bag-text-link" href="/#catalogue" onClick={leave}>Continue shopping</Link>
-      </div> : catalogueError ? <div className="bag-empty" role="alert">
-        <p>{catalogueError}</p><p>Your bag is saved in this browser. We can&apos;t confirm prices and stock right now, so checkout is unavailable.</p>
-      </div> : catalogueLoading ? <div className="bag-empty" role="status"><p>Checking current prices and stock…</p></div>
-      : products.length === 0 ? <div className="bag-empty">
-        <BagIcon size={34} />
-        <p>{lines.length ? "The items you saved are no longer available." : "Your bag is empty."}</p>
-        {lines.length > 0 && <button type="button" className="remove-button" onClick={clear}>Clear saved bag</button>}
-        <Link className="checkout-demo-button" href="/#catalogue" onClick={leave}>Browse murtis</Link>
-      </div> : view === "bag" ? <div className="bag-lines">
-        {products.map(({ key, item, colour, quantity }) => <article className="bag-line" key={key}>
-          <Link className="bag-line-image" href={`/products/${item.id}?colour=${colour.id}`} onClick={leave}>
-            <Image src={colour.gallery[0] ?? item.image} alt={`${item.name}${item.variants.length > 1 ? ` in ${colour.name}` : ""}`} fill sizes="88px" />
-          </Link>
-          <div className="bag-line-info">
-            <h3><Link href={`/products/${item.id}?colour=${colour.id}`} onClick={leave}>{item.name}</Link></h3>
-            {item.variants.length > 1 && <label className="cart-colour"><span className="colour-dot" style={{ background: colour.swatch }} aria-hidden="true" /><span className="sr-only">Colour</span>
-              <select aria-label={`Colour for ${item.name}`} value={colour.id} onChange={e => changeColour(key, e.target.value)}>
-                {item.variants.map(option => <option key={option.id} value={option.id} disabled={option.stock < 1 && option.id !== colour.id}>{option.name}{option.stock < 1 ? " — sold out" : option.price !== colour.price ? ` — ${money(option.price)}` : ""}</option>)}
-              </select></label>}
-            <p className="bag-line-price">{money(colour.price)}{colour.originalPrice > colour.price && <del>{money(colour.originalPrice)}</del>}</p>
-            {colour.stock < quantity
-              ? <p className="cart-stock-warning" role="alert">Only {colour.stock} left in {colour.name}. Lower the quantity to check out.</p>
-              : !canAdd(item.id, colour.id) && <p className="bag-limit-note">That&apos;s all we have in stock.</p>}
-            <div className="quantity-control" role="group" aria-label={`Quantity for ${item.name}`}>
-              <button type="button" onClick={() => setQuantity(key, quantity - 1)} aria-label="Decrease quantity">−</button>
-              <span>{quantity}</span>
-              <button type="button" disabled={!canAdd(item.id, colour.id)} onClick={() => setQuantity(key, quantity + 1)} aria-label="Increase quantity">+</button>
-            </div>
-          </div>
-          <div className="bag-line-side">
-            <button className="bag-remove" type="button" aria-label={`Remove ${item.name}`} onClick={() => remove(key)}><CloseMark size={14} /></button>
-            <strong>{money(colour.price * quantity)}</strong>
-          </div>
-        </article>)}
-      </div> : <form id={`checkout-form-${mode}`} className="checkout-form bag-checkout" onSubmit={startCheckout}>
-        {!accountLoaded ? <p className="demo-checkout-message" role="status">Loading your account…</p> : !account ? <div className="account-checkout-gate">
-          <p>Sign in to continue. Your payment status and orders stay linked to your account.</p>
-          <button type="button" className="checkout-demo-button" onClick={signIn}>Sign in to continue</button>
-        </div> : <>
-          <p className="account-checkout-note">Order updates go to {account.email}.</p>
-          {draftRestored && selectedAddress === "new" && <p className="draft-restored" role="status">We kept the address you were typing.<button type="button" className="address-link" onClick={() => { clearAddressDraft(); setDraftRestored(false); setCustomer(emptyAddress(account.name, account.phone)); }}>Clear it</button></p>}
-          {savedAddresses.length > 0 && <fieldset className="checkout-address-picker">
-            <legend>Deliver to</legend>
-            {savedAddresses.map(address => <label key={address.id} className={`address-card selectable${selectedAddress === address.id ? " selected" : ""}`}>
-              <input type="radio" name={`delivery-address-${mode}`} checked={selectedAddress === address.id} onChange={() => { setSelectedAddress(address.id); setCustomer(toDraft(address)); }} />
-              <span className="address-card-top"><span className="address-chip">{address.label}</span>{address.isDefault && <span className="address-chip default">Default</span>}</span>
-              <strong>{address.fullName}</strong>
-              <span>{addressSummary(address)}</span>
-              <span className="address-phone">{address.phone}</span>
-            </label>)}
-            <label className={`address-card selectable new${selectedAddress === "new" ? " selected" : ""}`}>
-              <input type="radio" name={`delivery-address-${mode}`} checked={selectedAddress === "new"} onChange={() => { setSelectedAddress("new"); setCustomer(emptyAddress(account.name, account.phone)); setSaveAddress(true); }} />
-              <strong>+ Deliver to a new address</strong>
-            </label>
-            <Link className="address-manage" href="/account" onClick={leave}>Manage saved addresses</Link>
-          </fieldset>}
-          {selectedAddress === "new" && <>
-            <AddressFields idPrefix={`checkout-${mode}`} value={customer} onChange={setCustomer} />
-            <label className="address-check"><input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />Save this address for next time</label>
+  return <div className="bag-page">
+    <p className="eyebrow">YOUR SELECTION</p>
+    <h1>Your bag</h1>
+    <p className="bag-test-note">Test mode: no real payment is taken.</p>
+    {notice && <p className="account-message" role="status">{notice}</p>}
+    {unpaid}
+    {showSuccess ? <div className="bag-done" role="status">
+      <h3>Thank you</h3>
+      <p>{success}</p>
+      <Link className="checkout-demo-button" href="/account">View your orders</Link>
+      <Link className="bag-text-link" href="/#catalogue">Continue shopping</Link>
+    </div> : catalogueError ? <div className="bag-empty" role="alert">
+      <p>{catalogueError}</p><p>Your bag is saved in this browser. We can&apos;t confirm prices and stock right now, so checkout is unavailable.</p>
+    </div> : catalogueLoading ? <div className="bag-empty" role="status"><p>Checking current prices and stock…</p></div>
+    : products.length === 0 ? <div className="bag-empty">
+      <BagIcon size={34} />
+      <p>{lines.length ? "The items you saved are no longer available." : "Your bag is empty."}</p>
+      {lines.length > 0 && <button type="button" className="remove-button" onClick={clear}>Clear saved bag</button>}
+      <Link className="checkout-demo-button" href="/#catalogue">Browse murtis</Link>
+    </div> : <div className="bag-page-grid">
+      <section className="bag-page-items" aria-label="Items in your bag"><BagLines />{help}</section>
+      <aside className="bag-page-side">
+        <h2>Checkout</h2>
+        <form className="checkout-form bag-checkout" onSubmit={startCheckout}>
+          <GiftChoice />
+          {!accountLoaded ? <p className="demo-checkout-message" role="status">Loading your account…</p> : !account ? <div className="account-checkout-gate">
+            <p>Sign in to continue. Your payment status and orders stay linked to your account.</p>
+            <button type="button" className="checkout-demo-button" onClick={signIn}>Sign in to continue</button>
+          </div> : <>
+            <p className="account-checkout-note">Order updates go to {account.email}.</p>
+            {draftRestored && selectedAddress === "new" && <p className="draft-restored" role="status">We kept the address you were typing.<button type="button" className="address-link" onClick={() => { clearAddressDraft(); setDraftRestored(false); setCustomer(emptyAddress(account.name, account.phone)); }}>Clear it</button></p>}
+            {savedAddresses.length > 0 && <fieldset className="checkout-address-picker">
+              <legend>Deliver to</legend>
+              {savedAddresses.map(address => <label key={address.id} className={`address-card selectable${selectedAddress === address.id ? " selected" : ""}`}>
+                <input type="radio" name="delivery-address" checked={selectedAddress === address.id} onChange={() => { setSelectedAddress(address.id); setCustomer(toDraft(address)); }} />
+                <span className="address-card-top"><span className="address-chip">{address.label}</span>{address.isDefault && <span className="address-chip default">Default</span>}</span>
+                <strong>{address.fullName}</strong>
+                <span>{addressSummary(address)}</span>
+                <span className="address-phone">{address.phone}</span>
+              </label>)}
+              <label className={`address-card selectable new${selectedAddress === "new" ? " selected" : ""}`}>
+                <input type="radio" name="delivery-address" checked={selectedAddress === "new"} onChange={() => { setSelectedAddress("new"); setCustomer(emptyAddress(account.name, account.phone)); setSaveAddress(true); }} />
+                <strong>+ Deliver to a new address</strong>
+              </label>
+              <Link className="address-manage" href="/account">Manage saved addresses</Link>
+            </fieldset>}
+            {selectedAddress === "new" && <>
+              <AddressFields idPrefix="checkout" value={customer} onChange={setCustomer} />
+              <label className="address-check"><input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />Save this address for next time</label>
+            </>}
+            <CouponBox items={items} giftWrap={Boolean(giftOffer && wantGift)} applied={coupon} disabled={busy} onChange={(next, message) => { setCoupon(next); setCouponNote(message ?? ""); }} />
+            {couponNote && <p className="coupon-error" role="status">{couponNote}</p>}
+            <DeliveryLine />
           </>}
-          <CouponBox items={items} giftWrap={Boolean(giftOffer && wantGift)} applied={coupon} disabled={busy} onChange={(next, message) => { setCoupon(next); setCouponNote(message ?? ""); }} />
-          {couponNote && <p className="coupon-error" role="status">{couponNote}</p>}
-          {giftChoice}
-          <DeliveryLine />
-          {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
-          <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms" onClick={leave}>Terms</Link>. See <Link href="/shipping" onClick={leave}>Shipping</Link>, <Link href="/returns" onClick={leave}>Returns and refunds</Link> and <Link href="/privacy" onClick={leave}>Privacy</Link>.</p>
-        </>}
-      </form>}
-      {error && <p className="demo-checkout-message bag-error" role="alert">{error}</p>}
-      <a className="bag-help" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20need%20help%20with%20my%20order%20or%20payment." target="_blank" rel="noreferrer">Need help? WhatsApp +91 88306 46308 <External /></a>
-    </div>
-
-    {!showSuccess && !catalogueError && !catalogueLoading && products.length > 0 && <footer className="bag-foot">
-      {view === "bag" ? <>
-        {giftChoice}
-        {totals}
-        <button type="button" className="checkout-demo-button" disabled={stockProblem} onClick={() => { setError(""); openDrawer("checkout"); }}>Proceed to checkout <ArrowRight /></button>
-      </> : <>
-        {totals}
-        {account && <button className="checkout-demo-button" type="submit" form={`checkout-form-${mode}`} disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : `Pay ${money(total)}`}</button>}
-      </>}
-    </footer>}
+          {totals}
+          {error && <p className="demo-checkout-message bag-error" role="alert">{error}</p>}
+          {account && <>
+            {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
+            <button className="checkout-demo-button bag-pay" type="submit" disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : `Pay ${money(total)}`}</button>
+            <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms">Terms</Link>. See <Link href="/shipping">Shipping</Link>, <Link href="/returns">Returns and refunds</Link> and <Link href="/privacy">Privacy</Link>.</p>
+          </>}
+        </form>
+      </aside>
+    </div>}
   </div>;
 }

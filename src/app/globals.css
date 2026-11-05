@@ -787,3 +787,24 @@ button { color: inherit; }
 :root[data-theme="dark"] .checkout-demo-button, :root[data-theme="dark"] .add-button, :root[data-theme="dark"] .retry-order-button, :root[data-theme="dark"] .account-avatar, :root[data-theme="dark"] .bag-link-count { color: #1c1712; }
 :root[data-theme="dark"] .tracking-card a.retry-order-button { color: #1c1712; }
 @media (max-width: 760px) { .product-buy-row { align-items: flex-start; } .product-price-block { width: 100%; text-align: left; align-items: flex-start; justify-items: start; } }
+
+/* Full bag page: items on the left, checkout on the right. */
+.cart-page-flow { padding: 24px clamp(16px, 5vw, 64px) 56px; }
+.bag-page { max-width: 1120px; margin: 0 auto; font-size: 14px; color: var(--ink); }
+.bag-page > h1 { margin: 2px 0 12px; font: 400 clamp(30px, 4vw, 40px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.bag-page-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 430px); gap: 24px; align-items: start; }
+.bag-page-items, .bag-page-side { padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.bag-page-side { position: sticky; top: 16px; }
+.bag-page-side h2 { margin: 0 0 12px; font: 400 24px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.bag-page .bag-pay { display: flex; align-items: center; justify-content: center; min-height: 48px; margin: 0; border-radius: 6px; font-size: 15px; }
+.bag-page .bag-line { grid-template-columns: 112px minmax(0, 1fr) auto; }
+.bag-page .bag-line-image { width: 112px; height: 112px; }
+.bag-page .bag-empty, .bag-page .bag-done { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.bag-foot .bag-text-link { padding: 4px 0; border: 0; background: none; cursor: pointer; text-align: center; }
+.bag-foot a.checkout-demo-button { color: #fffdfa; }
+:root[data-theme="dark"] .bag-foot a.checkout-demo-button { color: #1c1712; }
+.in-cart-note { color: var(--accent); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.account-bag-link { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; margin-left: auto; padding: 8px 14px; border: 1px solid var(--line); color: var(--ink); font-size: 14px; }
+.account-bag-link b { padding: 1px 7px; border-radius: 999px; background: var(--surface-soft); font-size: 11px; font-weight: 600; }
+.account-views { flex-wrap: wrap; }
+@media (max-width: 860px) { .bag-page-grid { grid-template-columns: minmax(0, 1fr); } .bag-page-side { position: static; } .bag-page .bag-line { grid-template-columns: 84px minmax(0, 1fr) auto; } .bag-page .bag-line-image { width: 84px; height: 84px; } .account-bag-link { margin-left: 0; } }

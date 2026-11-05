@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
@@ -16,7 +17,8 @@ const savePercent = (price: number, regular: number) => regular > price ? Math.r
 
 /** `initialColour` comes from ?colour= so a shared link (or "change" from the cart) opens that colour. */
 export default function ProductDetailClient({ slug, initialColour = "" }: { slug: string; initialColour?: string }) {
-  const { products, catalogueLoading, catalogueError, add, lines, openDrawer } = useCart();
+  const { products, catalogueLoading, catalogueError, add, lines } = useCart();
+  const router = useRouter();
   const item: StoreItem | undefined = products.find(product => product.id === slug);
   const [chosenId, setChosenId] = useState(initialColour);
   const [imageIndex, setImageIndex] = useState(0);
@@ -38,8 +40,10 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
     try { const url = new URL(window.location.href); url.searchParams.set("colour", id); window.history.replaceState(null, "", url); } catch { /* address bar unchanged */ }
   };
   const stockMessage = !colour || colour.stock < 1 ? { tone: "out", text: colours.length > 1 ? `${colour?.name ?? "This colour"} is out of stock — try another colour.` : "Out of stock" }
-    : colour.stock <= LOW_STOCK ? { tone: "low", text: `Only ${colour.stock} left — order soon` } : { tone: "ok", text: "In stock" };
-  const buyNow = () => { if (canBuy < 1 && inCart < 1) return; if (canBuy > 0) add(item.id, colour.id, qty); openDrawer("checkout"); };
+    : canBuy < 1 ? { tone: "low", text: `All ${colour.stock} available ${colour.stock === 1 ? "is" : "are"} in your bag.` }
+    : colour.stock - inCart <= LOW_STOCK ? { tone: "low", text: `Only ${colour.stock - inCart} ${inCart > 0 ? "more available" : "left — order soon"}` } : { tone: "ok", text: "In stock" };
+  // Add and Buy now only work for pieces not already in the bag; what's in the bag is reachable from the note below.
+  const buyNow = () => { if (canBuy < 1) return; add(item.id, colour.id, qty); router.push("/cart"); };
 
   return <main className="product-page">
     {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Confirm this database product’s details, price, and stock before launch. Payments remain in test mode.</p>}
@@ -79,12 +83,12 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
               <span aria-live="polite">{qty}</span>
               <button type="button" aria-label="Increase quantity" disabled={qty >= canBuy} onClick={() => setQuantity(qty + 1)}>+</button>
             </div>
-            {inCart > 0 && <small className="in-cart-note">{inCart} already in your bag</small>}
+            {inCart > 0 && <Link className="in-cart-note" href="/cart">{inCart} in your bag · View bag</Link>}
           </div>
           <p className={`stock-message ${stockMessage.tone}`} role="status">{stockMessage.text}</p>
           <div className="buy-buttons">
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" disabled={canBuy < 1} label="Add to bag" />
-            <button type="button" className="buy-now-button" disabled={canBuy < 1 && inCart < 1} onClick={buyNow}>Buy now</button>
+            <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}>Buy now</button>
           </div>
           <DeliveryLine />
         </div>

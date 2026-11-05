@@ -6,7 +6,8 @@ import type { FormEvent } from "react";
 import AddressBook from "@/components/address-book";
 import { COURIERS, isCourier } from "@/lib/couriers";
 import type { CourierKey } from "@/lib/couriers";
-import { ArrowLeft, CheckMark, External } from "@/components/icons";
+import { useCart } from "@/components/cart-provider";
+import { ArrowLeft, BagIcon, CheckMark, External } from "@/components/icons";
 
 type User = { id: string; name: string; email: string; phone: string };
 type Order = { id: string; createdAt: string; amount: number; status: string; fulfillmentStatus: string; trackingNote?: string; trackingCourier?: string; trackingId?: string; refundAmount?: number | null; cancelReason?: string; address: string; pincode: string; items: Array<{ id: string; name: string; variant?: string; price: number; quantity: number }>; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number };
@@ -40,6 +41,7 @@ function TrackingCard({ courier, trackingId }: { courier: CourierKey; trackingId
 }
 
 export default function AccountPanel() {
+  const { count } = useCart();
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -190,6 +192,7 @@ export default function AccountPanel() {
         <div className="account-views" role="group" aria-label="Account sections">
           <button type="button" className={view === "orders" ? "selected" : ""} aria-pressed={view === "orders"} onClick={() => setView("orders")}>Orders{orders.length > 0 && <b>{orders.length}</b>}</button>
           <button type="button" className={view === "addresses" ? "selected" : ""} aria-pressed={view === "addresses"} onClick={() => setView("addresses")}>Addresses</button>
+          <Link className="account-bag-link" href="/cart"><BagIcon size={16} />Your bag{count > 0 && <b>{count}</b>}</Link>
         </div>
         <div className="account-card" hidden={view !== "addresses"}><AddressBook defaultName={user.name} defaultPhone={user.phone} /></div>
         <div hidden={view !== "orders"}>
