@@ -87,15 +87,16 @@ test.describe("home page follows the dashboard", () => {
   });
 });
 
-test("hero text is centred with both buttons side by side", async ({ page }) => {
-  await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh" } }) });
+test("hero text sits to the side on desktop, and is centred on phones", async ({ page }, info) => {
+  await page.route("**/_next/image**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='600' height='900'/>" }));
+  await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh", backgroundImage: "/uploads/a.png" } }) });
   await page.goto("/");
   const [buy, explore] = [page.locator(".home-hero-buy"), page.locator(".home-hero-explore")];
   await expect(buy).toBeVisible();
   const [one, two] = [await buy.boundingBox(), await explore.boundingBox()];
   expect(Math.abs((one?.y ?? 0) - (two?.y ?? 99))).toBeLessThan(2);
   expect(two?.x).toBeGreaterThan((one?.x ?? 0) + (one?.width ?? 0) - 1);
-  await expect(page.locator(".home-hero-copy")).toHaveCSS("text-align", "center");
+  await expect(page.locator(".home-hero-copy")).toHaveCSS("text-align", info.project.name === "phone" ? "center" : "left");
   await expectFits(page);
 });
 

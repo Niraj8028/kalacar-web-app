@@ -46,6 +46,8 @@ export function HomeHero() {
   const explore = hero.explore.link;
   return <section className={hasImage ? "home-hero with-image" : "home-hero"} aria-labelledby="shop-title">
     {hasImage && <Image className="home-hero-image" src={hero.backgroundImage} alt="" fill priority sizes="100vw" />}
+    {/* Desktop only: the whole photo, so a tall murti is never cropped by the wide banner. */}
+    {hasImage && <Image className="home-hero-figure" src={hero.backgroundImage} alt="" fill sizes="(min-width: 901px) 55vw, 1px" />}
     <div className="home-hero-copy">
       {hero.showEyebrow && hero.eyebrow && <p className="eyebrow">{hero.eyebrow}</p>}
       <h1 id="shop-title">{hero.showTitle ? hero.title : <span className="sr-only">Kalacar</span>}</h1>
