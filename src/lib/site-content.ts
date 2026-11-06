@@ -1,5 +1,6 @@
 import type { RowDataPacket } from "mysql2/promise";
 import { addressDb } from "@/lib/catalogue-db";
+import { getInstagram } from "@/lib/instagram";
 import { listCategories } from "@/lib/categories";
 import { DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, videoEmbed } from "@/data/site-content";
 import type { HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
@@ -29,7 +30,7 @@ export function parseHome(body: unknown): HomeContent {
     comingSoon: { ...described(soon, d.comingSoon), items: (Array.isArray(soon.items) ? soon.items : []).slice(0, 12).map(item => ({ name: text(obj(item).name, 80), image: safeImage(obj(item).image) })).filter(item => item.name || item.image) },
     collections: described(collections, d.collections),
     why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : []).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240) })).filter(item => item.title || item.text) },
-    reviews: { ...described(reviews, d.reviews), showText: bool(reviews.showText, d.reviews.showText), showVideo: bool(reviews.showVideo, d.reviews.showVideo), follow: { show: bool(obj(reviews.follow).show, d.reviews.follow.show), label: text(obj(reviews.follow).label, 60, d.reviews.follow.label) || d.reviews.follow.label, url: /^https:/.test(safeLink(obj(reviews.follow).url, "")) ? safeLink(obj(reviews.follow).url, "") : "" } },
+    reviews: { ...described(reviews, d.reviews), showText: bool(reviews.showText, d.reviews.showText), showVideo: bool(reviews.showVideo, d.reviews.showVideo) },
     story: { ...header(story, d.story), showText: bool(story.showText, d.story.showText), text: text(story.text, 2000), showImage: bool(story.showImage, d.story.showImage), image: safeImage(story.image), showFounder: bool(story.showFounder, d.story.showFounder), founder: text(story.founder, 80) },
   };
 }
@@ -67,8 +68,8 @@ export const saveHome = (value: HomeContent) => writeRow("home_page", value);
 export const saveProductPage = (value: ProductPageContent) => writeRow("product_page", value);
 
 export async function getSiteContent(): Promise<SiteContent> {
-  const [home, productPage, categories] = await Promise.all([getHome(), getProductPage(), listCategories()]);
-  return { home, productPage, collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
+  const [home, productPage, categories, instagram] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram()]);
+  return { home, productPage, instagram, collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
 }
 
 // Reviews are entered by the owner from real customers. Ratings shown on the shop are worked out from these.

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { useSiteContent } from "@/components/site-content-provider";
 import { Stars, VideoRow } from "@/components/reviews";
-import { videoEmbed } from "@/data/site-content";
+import { instagramLink, videoEmbed } from "@/data/site-content";
 import type { StoreItem } from "@/data/catalogue";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -129,13 +129,13 @@ export function HomeReviews() {
   const chosen = reviews.filter(review => review.showOnHome);
   const written = section.showText ? chosen.filter(review => review.text && !videoEmbed(review.videoUrl)) : [];
   const videos = section.showVideo ? chosen.filter(review => videoEmbed(review.videoUrl)) : [];
-  const follow = section.follow;
+  const { instagram } = useSiteContent();
   if (!section.show || (!written.length && !videos.length)) return null;
   return <section className="home-section" aria-labelledby="home-reviews-title">
     <SectionHead id="home-reviews-title" {...section} />
     <VideoRow reviews={videos} />
     {written.length > 0 && <ul className="review-list">{written.map(review => <li className="review-card" key={review.id}><Stars rating={review.rating} /><p>{review.text}</p><small>{review.author}{review.city && `, ${review.city}`}</small></li>)}</ul>}
-    {follow.show && follow.url && <div className="video-follow"><a href={follow.url} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.6" /></svg>{follow.label}</a></div>}
+    {instagram.show && instagram.username && <div className="video-follow"><a href={instagramLink(instagram.username)} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.6" /><circle cx="16.6" cy="7.4" r=".8" fill="currentColor" stroke="none" /></svg>Follow @{instagram.username}</a></div>}
   </section>;
 }
 
@@ -150,5 +150,16 @@ export function OurStory() {
       <p>{section.text}</p>
       {section.showFounder && section.founder && <p className="home-story-founder">{section.founder}</p>}
     </div>
+  </section>;
+}
+
+/** Follow band above the footer. Hidden until the owner sets the account in dashboard Settings. */
+export function InstagramBand() {
+  const { instagram } = useSiteContent();
+  if (!instagram.show || !instagram.username) return null;
+  return <section className="instagram-band" aria-label="Follow us on Instagram">
+    <span className="instagram-band-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.6" /><circle cx="16.6" cy="7.4" r=".8" fill="currentColor" stroke="none" /></svg></span>
+    <div className="instagram-band-text"><small>Follow our journey</small><b>@{instagram.username}</b></div>
+    <a href={instagramLink(instagram.username)} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.6" /><circle cx="16.6" cy="7.4" r=".8" fill="currentColor" stroke="none" /></svg>Follow on Instagram<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5" /></svg></a>
   </section>;
 }

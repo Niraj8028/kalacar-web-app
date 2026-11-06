@@ -8,7 +8,7 @@ export type ComingSoonSection = { show: boolean; showTitle: boolean; title: stri
 export type CollectionsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string };
 export type WhyItem = { title: string; text: string };
 export type WhySection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: WhyItem[] };
-export type ReviewsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; showText: boolean; showVideo: boolean; follow: { show: boolean; label: string; url: string } };
+export type ReviewsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; showText: boolean; showVideo: boolean };
 export type StorySection = { show: boolean; showTitle: boolean; title: string; showText: boolean; text: string; showImage: boolean; image: string; showFounder: boolean; founder: string };
 export type HomeContent = { hero: HeroSection; firstLaunch: ProductGridSection; comingSoon: ComingSoonSection; collections: CollectionsSection; why: WhySection; reviews: ReviewsSection; story: StorySection };
 
@@ -32,7 +32,7 @@ export const DEFAULT_HOME: HomeContent = {
   comingSoon: { show: false, showTitle: true, title: "Coming Soon", showDescription: false, description: "", items: [] },
   collections: { show: false, showTitle: true, title: "Our Collections", showDescription: false, description: "" },
   why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: false, description: "", items: [] },
-  reviews: { show: false, showTitle: true, title: "Customer love", showDescription: false, description: "", showText: true, showVideo: true, follow: { show: false, label: "Follow us on Instagram", url: "" } },
+  reviews: { show: false, showTitle: true, title: "Customer love", showDescription: false, description: "", showText: true, showVideo: true },
   story: { show: false, showTitle: true, title: "Our Story", showText: true, text: "", showImage: true, image: "", showFounder: true, founder: "" },
 };
 
@@ -51,7 +51,10 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
 
 export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; published: boolean };
 export type ShopCategory = { name: string; image: string; productCount: number };
-export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[] };
+export type InstagramSettings = { show: boolean; username: string };
+export const DEFAULT_INSTAGRAM: InstagramSettings = { show: false, username: "" };
+export const instagramLink = (username: string) => `https://www.instagram.com/${encodeURIComponent(username)}/`;
+export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings };
 
 /** Average and count from real reviews only. */
 export function reviewSummary(reviews: Pick<Review, "rating">[]) {

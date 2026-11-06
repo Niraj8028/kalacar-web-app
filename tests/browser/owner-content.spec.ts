@@ -182,7 +182,7 @@ test("a clean Buy label fits one line on phones, and shows the price", async ({ 
 test("video reviews are matching cards that load the player only on press", async ({ page }) => {
   const videos = [review({ id: 1, videoUrl: "https://www.youtube.com/watch?v=abc123DEF_-" }), review({ id: 2, videoUrl: "https://www.instagram.com/reel/ABC_123/", photos: ["/placeholder.png"] })];
   await page.route("https://i.ytimg.com/**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='9' height='16'/>" }));
-  await mockShop(page, { content: content({ hero, reviews: { ...DEFAULT_HOME.reviews, show: true, follow: { show: true, label: "Follow us", url: "https://www.instagram.com/kalacar" } } }), reviews: videos });
+  await mockShop(page, { content: content({ hero, reviews: { ...DEFAULT_HOME.reviews, show: true } }), reviews: videos });
   await page.route(/youtube-nocookie\.com|instagram\.com\/p\//, route => route.fulfill({ status: 200, contentType: "text/html", body: "<p>player</p>" }));
   await page.goto("/");
   const cards = page.locator(".video-card");
@@ -194,10 +194,27 @@ test("video reviews are matching cards that load the player only on press", asyn
   const [one, two] = [await cards.nth(0).boundingBox(), await cards.nth(1).boundingBox()];
   expect(Math.round(one?.height ?? 0)).toBe(Math.round(two?.height ?? 1));
   await expect(page.getByRole("link", { name: "View product" })).toHaveCount(2);
-  await expect(page.getByRole("link", { name: "Follow us" })).toHaveAttribute("href", /instagram/);
   await cards.nth(0).getByRole("button").click();
   await expect(cards.nth(0).locator("iframe")).toHaveAttribute("src", /youtube-nocookie.*autoplay=1/);
   await expect(cards.nth(0).locator("iframe")).not.toHaveAttribute("sandbox");
+  await expectFits(page);
+});
+
+test("the Instagram band opens the saved account and stays hidden until turned on", async ({ page }) => {
+  const videos = [review({ id: 1, videoUrl: "https://www.youtube.com/watch?v=abc123DEF_-" })];
+  await page.route("https://i.ytimg.com/**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='9' height='16'/>" }));
+  await mockShop(page, { content: { ...content({ hero, reviews: { ...DEFAULT_HOME.reviews, show: true } }), instagram: { show: false, username: "kalacar.in" } }, reviews: videos });
+  await page.goto("/");
+  await expect(page.locator(".video-card")).toHaveCount(1);
+  await expect(page.locator(".instagram-band")).toHaveCount(0);
+  await expect(page.locator(".video-follow")).toHaveCount(0);
+  await mockShop(page, { content: { ...content({ hero, reviews: { ...DEFAULT_HOME.reviews, show: true } }), instagram: { show: true, username: "kalacar.in" } }, reviews: videos });
+  await page.goto("/");
+  const follow = page.locator(".instagram-band a");
+  await expect(follow).toHaveAttribute("href", "https://www.instagram.com/kalacar.in/");
+  await expect(follow).toHaveAttribute("target", "_blank");
+  await expect(page.locator(".instagram-band")).toContainText("@kalacar.in");
+  await expect(page.locator(".video-follow a")).toHaveAttribute("href", "https://www.instagram.com/kalacar.in/");
   await expectFits(page);
 });
 
