@@ -47,8 +47,6 @@ export function HomeHero() {
   return <section className={`home-hero${hasImage ? " with-image" : ""}${hero.desktopImage ? " has-wide" : ""}`} aria-labelledby="shop-title">
     {hasImage && <Image className="home-hero-image" src={hero.backgroundImage} alt="" fill priority sizes="100vw" />}
     {hasImage && hero.desktopImage && <Image className="home-hero-wide" src={hero.desktopImage} alt="" fill sizes="(min-width: 901px) 100vw, 1px" />}
-    {/* Desktop only, when there's no wide photo: the whole photo, so a tall murti isn't cropped by the banner. */}
-    {hasImage && <Image className="home-hero-figure" src={hero.backgroundImage} alt="" fill sizes="(min-width: 901px) 55vw, 1px" />}
     <div className="home-hero-copy">
       {hero.showEyebrow && hero.eyebrow && <p className="eyebrow">{hero.eyebrow}</p>}
       <h1 id="shop-title">{hero.showTitle ? hero.title : <span className="sr-only">Kalacar</span>}</h1>

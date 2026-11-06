@@ -101,7 +101,7 @@ test("hero text is at the lower left, with both buttons side by side", async ({ 
   const [one, two] = [await buy.boundingBox(), await explore.boundingBox()];
   expect(Math.abs((one?.y ?? 0) - (two?.y ?? 99))).toBeLessThan(2);
   expect(two?.x).toBeGreaterThan((one?.x ?? 0) + (one?.width ?? 0) - 1);
-  await expect(page.locator(".home-hero-copy")).toHaveCSS("text-align", "start");
+  await expect(page.locator(".home-hero-copy")).toHaveCSS("text-align", "left");
   expect(info.project.name).toBeTruthy();
   await expectFits(page);
 });

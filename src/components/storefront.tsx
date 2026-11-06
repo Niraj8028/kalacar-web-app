@@ -5,11 +5,13 @@ import { Collections, ComingSoon, FirstLaunch, HomeHero, HomeReviews, OurStory, 
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSiteContent } from "@/components/site-content-provider";
 import ThemeToggle from "@/components/theme-toggle";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import { ArrowRight, Search, UserCircle } from "@/components/icons";
 
 export default function Storefront() {
+  const { home } = useSiteContent();
   const { products, catalogueLoading, catalogueError } = useCart();
   const [activeFilter, setActiveFilter] = useState("All murtis");
   const [search, setSearch] = useState("");
@@ -32,6 +34,7 @@ export default function Storefront() {
       {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Catalogue values come from the temporary database. Confirm product facts, prices, and stock before launch. Payments remain in test mode.</p>}
       <div className="top-note">Small devotional murtis</div>
 
+      <div className={home.hero.show && home.hero.backgroundImage ? "home-top over-photo" : "home-top"}>
       <header className="shop-header">
         <Link className="wordmark" href="/" aria-label="Kalacar home">
           <Image
@@ -67,6 +70,7 @@ export default function Storefront() {
       </header>
 
       <HomeHero />
+      </div>
       <FirstLaunch />
       <ComingSoon />
       <Collections onChoose={setActiveFilter} />
