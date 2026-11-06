@@ -12,7 +12,8 @@ let client: Pusher | null | undefined;
 export function realtimeServer() {
   if (client !== undefined) return client;
   const { PUSHER_APP_ID: appId, PUSHER_KEY: key, PUSHER_SECRET: secret, PUSHER_CLUSTER: cluster } = process.env;
-  client = appId && key && secret && cluster ? new Pusher({ appId, key, secret, cluster, useTLS: true, timeout: 3000 }) : null;
+  try { client = appId && key && secret && cluster ? new Pusher({ appId, key, secret, cluster, useTLS: true, timeout: 3000 }) : null; }
+  catch { client = null; console.error("Realtime is off: its settings couldn't be used."); }
   return client;
 }
 export const realtimeConfig = () => {
@@ -21,9 +22,12 @@ export const realtimeConfig = () => {
 };
 
 function send(channels: string[], topic: Topic) {
-  const pusher = realtimeServer();
-  if (!pusher) return;
-  void pusher.trigger(channels, topic, {}).catch((error: unknown) => console.error("Realtime signal failed:", (error as { status?: number }).status ?? "no response"));
+  // Never waits for Pusher and never throws: a save must succeed whatever happens to the signal.
+  try {
+    const pusher = realtimeServer();
+    if (!pusher) return;
+    void pusher.trigger(channels, topic, {}).catch((error: unknown) => console.error("Realtime signal failed:", (error as { status?: number }).status ?? "no response"));
+  } catch { console.error("Realtime signal failed: couldn't be sent"); }
 }
 
 const WHO_HEARS: Record<Exclude<Topic, "orders">, string[]> = {
