@@ -10,10 +10,10 @@ export const PRODUCTS = [
   product("soldout", "Test Soldout", "Shiva", [colour("black", "Black", 0)]),
 ];
 
-export type ShopState = { products: unknown[]; productsStatus: number; productCalls: number; open: boolean; user: unknown; orders: unknown[] };
+export type ShopState = { products: unknown[]; productsStatus: number; productCalls: number; open: boolean; user: unknown; orders: unknown[]; content: unknown; reviews: unknown[]; proof: unknown; contactBodies: unknown[] };
 
 export async function mockShop(page: Page, over: Partial<ShopState> = {}) {
-  const state: ShopState = { products: PRODUCTS, productsStatus: 200, productCalls: 0, open: true, user: null, orders: [], ...over };
+  const state: ShopState = { products: PRODUCTS, productsStatus: 200, productCalls: 0, open: true, user: null, orders: [], content: null, reviews: [], proof: { recent: [], soldThisWeek: {} }, contactBodies: [], ...over };
   const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
   await page.route("**/_next/image**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/>" }));
   await page.route("**/placeholder.png", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/>" }));
@@ -21,6 +21,11 @@ export async function mockShop(page: Page, over: Partial<ShopState> = {}) {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/products") { state.productCalls += 1; return state.productsStatus === 200 ? json(route, { products: state.products }) : json(route, { error: "down" }, state.productsStatus); }
     if (path === "/api/settings") return json(route, { giftWrap: null, store: { open: state.open, previewing: false, comingSoonMessage: "Back soon", announcementEnabled: false, announcementText: "" } });
+    if (path === "/api/site-content") return state.content ? json(route, state.content) : json(route, { error: "down" }, 503);
+    if (path === "/api/reviews") return json(route, { reviews: state.reviews });
+    if (path === "/api/social-proof") return json(route, state.proof);
+    if (path === "/api/pages") return json(route, { pages: [{ slug: "about", title: "About Kalacar" }, { slug: "contact", title: "Contact us" }] });
+    if (path === "/api/contact") { state.contactBodies.push(route.request().postDataJSON()); return json(route, { ok: true }); }
     if (path === "/api/realtime/config") return json(route, { key: null, cluster: null });
     if (path === "/api/auth/session") return json(route, { user: state.user });
     if (path === "/api/account/orders") return json(route, { orders: state.orders });

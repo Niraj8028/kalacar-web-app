@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
-import { deleteCategory, parseCategoryName, renameCategory } from "@/lib/categories";
+import { deleteCategory, parseCategoryName, renameCategory, setCategoryImage } from "@/lib/categories";
+import { safeImage } from "@/lib/site-content";
 import { signalled } from "@/lib/realtime";
 
 type Context = { params: Promise<{ id: string }> };
@@ -11,7 +12,12 @@ async function handlePATCH(request: Request, context: Context) {
   if (denied) return denied;
   const id = await readId(context);
   if (!id) return NextResponse.json({ error: "Category not found." }, { status: 404 });
-  const parsed = parseCategoryName((await request.json().catch(() => null) as { name?: unknown } | null)?.name);
+  const body = await request.json().catch(() => null) as { name?: unknown; image?: unknown } | null;
+  if (body?.image !== undefined) {
+    try { await setCategoryImage(id, safeImage(body.image)); return NextResponse.json({ success: true }); }
+    catch { return NextResponse.json({ error: "Could not save the photo." }, { status: 503 }); }
+  }
+  const parsed = parseCategoryName(body?.name);
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
   try {
     const result = await renameCategory(id, parsed.value);

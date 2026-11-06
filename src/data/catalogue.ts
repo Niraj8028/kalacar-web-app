@@ -32,6 +32,8 @@ export type StoreItem = {
   image: string;
   imageAlt: string;
   placement: string;
+  description?: string;
+  bundleIds?: string[];
   accordions: ProductAccordion[];
   gallery: string[];
   price: number;

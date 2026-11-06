@@ -4,7 +4,7 @@ import { addressDb } from "@/lib/catalogue-db";
 // Product categories the owner manages in Settings. A product stores its category's name in the
 // `deity` column, so renaming a category updates its products in the same transaction.
 
-export type Category = { id: number; name: string; productCount: number };
+export type Category = { id: number; name: string; productCount: number; image: string };
 type Result = { ok: true; id: number } | { ok: false; status: number; error: string };
 
 export function parseCategoryName(value: unknown): { error: string } | { value: string } {
@@ -17,9 +17,9 @@ export async function listCategories(): Promise<Category[]> {
   // Any product category not yet in the list is added, so every product can be edited.
   await db.execute(`INSERT INTO kalacar_categories (name) SELECT DISTINCT TRIM(p.deity) FROM kalacar_products p
     WHERE TRIM(p.deity) <> '' AND NOT EXISTS (SELECT 1 FROM kalacar_categories c WHERE c.name = TRIM(p.deity))`);
-  const [rows] = await db.query<(RowDataPacket & { id: number; name: string; product_count: number })[]>(`SELECT c.id, c.name, COUNT(p.id) AS product_count
-    FROM kalacar_categories c LEFT JOIN kalacar_products p ON p.deity = c.name GROUP BY c.id, c.name ORDER BY c.name`);
-  return rows.map(row => ({ id: row.id, name: row.name, productCount: Number(row.product_count) }));
+  const [rows] = await db.query<(RowDataPacket & { id: number; name: string; image: string | null; product_count: number })[]>(`SELECT c.id, c.name, c.image, COUNT(p.id) AS product_count
+    FROM kalacar_categories c LEFT JOIN kalacar_products p ON p.deity = c.name GROUP BY c.id, c.name, c.image ORDER BY c.name`);
+  return rows.map(row => ({ id: row.id, name: row.name, image: row.image ?? "", productCount: Number(row.product_count) }));
 }
 
 /** The category's saved spelling, or null if it isn't one of the owner's categories. */
@@ -75,4 +75,9 @@ export async function deleteCategory(id: number): Promise<Result> {
     return { ok: true, id };
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
+}
+
+export async function setCategoryImage(id: number, image: string) {
+  const db = await addressDb();
+  await db.execute("UPDATE kalacar_categories SET image=? WHERE id=?", [image || null, id]);
 }

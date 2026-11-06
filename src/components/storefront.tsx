@@ -1,6 +1,7 @@
 "use client";
 
-import { PolicyLinks } from "@/components/policy-page";
+import { PolicyLinks } from "@/components/policy-links";
+import { Collections, ComingSoon, FirstLaunch, HomeHero, HomeReviews, OurStory, WhyChooseUs } from "@/components/home-sections";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -65,18 +66,10 @@ export default function Storefront() {
         </div>
       </header>
 
-      <section className="shop-intro" aria-labelledby="shop-title">
-        <div className="breadcrumb"><a href="#top">Home</a><span>/</span><span>Murtis</span></div>
-        <div className="intro-row">
-          <div>
-            <p className="eyebrow">THE KALACAR SHOP</p>
-            <h1 id="shop-title">Small murtis,<br /><em>close to home.</em></h1>
-          </div>
-          <p className="intro-copy">
-            A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.
-          </p>
-        </div>
-      </section>
+      <HomeHero />
+      <FirstLaunch />
+      <ComingSoon />
+      <Collections onChoose={setActiveFilter} />
 
       <section className="catalogue-section" id="catalogue" aria-labelledby="catalogue-title">
         <div className="catalogue-heading">
@@ -154,6 +147,10 @@ export default function Storefront() {
           <p>Browse the current Kalacar catalogue.</p>
         </div>
       </section>
+
+      <WhyChooseUs />
+      <HomeReviews />
+      <OurStory />
 
       <footer className="shop-footer">
         <Link className="wordmark footer-wordmark" href="/" aria-label="Kalacar home">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { CartProvider } from "@/components/cart-provider";
+import { SiteContentProvider } from "@/components/site-content-provider";
 import CartDrawer from "@/components/cart-drawer";
 import StoreGate from "@/components/store-gate";
 import "./globals.css";
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-theme="light" data-scroll-behavior="smooth">
-      <body><CartProvider><StoreGate>{children}</StoreGate><CartDrawer /></CartProvider></body>
+      <body><CartProvider><SiteContentProvider><StoreGate>{children}</StoreGate><CartDrawer /></SiteContentProvider></CartProvider></body>
     </html>
   );
 }

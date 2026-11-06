@@ -134,6 +134,26 @@ async function initialize() {
   // Lets the dashboard ask "has any order changed?" without loading every order.
   const [orderChangeColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'updated_at'");
   if (!orderChangeColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3), ADD KEY orders_updated_at (updated_at)");
+  // Editable info and policy pages, and messages from the Contact page.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_pages (
+    slug VARCHAR(40) PRIMARY KEY, title VARCHAR(120) NOT NULL, intro VARCHAR(300) NOT NULL DEFAULT '', content MEDIUMTEXT NOT NULL,
+    seo_title VARCHAR(70) NOT NULL DEFAULT '', seo_description VARCHAR(170) NOT NULL DEFAULT '', published TINYINT(1) NOT NULL DEFAULT 1,
+    in_footer TINYINT(1) NOT NULL DEFAULT 1, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_inquiries (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL, email VARCHAR(190) NOT NULL, phone VARCHAR(20) NOT NULL DEFAULT '',
+    message TEXT NOT NULL, handled TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Real customer reviews entered by the owner. A review with no product is for the shop in general.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_reviews (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, product_id VARCHAR(64) NULL, author VARCHAR(80) NOT NULL, city VARCHAR(80) NOT NULL DEFAULT '',
+    rating TINYINT UNSIGNED NOT NULL, body TEXT NOT NULL, photos JSON NULL, video_url VARCHAR(300) NOT NULL DEFAULT '', show_on_home TINYINT(1) NOT NULL DEFAULT 0,
+    published TINYINT(1) NOT NULL DEFAULT 1, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY reviews_product (product_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [descriptionColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'description'");
+  if (!descriptionColumns.length) await db.execute("ALTER TABLE kalacar_products ADD COLUMN description TEXT NULL AFTER placement, ADD COLUMN bundle_ids JSON NULL AFTER description");
+  const [categoryImageColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_categories LIKE 'image'");
+  if (!categoryImageColumns.length) await db.execute("ALTER TABLE kalacar_categories ADD COLUMN image VARCHAR(300) NULL AFTER name");
   // Devices the owner turned on browser alerts for. Owner-only; holds no customer details.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_push_devices (
     endpoint_hash CHAR(64) PRIMARY KEY, endpoint VARCHAR(1000) NOT NULL, p256dh VARCHAR(200) NOT NULL, auth VARCHAR(100) NOT NULL,
@@ -183,7 +203,7 @@ export async function fillMissingCustomerPhone(userId: string, phone: string) {
   await database().execute("UPDATE kalacar_users SET phone=? WHERE id=? AND phone=''", [phone, userId]);
 }
 
-type ProductRow = RowDataPacket & { id: string; name: string; deity: string; badge: string | null; tagline: string | null; specs: unknown; highlights: unknown; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
+type ProductRow = RowDataPacket & { description?: string | null; bundle_ids?: unknown; id: string; name: string; deity: string; badge: string | null; tagline: string | null; specs: unknown; highlights: unknown; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
 
 function parseAccordions(value: ProductRow["accordions"]): ProductAccordion[] {
   if (!value) return [];
@@ -208,14 +228,21 @@ const readJson = (value: unknown) => { if (value == null) return null; if (typeo
 const parseSpecs = (value: unknown): ProductSpec[] => { const list = readJson(value); return Array.isArray(list) ? list.filter((s): s is ProductSpec => Boolean(s) && typeof s.label === "string" && typeof s.value === "string") : []; };
 const parseHighlights = (value: unknown): string[] => { const list = readJson(value); return Array.isArray(list) ? list.filter((h): h is string => typeof h === "string") : []; };
 
+function parseBundleIds(value: unknown) {
+  try {
+    const list = typeof value === "string" ? JSON.parse(value) as unknown : value;
+    return Array.isArray(list) ? list.filter((id): id is string => typeof id === "string").slice(0, 2) : [];
+  } catch { return []; }
+}
+
 export async function listProducts({ includeHidden = false } = {}) {
   await ensureCatalogue();
-  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,specs,highlights,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
+  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,badge,tagline,image,gallery,image_alt,placement,description,bundle_ids,accordions,specs,highlights,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
   const [variantRows] = await database().query<VariantRow[]>(`SELECT * FROM kalacar_product_variants ${includeHidden ? "" : "WHERE active=1"} ORDER BY sort, name`);
   return rows.map(row => {
     const gallery = parseGallery(row.gallery, [row.image]);
     const variants = variantRows.filter(variant => variant.product_id === row.id).map(toVariant);
-    return { id: row.id, name: row.name, deity: row.deity, badge: row.badge ?? "", tagline: row.tagline ?? "", specs: parseSpecs(row.specs), highlights: parseHighlights(row.highlights), image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), variants, updatedAt: row.updated_at };
+    return { id: row.id, name: row.name, deity: row.deity, badge: row.badge ?? "", tagline: row.tagline ?? "", specs: parseSpecs(row.specs), highlights: parseHighlights(row.highlights), image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, description: row.description ?? "", bundleIds: parseBundleIds(row.bundle_ids), accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), variants, updatedAt: row.updated_at };
   }).filter(product => includeHidden || product.variants.length > 0);
 }
 

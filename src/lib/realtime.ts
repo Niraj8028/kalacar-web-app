@@ -35,6 +35,7 @@ const WHO_HEARS: Record<Exclude<Topic, "orders">, string[]> = {
   store: [SHOP_CHANNEL, OWNER_CHANNEL],
   coupons: [OWNER_CHANNEL],
   settings: [OWNER_CHANNEL],
+  inquiries: [OWNER_CHANNEL],
 };
 
 export function announce(topic: Exclude<Topic, "orders">) {

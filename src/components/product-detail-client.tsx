@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
@@ -10,14 +10,19 @@ import { ProductDetailAccordions } from "@/components/product-detail-accordions"
 import { DeliveryLine, ProductHighlights, SpecCards } from "@/components/product-facts";
 import { RecommendedProducts } from "@/components/recommended-products";
 import { ArrowLeft, UserCircle } from "@/components/icons";
+import { BundleBox, CommonFaqs, EndOfPageLink, HowItsMade, LiveViewers, OfferBox, RecentSaleNotice, SoldThisWeek, StickyBuyBar, WhatsappHelp, useSocialProof } from "@/components/product-extras";
+import { ProductReviews, RatingLine } from "@/components/reviews";
+import { useSiteContent } from "@/components/site-content-provider";
 
-const LOW_STOCK = 3;
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const savePercent = (price: number, regular: number) => regular > price ? Math.round((1 - price / regular) * 100) : 0;
 
 /** `initialColour` comes from ?colour= so a shared link (or "change" from the cart) opens that colour. */
 export default function ProductDetailClient({ slug, initialColour = "" }: { slug: string; initialColour?: string }) {
-  const { products, catalogueLoading, catalogueError, add, lines } = useCart();
+  const { products, catalogueLoading, catalogueError, add, lines, openDrawer, canAdd } = useCart();
+  const { productPage, reviews } = useSiteContent();
+  const proof = useSocialProof(productPage.recentSales.show || productPage.soldThisWeek.show);
+  const buyButtons = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const item: StoreItem | undefined = products.find(product => product.id === slug);
   const [chosenId, setChosenId] = useState(initialColour);
@@ -26,6 +31,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
 
   if (!item) return <main className="product-page"><header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link></header><section className="cart-content"><h1>{catalogueError || (catalogueLoading ? "Loading product…" : "Product not found in the current catalogue.")}</h1><Link href="/#catalogue"><ArrowLeft /> Back to all products</Link></section></main>;
 
+  const itemReviews = reviews.filter(review => review.productId === item.id);
   const colours = item.variants;
   const colour = colours.find(c => c.id === chosenId) ?? colours.find(c => c.stock > 0) ?? colours[0];
   const gallery = colour?.gallery.length ? colour.gallery : item.gallery?.length ? item.gallery : [item.image];
@@ -41,7 +47,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
   };
   const stockMessage = !colour || colour.stock < 1 ? { tone: "out", text: colours.some(option => option.stock > 0) ? `${colour?.name ?? "This colour"} is out of stock. Try another colour.` : "This murti is currently out of stock." }
     : canBuy < 1 ? { tone: "low", text: `All ${colour.stock} available ${colour.stock === 1 ? "is" : "are"} in your bag.` }
-    : colour.stock - inCart <= LOW_STOCK ? { tone: "low", text: `Only ${colour.stock - inCart} ${inCart > 0 ? "more available" : "left — order soon"}` } : { tone: "ok", text: "In stock" };
+    : colour.stock - inCart <= productPage.lowStock.threshold ? { tone: "low", text: inCart > 0 ? `Only ${colour.stock - inCart} more available` : productPage.lowStock.text.replaceAll("{count}", String(colour.stock)) } : { tone: "ok", text: "In stock" };
   // Add and Buy now only work for pieces not already in the bag; what's in the bag is reachable from the note below.
   const buyNow = () => { if (canBuy < 1) return; add(item.id, colour.id, qty); router.push("/cart"); };
 
@@ -60,11 +66,14 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
       <div className="detail-copy">
         <p className="eyebrow">{item.deity} · SMALL DEVOTIONAL MURTI</p>
         <h1>{item.name}</h1>
+        <RatingLine reviews={itemReviews} />
         {item.tagline && <p className="detail-tagline">{item.tagline}</p>}
+        <LiveViewers productId={item.id} />
         {item.placement && <p className="detail-placement">{item.placement}</p>}
         <p className="detail-price">{money(colour?.price ?? item.price)}{save > 0 && <><del>{money(colour.originalPrice)}</del><span className="save-chip">Save {save}%</span></>}</p>
         <p className="detail-tax-note">Prices include all taxes.</p>
 
+        {item.description && <p className="detail-description">{item.description}</p>}
         {colours.length > 1 && <fieldset className="colour-picker">
           <legend>Colour: <b>{colour?.name}</b></legend>
           <div className="colour-options">{colours.map(option => <label key={option.id} className={`colour-option${option.id === colour?.id ? " selected" : ""}${option.stock < 1 ? " sold-out" : ""}`}>
@@ -86,10 +95,12 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
             {inCart > 0 && <Link className="in-cart-note" href="/cart">{inCart} in your bag · View bag</Link>}
           </div>
           <p className={`stock-message ${stockMessage.tone}`} role="status">{stockMessage.text}</p>
-          <div className="buy-buttons">
+          <SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} />
+          <div className="buy-buttons" ref={buyButtons}>
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" label="Add to bag" />
             <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}>Buy now</button>
           </div>
+          <OfferBox />
           <DeliveryLine />
         </div>
         <ProductHighlights items={item.highlights ?? []} />
@@ -100,6 +111,16 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
       </div>
     </section>
     <ProductDetailAccordions sections={item.accordions ?? []} />
+    <div className="detail-more">
+      <HowItsMade />
+      <BundleBox item={item} products={products} />
+      <ProductReviews reviews={itemReviews} />
+      <CommonFaqs />
+      <WhatsappHelp />
+    </div>
     <RecommendedProducts current={item} products={products} />
+    <EndOfPageLink />
+    <RecentSaleNotice proof={proof} />
+    {colour && <StickyBuyBar item={item} price={colour.price} watch={buyButtons} disabled={canBuy < 1} inBag={inCart > 0} onAdd={() => { if (canBuy >= 1 && canAdd(item.id, colour.id)) add(item.id, colour.id, qty); openDrawer(); }} onBuy={buyNow} />}
   </main>;
 }

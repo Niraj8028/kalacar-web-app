@@ -42,6 +42,7 @@ async function handlePOST(request: Request) {
       await connection.execute(
         "INSERT INTO kalacar_products (id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,specs,highlights,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [id, form.name, form.deity, form.badge || null, form.tagline || null, firstGallery[0], JSON.stringify(firstGallery), `${form.name} product photo`, form.placement, JSON.stringify(form.accordions), JSON.stringify(form.specs), JSON.stringify(form.highlights), first.price, first.originalPrice, 0]);
+      await connection.execute("UPDATE kalacar_products SET description=?,bundle_ids=? WHERE id=?", [form.description || null, JSON.stringify(form.bundleIds.filter(other => other !== id)), id]);
       const result = await saveColours(connection, id, form.colours, photos.urls, new Set());
       if (result.status !== "ok") { await connection.rollback(); await removeFiles(photos.paths); return NextResponse.json({ error: result.status === "invalid" ? result.error : "Could not save the colours." }, { status: 400 }); }
       await connection.commit();

@@ -60,6 +60,7 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
       const allowed = new Set<string>([rows[0].image, ...(rows[0].gallery ? JSON.parse(rows[0].gallery) as string[] : [])]);
       await connection.execute("UPDATE kalacar_products SET name=?,deity=?,badge=?,tagline=?,placement=?,accordions=?,specs=?,highlights=?,image_alt=? WHERE id=?",
         [form.name, form.deity, form.badge || null, form.tagline || null, form.placement, JSON.stringify(form.accordions), JSON.stringify(form.specs), JSON.stringify(form.highlights), `${form.name} product photo`, id]);
+      await connection.execute("UPDATE kalacar_products SET description=?,bundle_ids=? WHERE id=?", [form.description || null, JSON.stringify(form.bundleIds.filter(other => other !== id)), id]);
       const result = await saveColours(connection, id, form.colours, photos.urls, allowed);
       if (result.status !== "ok") {
         await connection.rollback(); await removeFiles(photos.paths);

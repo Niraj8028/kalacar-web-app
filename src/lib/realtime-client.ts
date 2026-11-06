@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { default as PusherClient } from "pusher-js";
-import { SHOP_CHANNEL, customerChannel } from "@/lib/realtime-channels";
+import { SHOP_CHANNEL, customerChannel, viewersChannel } from "@/lib/realtime-channels";
 import type { Topic } from "@/lib/realtime-channels";
 
 // The shop's one live connection. It's open only while someone is here: a hidden tab or 30 minutes
@@ -91,4 +91,24 @@ export function useLiveLoad(topics: Topic | Topic[], load: () => unknown, custom
       if (customerId) pusher?.unsubscribe(channelName);
     };
   }, [topicNames, customerId, needsCustomer]);
+}
+
+/** How many tabs are really on this product page now, or 0 if live updates are off. */
+export function useViewerCount(productId: string, enabled: boolean) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    if (!watching) { watching = true; watchPresence(); }
+    let active = true;
+    const name = viewersChannel(productId);
+    type Members = { count: number };
+    const update = () => { const members = (pusher?.channel(name) as unknown as { members?: Members } | undefined)?.members; if (active) setCount(members?.count ?? 0); };
+    void connection().then(live => {
+      if (!active || !live) return;
+      const channel = live.subscribe(name);
+      ["pusher:subscription_succeeded", "pusher:member_added", "pusher:member_removed"].forEach(event => channel.bind(event, update));
+    });
+    return () => { active = false; setCount(0); pusher?.unsubscribe(name); };
+  }, [productId, enabled]);
+  return count;
 }
