@@ -131,6 +131,11 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [trackingColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'tracking_id'");
   if (!trackingColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN tracking_courier VARCHAR(20) NULL AFTER tracking_note, ADD COLUMN tracking_id VARCHAR(30) NULL AFTER tracking_courier");
+  // Devices the owner turned on browser alerts for. Owner-only; holds no customer details.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_push_devices (
+    endpoint_hash CHAR(64) PRIMARY KEY, endpoint VARCHAR(1000) NOT NULL, p256dh VARCHAR(200) NOT NULL, auth VARCHAR(100) NOT NULL,
+    owner_email VARCHAR(190) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   // Product photos live here so they survive redeploys and every server sees them.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_photos (
     file_name VARCHAR(190) PRIMARY KEY, content_type VARCHAR(40) NOT NULL, bytes MEDIUMBLOB NOT NULL,
@@ -508,6 +513,11 @@ export async function markOrderPaymentFailed(id: string, userId: string, payment
   await database().execute("UPDATE kalacar_orders SET status='payment_failed',razorpay_payment_id=? WHERE id=? AND user_id=? AND status='payment_pending'", [paymentId, id, userId]);
 }
 
+/** Runs only when an order first becomes paid, so each order alerts once. Loaded late to keep the database code free of it. */
+function alertOwners(orderId: string) {
+  void import("@/lib/owner-alerts").then(alerts => alerts.alertNewPaidOrder(orderId)).catch(() => undefined);
+}
+
 export async function recordRazorpayWebhook(eventId: string, eventType: string, payment: { id: string; order_id: string; amount: number; currency: string; status: string }) {
   await ensureCatalogue();
   const connection = await database().getConnection();
@@ -515,14 +525,17 @@ export async function recordRazorpayWebhook(eventId: string, eventType: string, 
     await connection.beginTransaction();
     const [orderRows] = await connection.execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE razorpay_order_id=? FOR UPDATE", [payment.order_id]);
     const order = orderRows[0];
+    let newlyPaid = false;
     await connection.execute("INSERT IGNORE INTO kalacar_webhook_events (event_id,event_type) VALUES (?,?)", [eventId, eventType]);
     if (order && payment.amount === Number(order.amount) * 100 && payment.currency === "INR" && payment.status === "captured") {
-      await connection.execute("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND status IN ('payment_pending','payment_failed')", [payment.id, order.id]);
+      const [paid] = await connection.execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND status IN ('payment_pending','payment_failed')", [payment.id, order.id]);
       // Money arrived for an order the owner already cancelled: hold it for a refund instead of silently reopening it.
-      await connection.execute("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND status='cancelled'", [payment.id, order.id]);
+      const [late] = await connection.execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND status='cancelled'", [payment.id, order.id]);
+      newlyPaid = paid.affectedRows > 0 || late.affectedRows > 0;
     }
     else if (order && payment.status === "failed") await connection.execute("UPDATE kalacar_orders SET status='payment_failed',razorpay_payment_id=? WHERE id=? AND status='payment_pending'", [payment.id, order.id]);
     await connection.commit();
+    if (newlyPaid) alertOwners(order.id);
     return Boolean(order);
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
@@ -531,8 +544,9 @@ export async function recordRazorpayWebhook(eventId: string, eventType: string, 
 export async function markOrderPaid(id: string, razorpayOrderId: string, paymentId: string) {
   await ensureCatalogue();
   // Only unpaid orders become paid. A cancelled order that gets paid is held for a refund; refunded orders never change.
-  await database().execute("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status IN ('payment_pending','payment_failed')", [paymentId, id, razorpayOrderId]);
-  await database().execute("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status='cancelled'", [paymentId, id, razorpayOrderId]);
+  const [paid] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status IN ('payment_pending','payment_failed')", [paymentId, id, razorpayOrderId]);
+  const [late] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status='cancelled'", [paymentId, id, razorpayOrderId]);
+  if (paid.affectedRows > 0 || late.affectedRows > 0) alertOwners(id);
   const order = await findOrder(id);
   return order?.status === "paid";
 }
