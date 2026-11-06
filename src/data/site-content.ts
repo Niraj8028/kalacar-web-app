@@ -54,7 +54,9 @@ export type ShopCategory = { name: string; image: string; productCount: number }
 export type InstagramSettings = { show: boolean; username: string };
 export const DEFAULT_INSTAGRAM: InstagramSettings = { show: false, username: "" };
 export const instagramLink = (username: string) => `https://www.instagram.com/${encodeURIComponent(username)}/`;
-export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings };
+export type FestiveSettings = { diwali: boolean };
+export const DEFAULT_FESTIVE: FestiveSettings = { diwali: false };
+export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings };
 
 /** Average and count from real reviews only. */
 export function reviewSummary(reviews: Pick<Review, "rating">[]) {
