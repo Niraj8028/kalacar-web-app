@@ -329,6 +329,7 @@ export async function reserveOrder(key: string, lines: CheckoutLine[], customer:
     await connection.execute("INSERT INTO kalacar_orders (id,user_id,idempotency_key,amount,gift_wrap,gift_wrap_price,coupon_id,coupon_code,discount,status,customer_name,email,phone,address,pincode) VALUES (?,?,?,?,?,?,?,?,?,'payment_pending',?,?,?,?,?)", [id, userId, key, amount, giftWrapPrice !== null ? 1 : 0, giftWrapPrice ?? 0, coupon?.ok ? coupon.coupon.id : null, coupon?.ok ? coupon.coupon.code : null, discount, customer.name, customer.email, customer.phone, customer.address, customer.pincode]);
     for (const item of items) await connection.execute("INSERT INTO kalacar_order_items (order_id,product_id,product_name,variant_id,variant_name,unit_price,quantity) VALUES (?,?,?,?,?,?,?)", [id, item.id, item.name, item.variantId, item.variantName, item.price, item.quantity]);
     await connection.commit();
+    signalOrder(id, true);
     return { id, amount, razorpayOrderId: null, status: "payment_pending", reused: false };
   } catch (error) {
     await connection.rollback();
@@ -384,6 +385,7 @@ export async function releaseOrderAfterPaymentSetupFailure(id: string) {
     await returnItemsToStock(connection, id);
     await connection.execute("UPDATE kalacar_orders SET status='payment_setup_failed' WHERE id=? AND status='payment_pending'", [id]);
     await connection.commit();
+    signalOrder(id, true);
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
 }
@@ -514,6 +516,12 @@ export async function findCustomerOrder(id: string, userId: string) {
 export async function markOrderPaymentFailed(id: string, userId: string, paymentId: string) {
   await ensureCatalogue();
   await database().execute("UPDATE kalacar_orders SET status='payment_failed',razorpay_payment_id=? WHERE id=? AND user_id=? AND status='payment_pending'", [paymentId, id, userId]);
+  signalOrder(id);
+}
+
+/** Tells open pages after the change is saved. Loaded late to keep this file free of it. */
+function signalOrder(orderId: string, stockChanged = false) {
+  void import("@/lib/realtime").then(live => live.announceOrder(orderId, stockChanged)).catch(() => undefined);
 }
 
 /** Runs only when an order first becomes paid, so each order alerts once. Loaded late to keep the database code free of it. */
@@ -539,6 +547,7 @@ export async function recordRazorpayWebhook(eventId: string, eventType: string, 
     else if (order && payment.status === "failed") await connection.execute("UPDATE kalacar_orders SET status='payment_failed',razorpay_payment_id=? WHERE id=? AND status='payment_pending'", [payment.id, order.id]);
     await connection.commit();
     if (newlyPaid) alertOwners(order.id);
+    if (order) signalOrder(order.id);
     return Boolean(order);
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
@@ -549,7 +558,7 @@ export async function markOrderPaid(id: string, razorpayOrderId: string, payment
   // Only unpaid orders become paid. A cancelled order that gets paid is held for a refund; refunded orders never change.
   const [paid] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status IN ('payment_pending','payment_failed')", [paymentId, id, razorpayOrderId]);
   const [late] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status='cancelled'", [paymentId, id, razorpayOrderId]);
-  if (paid.affectedRows > 0 || late.affectedRows > 0) alertOwners(id);
+  if (paid.affectedRows > 0 || late.affectedRows > 0) { alertOwners(id); signalOrder(id); }
   const order = await findOrder(id);
   return order?.status === "paid";
 }
@@ -644,6 +653,7 @@ export type FulfillmentStatus = "unfulfilled" | "processing" | "dispatched" | "c
 export async function updateOrderFulfillment(id: string, fulfillmentStatus: FulfillmentStatus, expected: FulfillmentStatus) {
   await ensureCatalogue();
   const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET fulfillment_status=? WHERE id=? AND status='paid' AND fulfillment_status=?", [fulfillmentStatus, id, expected]);
+  if (result.affectedRows > 0) signalOrder(id);
   return result.affectedRows > 0;
 }
 
@@ -674,6 +684,7 @@ export async function cancelUnpaidOrder(id: string, reason: string): Promise<Lif
     if (!order.stock_restored && order.status !== "payment_setup_failed") await restoreOrderStock(connection, id);
     await connection.execute("UPDATE kalacar_orders SET status='cancelled',cancel_reason=?,cancelled_at=UTC_TIMESTAMP() WHERE id=?", [reason || null, id]);
     await connection.commit();
+    signalOrder(id, true);
     return { ok: true };
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
@@ -699,6 +710,7 @@ export async function recordOrderRefund(id: string, refund: { amount: number; re
     if (refund.restock && !order.stock_restored && order.status === "paid") await restoreOrderStock(connection, id);
     await connection.execute("UPDATE kalacar_orders SET status='refunded',refund_amount=?,refund_reason=?,refund_reference=?,refunded_at=UTC_TIMESTAMP() WHERE id=?", [refund.amount, refund.reason, refund.reference || null, id]);
     await connection.commit();
+    signalOrder(id, true);
     return { ok: true };
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
@@ -708,5 +720,6 @@ export async function recordOrderRefund(id: string, refund: { amount: number; re
 export async function setOrderTracking(id: string, tracking: { note: string; courier: string | null; trackingId: string | null }) {
   await ensureCatalogue();
   const [result] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET tracking_note=?,tracking_courier=?,tracking_id=? WHERE id=? AND status='paid'", [tracking.note || null, tracking.courier, tracking.trackingId, id]);
+  if (result.affectedRows > 0) signalOrder(id);
   return result.affectedRows > 0;
 }

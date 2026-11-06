@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { deleteCoupon, parseCoupon, setCouponActive, updateCoupon } from "@/lib/coupons";
+import { signalled } from "@/lib/realtime";
 
 const idFrom = async (params: Promise<{ id: string }>) => { const { id } = await params; return /^\d{1,10}$/.test(id) ? Number(id) : null; };
 
 /** Body `{ active }` alone switches a coupon on/off; otherwise the whole coupon is replaced. */
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const blocked = await requireOwner();
   if (blocked) return blocked;
   const id = await idFrom(params);
@@ -23,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   } catch (error) { console.error("Coupon update failed:", error instanceof Error ? error.message : "unknown error"); return NextResponse.json({ error: "Could not save the coupon. Please try again." }, { status: 503 }); }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const blocked = await requireOwner();
   if (blocked) return blocked;
   const id = await idFrom(params);
@@ -33,3 +34,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     return result.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: result.error }, { status: result.status });
   } catch (error) { console.error("Coupon delete failed:", error instanceof Error ? error.message : "unknown error"); return NextResponse.json({ error: "Could not delete the coupon. Please try again." }, { status: 503 }); }
 }
+
+export const PATCH = signalled(["coupons"], handlePATCH);
+
+export const DELETE = signalled(["coupons"], handleDELETE);

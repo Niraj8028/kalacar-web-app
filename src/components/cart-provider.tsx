@@ -1,5 +1,6 @@
 "use client";
 
+import { useLiveLoad } from "@/lib/realtime-client";
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -86,6 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  const giftReload = useRef<() => unknown>(() => undefined);
   const setWantGift = useCallback((want: boolean) => {
     setWantGiftState(want);
     try { if (want) sessionStorage.setItem(GIFT_KEY, "1"); else sessionStorage.removeItem(GIFT_KEY); } catch { /* storage unavailable */ }
@@ -95,31 +97,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try { if (sessionStorage.getItem(GIFT_KEY)) window.setTimeout(() => { if (active) setWantGiftState(true); }); } catch { /* storage unavailable */ }
     const load = () => fetch("/api/settings", { cache: "no-store" }).then(r => r.json()).then((data: { giftWrap?: GiftOffer | null }) => { if (active) setGiftOffer(data.giftWrap ?? null); }).catch(() => undefined);
     void load();
+    giftReload.current = load;
     return () => { active = false; };
   }, []);
+  useLiveLoad("store", () => giftReload.current());
 
-  useEffect(() => {
-    // The one product request for the whole shop: on opening, on returning to the tab, and once a minute while it's visible.
-    let active = true;
-    let loaded = false;
-    const refresh = async () => {
-      try {
-        const response = await fetch("/api/products", { cache: "no-store" });
-        // A closed shop must stop showing products; other failures keep what's already on screen.
-        if (response.status === 403) { loaded = false; if (active) setProducts([]); }
-        if (!response.ok) throw new Error("Catalogue is temporarily unavailable.");
-        const data = await response.json() as { products: StoreItem[] };
-        loaded = true;
-        if (active) { setProducts(data.products); setCatalogueError(""); }
-      } catch (error) { if (active && !loaded) setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); }
-      finally { if (active) setCatalogueLoading(false); }
-    };
-    const whileVisible = () => { if (document.visibilityState === "visible") void refresh(); };
-    void refresh();
-    const timer = window.setInterval(whileVisible, 60000);
-    document.addEventListener("visibilitychange", whileVisible);
-    return () => { active = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", whileVisible); };
+  // The one product request for the whole shop.
+  const loadedProducts = useRef(false);
+  const loadProducts = useCallback(async () => {
+    try {
+      const response = await fetch("/api/products", { cache: "no-store" });
+      // A closed shop must stop showing products; other failures keep what's already on screen.
+      if (response.status === 403) { loadedProducts.current = false; setProducts([]); }
+      if (!response.ok) throw new Error("Catalogue is temporarily unavailable.");
+      const data = await response.json() as { products: StoreItem[] };
+      loadedProducts.current = true;
+      setProducts(data.products); setCatalogueError("");
+    } catch (error) { if (!loadedProducts.current) setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); }
+    finally { setCatalogueLoading(false); }
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- first load of the catalogue
+  useEffect(() => { void loadProducts(); }, [loadProducts]);
+  useLiveLoad(["products", "store"], loadProducts);
 
   useEffect(() => {
     try {

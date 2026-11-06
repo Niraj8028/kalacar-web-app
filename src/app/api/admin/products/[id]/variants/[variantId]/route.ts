@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { updateColourQuick } from "@/lib/colours";
+import { signalled } from "@/lib/realtime";
 
 /** Products tab quick edit for one colour: { price?, stock?, expectedPrice, expectedStock }. */
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
+async function handlePATCH(request: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
   const denied = await requireOwner();
   if (denied) return denied;
   const { id, variantId } = await params;
@@ -32,3 +33,5 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Could not save this colour." }, { status: 503 });
   }
 }
+
+export const PATCH = signalled(["products"], handlePATCH);

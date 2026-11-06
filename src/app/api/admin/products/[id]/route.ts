@@ -4,13 +4,14 @@ import { addressDb } from "@/lib/catalogue-db";
 import { saveColours, updateColourQuick } from "@/lib/colours";
 import { findCategoryName } from "@/lib/categories";
 import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
+import { signalled } from "@/lib/realtime";
 
 /**
  * Edit details: product fields (name, category, badge, tagline, description, detail sections) and the
  * full list of colours with their photos, prices and stock. Quick price/stock edits for one colour
  * go to /api/admin/products/[id]/variants/[variantId].
  */
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireOwner();
   if (denied) return denied;
   const { id } = await params;
@@ -79,7 +80,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 /** Deletes a product and its colours. Refused while an open order still needs this product. */
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireOwner();
   if (denied) return denied;
   const { id } = await params;
@@ -97,3 +98,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Could not delete the product right now." }, { status: 503 });
   }
 }
+
+export const PATCH = signalled(["products"], handlePATCH);
+
+export const DELETE = signalled(["products"], handleDELETE);

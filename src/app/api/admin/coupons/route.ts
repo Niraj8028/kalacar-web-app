@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { createCoupon, listCoupons, parseCoupon } from "@/lib/coupons";
+import { signalled } from "@/lib/realtime";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -11,7 +12,7 @@ export async function GET() {
   catch (error) { console.error("Coupons unavailable:", error instanceof Error ? error.message : "unknown error"); return NextResponse.json({ error: "Coupons are temporarily unavailable." }, { status: 503, headers: noStore }); }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const blocked = await requireOwner();
   if (blocked) return blocked;
   let body: unknown;
@@ -23,3 +24,5 @@ export async function POST(request: Request) {
     return result.ok ? NextResponse.json({ id: result.id }, { status: 201 }) : NextResponse.json({ error: result.error }, { status: 409 });
   } catch (error) { console.error("Coupon create failed:", error instanceof Error ? error.message : "unknown error"); return NextResponse.json({ error: "Could not save the coupon. Please try again." }, { status: 503 }); }
 }
+
+export const POST = signalled(["coupons"], handlePOST);

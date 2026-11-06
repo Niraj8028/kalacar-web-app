@@ -4,6 +4,7 @@ import { addressDb, listProducts } from "@/lib/catalogue-db";
 import { saveColours } from "@/lib/colours";
 import { findCategoryName } from "@/lib/categories";
 import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
+import { signalled } from "@/lib/realtime";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -18,7 +19,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const denied = await requireOwner();
   if (denied) return denied;
   let saved: { paths: string[] } = { paths: [] };
@@ -55,3 +56,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not create the product in the Kalacar catalogue." }, { status: 503 });
   }
 }
+
+export const POST = signalled(["products"], handlePOST);

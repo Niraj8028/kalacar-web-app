@@ -1,5 +1,6 @@
 "use client";
 
+import { useLiveLoad } from "@/lib/realtime-client";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -14,6 +15,7 @@ const ALWAYS_OPEN = ["/account", "/shipping", "/returns", "/safe-transit", "/pri
 export default function StoreGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<StoreStatus | null>(null);
   const pathname = usePathname();
+  useLiveLoad("store", () => fetch("/api/settings", { cache: "no-store" }).then(response => response.json()).then((data: { store?: StoreStatus }) => { if (data.store) setStatus(data.store); }).catch(() => undefined));
   useEffect(() => {
     let active = true;
     fetch("/api/settings", { cache: "no-store" }).then(response => response.json()).then((data: { store?: StoreStatus }) => { if (active && data.store) setStatus(data.store); }).catch(() => undefined);
