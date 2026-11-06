@@ -3,34 +3,15 @@
 import { PolicyLinks } from "@/components/policy-page";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import ThemeToggle from "@/components/theme-toggle";
-import { AddToBagButton, CartLink } from "@/components/cart-provider";
-import type { StoreItem } from "@/data/catalogue";
+import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import { ArrowRight, Search, UserCircle } from "@/components/icons";
 
 export default function Storefront() {
-  const [products, setProducts] = useState<StoreItem[]>([]);
+  const { products, catalogueLoading, catalogueError } = useCart();
   const [activeFilter, setActiveFilter] = useState("All murtis");
   const [search, setSearch] = useState("");
-  const [catalogueLoading, setCatalogueLoading] = useState(true);
-  const [catalogueError, setCatalogueError] = useState("");
-
-  useEffect(() => {
-    let alive = true;
-    const refresh = async () => {
-      try {
-        const response = await fetch("/api/products", { cache: "no-store" });
-        if (!response.ok) throw new Error("Catalogue is temporarily unavailable.");
-        const data = await response.json() as { products: StoreItem[] };
-        if (alive) { setProducts(data.products); setCatalogueError(""); }
-      } catch (error) { if (alive) { setProducts([]); setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); } }
-      finally { if (alive) setCatalogueLoading(false); }
-    };
-    void refresh();
-    const timer = window.setInterval(refresh, 2500);
-    return () => { alive = false; window.clearInterval(timer); };
-  }, []);
 
   const deityFilters = useMemo(() => ["All murtis", ...new Set(products.map(item => item.deity))], [products]);
   const categories = useMemo(() => [...new Set(products.map(item => item.deity))], [products]);

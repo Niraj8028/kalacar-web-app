@@ -99,19 +99,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // The one product request for the whole shop: on opening, on returning to the tab, and once a minute while it's visible.
     let active = true;
+    let loaded = false;
     const refresh = async () => {
       try {
         const response = await fetch("/api/products", { cache: "no-store" });
+        // A closed shop must stop showing products; other failures keep what's already on screen.
+        if (response.status === 403) { loaded = false; if (active) setProducts([]); }
         if (!response.ok) throw new Error("Catalogue is temporarily unavailable.");
         const data = await response.json() as { products: StoreItem[] };
+        loaded = true;
         if (active) { setProducts(data.products); setCatalogueError(""); }
-      } catch (error) { if (active) { setProducts([]); setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); } }
+      } catch (error) { if (active && !loaded) setCatalogueError(error instanceof Error ? error.message : "Catalogue is temporarily unavailable."); }
       finally { if (active) setCatalogueLoading(false); }
     };
+    const whileVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     void refresh();
-    const timer = window.setInterval(refresh, 2500);
-    return () => { active = false; window.clearInterval(timer); };
+    const timer = window.setInterval(whileVisible, 60000);
+    document.addEventListener("visibilitychange", whileVisible);
+    return () => { active = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", whileVisible); };
   }, []);
 
   useEffect(() => {

@@ -104,6 +104,13 @@ export default function AccountPanel() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  // Keeps payment and delivery status current without a reload: on returning to the tab, and once a minute while it's visible.
+  useEffect(() => {
+    const whileVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    const timer = window.setInterval(whileVisible, 60000);
+    document.addEventListener("visibilitychange", whileVisible);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", whileVisible); };
+  }, [refresh]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");

@@ -131,6 +131,9 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [trackingColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'tracking_id'");
   if (!trackingColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN tracking_courier VARCHAR(20) NULL AFTER tracking_note, ADD COLUMN tracking_id VARCHAR(30) NULL AFTER tracking_courier");
+  // Lets the dashboard ask "has any order changed?" without loading every order.
+  const [orderChangeColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'updated_at'");
+  if (!orderChangeColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3), ADD KEY orders_updated_at (updated_at)");
   // Devices the owner turned on browser alerts for. Owner-only; holds no customer details.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_push_devices (
     endpoint_hash CHAR(64) PRIMARY KEY, endpoint VARCHAR(1000) NOT NULL, p256dh VARCHAR(200) NOT NULL, auth VARCHAR(100) NOT NULL,
@@ -549,6 +552,20 @@ export async function markOrderPaid(id: string, razorpayOrderId: string, payment
   if (paid.affectedRows > 0 || late.affectedRows > 0) alertOwners(id);
   const order = await findOrder(id);
   return order?.status === "paid";
+}
+
+/** Changes whenever an order is added or updated. */
+export async function getOrdersStamp() {
+  await ensureCatalogue();
+  const [rows] = await database().query<(RowDataPacket & { total: number; latest: string | null })[]>("SELECT COUNT(*) AS total,CAST(MAX(updated_at) AS CHAR) AS latest FROM kalacar_orders");
+  return `${rows[0]?.total ?? 0}:${rows[0]?.latest ?? ""}`;
+}
+
+/** Recent unpaid orders that have started a Razorpay payment, newest first. */
+export async function listOrdersToRecheck() {
+  await ensureCatalogue();
+  const [rows] = await database().query<(RowDataPacket & { id: string; razorpay_order_id: string; amount: number; user_id: string })[]>("SELECT id,razorpay_order_id,amount,user_id FROM kalacar_orders WHERE status IN ('payment_pending','payment_failed') AND razorpay_order_id IS NOT NULL AND created_at > NOW() - INTERVAL 2 HOUR ORDER BY created_at DESC LIMIT 5");
+  return rows.map(row => ({ id: row.id, razorpayOrderId: row.razorpay_order_id, amount: Number(row.amount), userId: row.user_id }));
 }
 
 export async function listOrders(filter: OrderStatusFilter = "all") {
