@@ -44,9 +44,10 @@ export function HomeHero() {
   const price = item && cheapest(item);
   const hasImage = Boolean(hero.backgroundImage);
   const explore = hero.explore.link;
-  return <section className={hasImage ? "home-hero with-image" : "home-hero"} aria-labelledby="shop-title">
+  return <section className={`home-hero${hasImage ? " with-image" : ""}${hero.desktopImage ? " has-wide" : ""}`} aria-labelledby="shop-title">
     {hasImage && <Image className="home-hero-image" src={hero.backgroundImage} alt="" fill priority sizes="100vw" />}
-    {/* Desktop only: the whole photo, so a tall murti is never cropped by the wide banner. */}
+    {hasImage && hero.desktopImage && <Image className="home-hero-wide" src={hero.desktopImage} alt="" fill sizes="(min-width: 901px) 100vw, 1px" />}
+    {/* Desktop only, when there's no wide photo: the whole photo, so a tall murti isn't cropped by the banner. */}
     {hasImage && <Image className="home-hero-figure" src={hero.backgroundImage} alt="" fill sizes="(min-width: 901px) 55vw, 1px" />}
     <div className="home-hero-copy">
       {hero.showEyebrow && hero.eyebrow && <p className="eyebrow">{hero.eyebrow}</p>}
@@ -102,10 +103,11 @@ export function Collections({ onChoose }: { onChoose: (name: string) => void }) 
   if (!home.collections.show || !collections.length) return null;
   return <section className="home-section" aria-labelledby="collections-title">
     <SectionHead id="collections-title" {...home.collections} />
-    <ul className="home-collections">{collections.map(category => <li key={category.name}>
-      <a href="#catalogue" onClick={() => onChoose(category.name)}>
-        <span className="home-collection-image">{category.image && <Image src={category.image} alt="" fill sizes="140px" />}</span>
-        <span>{category.name}</span>
+    <ul className={`home-collections count-${Math.min(collections.length, 5)}`}>{collections.map((category, index) => <li key={category.name}>
+      <a className={category.image ? "has-image" : undefined} href="#catalogue" onClick={() => onChoose(category.name)}>
+        {category.image && <span className="home-collection-image"><Image src={category.image} alt="" fill sizes={index === 0 ? "(max-width: 700px) 100vw, 50vw" : "(max-width: 700px) 50vw, 25vw"} /></span>}
+        <span className="home-collection-name">{category.name}</span>
+        <span className="home-collection-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg></span>
       </a>
     </li>)}</ul>
   </section>;

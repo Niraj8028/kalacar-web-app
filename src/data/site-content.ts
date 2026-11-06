@@ -1,7 +1,7 @@
 // What the owner edits in the dashboard for the home and product pages. No imports, so the shop can
 // fall back to these defaults if the settings can't load, and the page never breaks.
 export type ButtonField = { show: boolean; label: string; link: string };
-export type HeroSection = { show: boolean; productId: string; backgroundImage: string; showEyebrow: boolean; eyebrow: string; showTitle: boolean; title: string; showDescription: boolean; description: string; buy: { show: boolean; label: string; showPrice: boolean }; explore: ButtonField };
+export type HeroSection = { show: boolean; productId: string; backgroundImage: string; desktopImage: string; showEyebrow: boolean; eyebrow: string; showTitle: boolean; title: string; showDescription: boolean; description: string; buy: { show: boolean; label: string; showPrice: boolean }; explore: ButtonField };
 export type ProductGridSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; productIds: string[] };
 export type ComingSoonItem = { name: string; image: string };
 export type ComingSoonSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: ComingSoonItem[] };
@@ -27,7 +27,7 @@ export type ProductPageContent = {
 };
 
 export const DEFAULT_HOME: HomeContent = {
-  hero: { show: true, productId: "", backgroundImage: "", showEyebrow: true, eyebrow: "THE KALACAR SHOP", showTitle: true, title: "Small murtis, close to home.", showDescription: true, description: "A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.", buy: { show: true, label: "Buy now", showPrice: true }, explore: { show: true, label: "Explore collections", link: "#catalogue" } },
+  hero: { show: true, productId: "", backgroundImage: "", desktopImage: "", showEyebrow: true, eyebrow: "THE KALACAR SHOP", showTitle: true, title: "Small murtis, close to home.", showDescription: true, description: "A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.", buy: { show: true, label: "Buy now", showPrice: true }, explore: { show: true, label: "Explore collections", link: "#catalogue" } },
   firstLaunch: { show: false, showTitle: true, title: "Our First Launch", showDescription: false, description: "", productIds: [] },
   comingSoon: { show: false, showTitle: true, title: "Coming Soon", showDescription: false, description: "", items: [] },
   collections: { show: false, showTitle: true, title: "Our Collections", showDescription: false, description: "" },

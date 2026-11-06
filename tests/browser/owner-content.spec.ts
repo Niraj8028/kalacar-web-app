@@ -59,17 +59,22 @@ test.describe("home page follows the dashboard", () => {
     await expect(soon.getByText("₹")).toHaveCount(0);
     await expect(soon.getByRole("button")).toHaveCount(0);
   });
-  test("Collections are circles, 2 per row on phones, and filter the catalogue", async ({ page }, info) => {
-    await mockShop(page, { content: content({ hero, collections: { ...DEFAULT_HOME.collections, show: true } }) });
+  test("Categories are cards with a large first card, and filter the catalogue", async ({ page }, info) => {
+    await mockShop(page, { content: { ...content({ hero, collections: { ...DEFAULT_HOME.collections, show: true } }), collections: ["Ganesh", "Krishna", "Shiva", "Frames"].map(name => ({ name, image: "", productCount: 1 })) } });
     await page.goto("/");
     const links = page.locator(".home-collections a");
-    await expect(links).toHaveCount(2);
-    if (info.project.name === "phone") {
-      const [first, second] = [await links.nth(0).boundingBox(), await links.nth(1).boundingBox()];
-      expect(first?.y).toBe(second?.y);
-    }
+    await expect(links).toHaveCount(4);
+    const [first, second] = [await links.nth(0).boundingBox(), await links.nth(1).boundingBox()];
+    expect(first?.height ?? 0).toBeGreaterThan((second?.height ?? 0) * 1.5);
+    if (info.project.name === "phone") expect(first?.width ?? 0).toBeGreaterThan((second?.width ?? 0) * 1.5);
+    await expectFits(page);
     await links.nth(0).click();
     await expect(page.locator(".result-count")).toHaveText("1 item");
+  });
+  test("no bottom app bar on phones", async ({ page }) => {
+    await mockShop(page, { content: content({ hero }) });
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "Wishlist" })).toHaveCount(0);
   });
   test("Why us, reviews and Our Story appear only when filled in", async ({ page }) => {
     const on = { hero, why: { ...DEFAULT_HOME.why, show: true, items: [{ title: "Reason one", text: "Because" }] }, reviews: { ...DEFAULT_HOME.reviews, show: true }, story: { ...DEFAULT_HOME.story, show: true, text: "Our real story", founder: "Founder Name" } };
@@ -87,7 +92,7 @@ test.describe("home page follows the dashboard", () => {
   });
 });
 
-test("hero text sits to the side on desktop, and is centred on phones", async ({ page }, info) => {
+test("hero text is at the lower left, with both buttons side by side", async ({ page }, info) => {
   await page.route("**/_next/image**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='600' height='900'/>" }));
   await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh", backgroundImage: "/uploads/a.png" } }) });
   await page.goto("/");
@@ -96,7 +101,8 @@ test("hero text sits to the side on desktop, and is centred on phones", async ({
   const [one, two] = [await buy.boundingBox(), await explore.boundingBox()];
   expect(Math.abs((one?.y ?? 0) - (two?.y ?? 99))).toBeLessThan(2);
   expect(two?.x).toBeGreaterThan((one?.x ?? 0) + (one?.width ?? 0) - 1);
-  await expect(page.locator(".home-hero-copy")).toHaveCSS("text-align", info.project.name === "phone" ? "center" : "left");
+  await expect(page.locator(".home-hero-copy")).toHaveCSS("text-align", "start");
+  expect(info.project.name).toBeTruthy();
   await expectFits(page);
 });
 
