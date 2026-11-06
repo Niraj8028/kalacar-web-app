@@ -6,7 +6,7 @@ import { addressDb } from "@/lib/catalogue-db";
 
 export const MESSAGE_STATUSES = ["unfulfilled", "processing", "dispatched", "completed"] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
-export type MessageTemplate = { whatsapp: string; emailSubject: string; emailBody: string };
+export type MessageTemplate = { whatsapp: string; sms: string; emailSubject: string; emailBody: string };
 
 export const MESSAGE_VARIABLES = [
   { key: "customer_name", label: "Customer name" },
@@ -23,28 +23,32 @@ export const MESSAGE_VARIABLES = [
 ] as const;
 
 const known = new Set<string>(MESSAGE_VARIABLES.map(variable => variable.key));
-const LIMITS = { whatsapp: 1000, emailSubject: 150, emailBody: 1500 };
-const FIELD_NAMES = { whatsapp: "WhatsApp message", emailSubject: "Email subject", emailBody: "Email message" };
+const LIMITS = { whatsapp: 1000, sms: 320, emailSubject: 150, emailBody: 1500 };
+const FIELD_NAMES = { whatsapp: "WhatsApp message", sms: "SMS message", emailSubject: "Email subject", emailBody: "Email message" };
 const signOff = "\n\nThank you,\n{shop_name}";
 
 export const DEFAULT_TEMPLATES: Record<MessageStatus, MessageTemplate> = {
   unfulfilled: {
     whatsapp: "Hi {first_name}, thank you for your {shop_name} order {order_id} ({product_names}). We have received it and will update you when it is being prepared.",
+    sms: "{shop_name}: Hi {first_name}, we received your order {order_id}. We will update you when it is being prepared.",
     emailSubject: "We received your {shop_name} order {order_id}",
     emailBody: `Hi {customer_name},\n\nThank you for your order {order_id}: {product_names}. We have received it and will update you when it is being prepared.${signOff}`,
   },
   processing: {
     whatsapp: "Hi {first_name}, your {shop_name} order {order_id} ({product_names}) is now being prepared.",
+    sms: "{shop_name}: Hi {first_name}, your order {order_id} is being prepared.",
     emailSubject: "Your {shop_name} order {order_id} is being prepared",
     emailBody: `Hi {customer_name},\n\nYour order {order_id} ({product_names}) is now being prepared. We will update you when it is dispatched.${signOff}`,
   },
   dispatched: {
     whatsapp: "Hi {first_name}, your {shop_name} order {order_id} ({product_names}) has been dispatched by {courier}. Tracking ID: {tracking_id}. Track it here: {tracking_link}",
+    sms: "{shop_name}: Hi {first_name}, your order {order_id} has been dispatched by {courier}. Tracking ID: {tracking_id}.",
     emailSubject: "Your {shop_name} order {order_id} has been dispatched",
     emailBody: `Hi {customer_name},\n\nYour order {order_id} ({product_names}) has been dispatched by {courier}.\n\nTracking ID: {tracking_id}\nTrack it here: {tracking_link}${signOff}`,
   },
   completed: {
     whatsapp: "Hi {first_name}, your {shop_name} order {order_id} ({product_names}) has been delivered. Thank you for shopping with us.",
+    sms: "{shop_name}: Hi {first_name}, your order {order_id} has been delivered. Thank you for shopping with us.",
     emailSubject: "Your {shop_name} order {order_id} has been delivered",
     emailBody: `Hi {customer_name},\n\nYour order {order_id} ({product_names}) has been delivered. Thank you for shopping with us.${signOff}`,
   },
@@ -69,9 +73,9 @@ export function parseMessageTemplate(body: unknown): { error: string } | { value
   if (!body || typeof body !== "object") return { error: "Invalid template." };
   const input = body as Record<string, unknown>;
   const value = {} as MessageTemplate;
-  for (const field of ["whatsapp", "emailSubject", "emailBody"] as const) {
+  for (const field of ["whatsapp", "sms", "emailSubject", "emailBody"] as const) {
     const text = typeof input[field] === "string" ? input[field].trim() : "";
-    if (text.length > LIMITS[field]) return { error: `Keep the ${FIELD_NAMES[field].toLowerCase()} to ${LIMITS[field]} characters.` };
+    if (text.length > LIMITS[field]) return { error: `Keep the ${FIELD_NAMES[field]} to ${LIMITS[field]} characters.` };
     for (const match of text.matchAll(/\{([^{}]*)\}/g)) if (!known.has(match[1])) return { error: `${FIELD_NAMES[field]}: {${match[1]}} isn't a variable. Use the buttons to insert one.` };
     if (/[{}]/.test(text.replace(/\{[^{}]*\}/g, ""))) return { error: `${FIELD_NAMES[field]}: check the curly brackets around variables.` };
     value[field] = text;
