@@ -1,5 +1,6 @@
 "use client";
 
+import { ShopLogo } from "@/components/shop-logo";
 import { useLiveLoad } from "@/lib/realtime-client";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -24,7 +25,7 @@ export default function StoreGate({ children }: { children: ReactNode }) {
 
   if (status && !status.open && !ALWAYS_OPEN.some(path => pathname === path || pathname.startsWith(`${path}/`))) {
     return <main className="coming-soon">
-      <p className="wordmark">kalacar<span>.</span></p>
+      <ShopLogo />
       <h1>Coming soon</h1>
       <p>{status.comingSoonMessage}</p>
       <nav aria-label="Shop information"><Link href="/account">Account & orders</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav>

@@ -92,7 +92,7 @@ test.describe("home page follows the dashboard", () => {
   });
 });
 
-test("hero text is at the lower left, with both buttons side by side", async ({ page }, info) => {
+test("hero text and both side-by-side buttons are placed for each device", async ({ page }, info) => {
   await page.route("**/_next/image**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='600' height='900'/>" }));
   await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh", backgroundImage: "/uploads/a.png" } }) });
   await page.goto("/");
@@ -168,6 +168,15 @@ test.describe("product page follows the dashboard", () => {
     await expect(page.getByRole("link", { name: "Explore more murtis" })).toBeVisible();
     await expectFits(page);
   });
+});
+
+test("inner pages show the real logo, not broken text", async ({ page }) => {
+  await mockShop(page);
+  for (const path of ["/cart", "/account", "/about", "/products/ganesh"]) {
+    await page.goto(path);
+    await expect(page.locator(".detail-header .shop-logo img, .cart-page .shop-logo img").first()).toBeVisible();
+    await expect(page.locator("header").getByText("SMALL DEVOTIONAL MURTIS")).toHaveCount(0);
+  }
 });
 
 test.describe("info pages", () => {

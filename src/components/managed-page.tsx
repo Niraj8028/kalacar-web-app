@@ -1,3 +1,4 @@
+import { ShopLogo } from "@/components/shop-logo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -35,7 +36,7 @@ async function Body({ slug }: { slug: string }) {
 
 export function ManagedPage({ slug }: { slug: string }) {
   return <main className="policy-page">
-    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><Link className="back-to-shop" href="/"><ArrowLeft /> Back to the shop</Link></header>
+    <header className="detail-header"><ShopLogo /><Link className="back-to-shop" href="/"><ArrowLeft /> Back to the shop</Link></header>
     <Suspense fallback={<article className="policy-content"><p>Loading…</p></article>}><Body slug={slug} /></Suspense>
     <footer className="policy-footer"><PolicyLinks /></footer>
   </main>;

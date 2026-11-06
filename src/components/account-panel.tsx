@@ -1,5 +1,6 @@
 "use client";
 
+import { ShopLogo } from "@/components/shop-logo";
 import { useLiveLoad } from "@/lib/realtime-client";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
@@ -166,7 +167,7 @@ export default function AccountPanel() {
   }
 
   return <main className="account-page">
-    <header className="detail-header"><Link className="wordmark" href="/">kalacar<span>.</span><small>SMALL DEVOTIONAL MURTIS</small></Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></header>
+    <header className="detail-header"><ShopLogo /><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></header>
     <section className="account-content">
       <p className="eyebrow">KALACAR CUSTOMER ACCOUNT</p>
       <h1>{user ? `Namaste, ${user.name.split(" ")[0]}` : "Your orders, in one place."}</h1>

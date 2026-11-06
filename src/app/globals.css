@@ -1041,3 +1041,18 @@ button { color: inherit; }
   .shop-footer > p { grid-column: auto; grid-row: auto; }
   .footer-whatsapp { grid-column: auto; justify-self: start; min-height: 32px; }
 }
+
+/* Logo on inner pages. In dark theme it turns white, because its dark lettering wouldn't show. */
+.shop-logo { display: inline-flex; align-items: center; }
+.shop-logo .brand-logo { display: block; width: clamp(104px, 11vw, 148px); height: auto; }
+:root[data-theme="dark"] .brand-logo { filter: brightness(0) invert(1); }
+
+/* Desktop hero: murti on the left, text and buttons on the right, sitting a little above centre. */
+@media (min-width: 901px) {
+  .home-hero.with-image { align-items: center; justify-content: flex-end; padding-top: 110px; padding-bottom: 90px; }
+  .home-hero.with-image .home-hero-copy { width: min(44%, 560px); }
+  .home-hero.with-image::after { background: linear-gradient(180deg, rgb(20 14 10 / 38%) 0%, rgb(20 14 10 / 0%) 22%); }
+  .home-hero.has-wide.with-image::after { background: linear-gradient(90deg, rgb(20 14 10 / 0%) 40%, rgb(20 14 10 / 58%) 70%); }
+  /* A tall photo fills the left side and fades into the dark background, so it isn't zoomed in on the face. */
+  .home-hero:not(.has-wide) .home-hero-image { right: auto !important; width: 62% !important; object-position: 50% 28%; -webkit-mask-image: linear-gradient(90deg, #000 62%, transparent 100%); mask-image: linear-gradient(90deg, #000 62%, transparent 100%); }
+}
