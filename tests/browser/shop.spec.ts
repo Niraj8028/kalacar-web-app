@@ -143,3 +143,18 @@ test("phone search covers the header row while typing, and search works", async 
   await expect(page.locator(".result-count")).toHaveText("1 item");
   await expectFits(page);
 });
+
+test("header icons all match", async ({ page }, info) => {
+  await mockShop(page);
+  await page.goto("/");
+  const tools = [".account-link", ".theme-toggle", ".bag-link", ...(info.project.name === "phone" ? [".header-search"] : [])];
+  for (const tool of tools) {
+    const circle = page.locator(`.shop-header .header-tools ${tool}`);
+    const box = await circle.boundingBox();
+    expect(Math.round(box?.width ?? 0), tool).toBe(40);
+    expect(Math.round(box?.height ?? 0), tool).toBe(40);
+    await expect(circle, tool).toHaveCSS("border-radius", /50%|999px/);
+    const icon = await circle.locator("svg").first().boundingBox();
+    expect(Math.round(icon?.width ?? 0), tool).toBe(18);
+  }
+});

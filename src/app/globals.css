@@ -1067,3 +1067,28 @@ button { color: inherit; }
   .home-top.over-photo .header-search:focus-within input { color: var(--ink); }
   .home-top.over-photo .header-search:focus-within input::placeholder { color: var(--muted); }
 }
+
+/* Header icons: account, search, theme and bag all share one circle and one icon size. */
+.shop-header .header-tools { gap: 8px; }
+.shop-header .header-tools .account-link, .shop-header .header-tools .theme-toggle, .shop-header .header-tools .bag-link { box-sizing: border-box; display: grid; place-items: center; flex: none; width: 40px; min-width: 40px; height: 40px; min-height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); }
+.shop-header .header-tools .account-link:hover, .shop-header .header-tools .theme-toggle:hover, .shop-header .header-tools .bag-link:hover { border-color: var(--accent); background: var(--surface); color: var(--ink); }
+.shop-header .header-tools .account-link span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.shop-header .header-tools svg { width: 18px; height: 18px; stroke-width: 1.7; color: inherit; }
+.home-top.over-photo .shop-header .header-tools .account-link, .home-top.over-photo .shop-header .header-tools .theme-toggle, .home-top.over-photo .shop-header .header-tools .bag-link { border-color: rgb(255 255 255 / 55%); background: rgb(20 14 10 / 18%); color: #fff; }
+.home-top.over-photo .shop-header .header-tools .account-link:hover, .home-top.over-photo .shop-header .header-tools .theme-toggle:hover, .home-top.over-photo .shop-header .header-tools .bag-link:hover { border-color: #fff; background: rgb(20 14 10 / 34%); color: #fff; }
+.shop-header .header-tools .header-search { height: 40px; border-radius: 999px; }
+@media (max-width: 620px) {
+  .shop-header .header-tools .header-search:not(:focus-within) { box-sizing: border-box; width: 40px; padding: 0; border-radius: 50%; }
+  .shop-header .header-tools .header-search:focus-within { height: 42px; border-radius: 10px; }
+}
+
+/* Phone hero text and buttons: smaller. Labels are never cut off, so a price always shows. */
+@media (max-width: 620px) {
+  .home-hero.with-image { padding: 170px 16px 20px; }
+  .home-hero-copy { gap: 6px; }
+  .home-hero h1 { font-size: 25px; line-height: 1.2; }
+  .home-hero .intro-copy { font-size: 13px; line-height: 1.4; }
+  .home-hero .eyebrow { font-size: 11px; }
+  .home-hero-buttons { width: 100%; gap: 8px; margin-top: 8px; }
+  .home-hero-buy, .home-hero-explore { min-height: 42px; padding: 6px 10px; border-radius: 22px; font-size: 12.5px; font-weight: 600; line-height: 1.2; }
+}

@@ -170,6 +170,15 @@ test.describe("product page follows the dashboard", () => {
   });
 });
 
+test("a clean Buy label fits one line on phones, and shows the price", async ({ page }, info) => {
+  test.skip(info.project.name !== "phone");
+  await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh", backgroundImage: "/uploads/a.png" } }) });
+  await page.goto("/");
+  const buy = page.locator(".home-hero-buy");
+  await expect(buy).toContainText("₹999");
+  expect((await buy.boundingBox())?.height ?? 99).toBeLessThanOrEqual(44);
+});
+
 test("inner pages show the real logo, not broken text", async ({ page }) => {
   await mockShop(page);
   for (const path of ["/cart", "/account", "/about", "/products/ganesh"]) {
