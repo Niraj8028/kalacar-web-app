@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { useSiteContent } from "@/components/site-content-provider";
-import { Stars, VideoReview } from "@/components/reviews";
+import { Stars, VideoRow } from "@/components/reviews";
 import { videoEmbed } from "@/data/site-content";
 import type { StoreItem } from "@/data/catalogue";
 
@@ -127,13 +127,15 @@ export function HomeReviews() {
   const { home, reviews } = useSiteContent();
   const section = home.reviews;
   const chosen = reviews.filter(review => review.showOnHome);
-  const written = section.showText ? chosen.filter(review => review.text) : [];
+  const written = section.showText ? chosen.filter(review => review.text && !videoEmbed(review.videoUrl)) : [];
   const videos = section.showVideo ? chosen.filter(review => videoEmbed(review.videoUrl)) : [];
+  const follow = section.follow;
   if (!section.show || (!written.length && !videos.length)) return null;
   return <section className="home-section" aria-labelledby="home-reviews-title">
     <SectionHead id="home-reviews-title" {...section} />
-    {videos.length > 0 && <div className="home-videos">{videos.map(review => <VideoReview key={review.id} review={review} />)}</div>}
+    <VideoRow reviews={videos} />
     {written.length > 0 && <ul className="review-list">{written.map(review => <li className="review-card" key={review.id}><Stars rating={review.rating} /><p>{review.text}</p><small>{review.author}{review.city && `, ${review.city}`}</small></li>)}</ul>}
+    {follow.show && follow.url && <div className="video-follow"><a href={follow.url} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.6" /></svg>{follow.label}</a></div>}
   </section>;
 }
 

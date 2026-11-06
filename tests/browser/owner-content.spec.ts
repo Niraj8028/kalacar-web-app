@@ -179,6 +179,28 @@ test("a clean Buy label fits one line on phones, and shows the price", async ({ 
   expect((await buy.boundingBox())?.height ?? 99).toBeLessThanOrEqual(44);
 });
 
+test("video reviews are matching cards that load the player only on press", async ({ page }) => {
+  const videos = [review({ id: 1, videoUrl: "https://www.youtube.com/watch?v=abc123DEF_-" }), review({ id: 2, videoUrl: "https://www.instagram.com/reel/ABC_123/", photos: ["/placeholder.png"] })];
+  await page.route("https://i.ytimg.com/**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='9' height='16'/>" }));
+  await mockShop(page, { content: content({ hero, reviews: { ...DEFAULT_HOME.reviews, show: true, follow: { show: true, label: "Follow us", url: "https://www.instagram.com/kalacar" } } }), reviews: videos });
+  await page.route(/youtube-nocookie\.com|instagram\.com\/p\//, route => route.fulfill({ status: 200, contentType: "text/html", body: "<p>player</p>" }));
+  await page.goto("/");
+  const cards = page.locator(".video-card");
+  await expect(cards).toHaveCount(2);
+  await expect(cards.nth(0).locator("iframe")).toHaveCount(0);
+  await expect(cards.nth(0).locator("img")).toHaveAttribute("src", /i\.ytimg\.com\/vi\/abc123DEF_-/);
+  await expect(cards.nth(1).locator("iframe.video-card-preview")).toHaveCount(1);
+  await expect(cards.nth(1).locator("img")).toHaveCount(0);
+  const [one, two] = [await cards.nth(0).boundingBox(), await cards.nth(1).boundingBox()];
+  expect(Math.round(one?.height ?? 0)).toBe(Math.round(two?.height ?? 1));
+  await expect(page.getByRole("link", { name: "View product" })).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "Follow us" })).toHaveAttribute("href", /instagram/);
+  await cards.nth(0).getByRole("button").click();
+  await expect(cards.nth(0).locator("iframe")).toHaveAttribute("src", /youtube-nocookie.*autoplay=1/);
+  await expect(cards.nth(0).locator("iframe")).not.toHaveAttribute("sandbox");
+  await expectFits(page);
+});
+
 test("inner pages show the real logo, not broken text", async ({ page }) => {
   await mockShop(page);
   for (const path of ["/cart", "/account", "/about", "/products/ganesh"]) {
