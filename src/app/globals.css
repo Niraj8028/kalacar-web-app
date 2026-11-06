@@ -1056,3 +1056,14 @@ button { color: inherit; }
   /* A tall photo fills the left side and fades into the dark background, so it isn't zoomed in on the face. */
   .home-hero:not(.has-wide) .home-hero-image { right: auto !important; width: 62% !important; object-position: 50% 28%; -webkit-mask-image: linear-gradient(90deg, #000 62%, transparent 100%); mask-image: linear-gradient(90deg, #000 62%, transparent 100%); }
 }
+
+/* Phone search: while typing, it covers the header row instead of sitting on the logo and icons. */
+@media (max-width: 620px) {
+  .shop-header { position: relative; }
+  .header-search:focus-within { position: absolute; top: 14px; right: 12px; left: 12px; z-index: 6; width: auto; height: 42px; padding: 0 12px; border-radius: 10px; background: var(--surface); color: var(--ink); }
+  .header-search:focus-within input { position: static; width: 100%; height: 100%; opacity: 1; pointer-events: auto; font-size: 16px; color: var(--ink); }
+  .home-top.over-photo .header-search:focus-within { background: var(--surface); color: var(--ink); }
+  .home-top.over-photo .header-search:focus-within svg { color: var(--ink); }
+  .home-top.over-photo .header-search:focus-within input { color: var(--ink); }
+  .home-top.over-photo .header-search:focus-within input::placeholder { color: var(--muted); }
+}

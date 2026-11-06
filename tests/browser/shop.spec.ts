@@ -127,3 +127,19 @@ test.describe("no constant calling, and failures don't harm the page", () => {
     await expect(page.locator(".result-count")).toHaveText("3 items");
   });
 });
+
+test("phone search covers the header row while typing, and search works", async ({ page }, info) => {
+  test.skip(info.project.name !== "phone");
+  await mockShop(page);
+  await page.goto("/");
+  const box = page.locator(".header-search");
+  await box.click();
+  const input = page.getByRole("searchbox", { name: "Search murtis" });
+  await expect(input).toBeFocused();
+  const rect = await box.boundingBox();
+  expect(rect?.x).toBeLessThanOrEqual(13);
+  expect(rect?.width).toBeGreaterThan(330);
+  await input.fill("Ganesh");
+  await expect(page.locator(".result-count")).toHaveText("1 item");
+  await expectFits(page);
+});
