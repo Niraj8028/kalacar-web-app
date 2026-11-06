@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { getGiftWrap, parseGiftWrap, saveGiftWrap } from "@/lib/settings";
-import { getFestive, saveFestive } from "@/lib/festive";
+import { getFestive, parseFestive, saveFestive } from "@/lib/festive";
 import { getInstagram, parseInstagram, saveInstagram } from "@/lib/instagram";
 import { getShopLink, parseShopLink, saveShopLink } from "@/lib/shop-link";
 import { getStoreSettings, parseStoreSettings, saveStoreSettings } from "@/lib/store-status";
@@ -17,7 +17,7 @@ export async function GET() {
 async function handlePATCH(request: Request) {
   const denied = await requireOwner();
   if (denied) return denied;
-  const body = await request.json().catch(() => null) as { giftWrap?: unknown; store?: unknown; shopLink?: unknown; instagram?: unknown; festive?: { diwali?: unknown } } | null;
+  const body = await request.json().catch(() => null) as { giftWrap?: unknown; store?: unknown; shopLink?: unknown; instagram?: unknown; festive?: unknown } | null;
   if (body?.shopLink !== undefined) {
     const link = parseShopLink(body.shopLink);
     if ("error" in link) return NextResponse.json({ error: link.error }, { status: 400 });
@@ -25,7 +25,8 @@ async function handlePATCH(request: Request) {
     catch { return NextResponse.json({ error: "Could not save settings." }, { status: 503 }); }
   }
   if (body?.festive !== undefined) {
-    const festive = { diwali: body.festive?.diwali === true };
+    const festive = parseFestive(body.festive);
+    if (!festive) return NextResponse.json({ error: "Choose a decoration from the list." }, { status: 400 });
     try { await saveFestive(festive); return NextResponse.json({ festive }); }
     catch { return NextResponse.json({ error: "Could not save settings." }, { status: 503 }); }
   }
