@@ -6,6 +6,9 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173", // dashboard, local
   "https://firebrick-squid-218523.hostingersite.com", // shop, hosted
   "https://sienna-herring-231344.hostingersite.com", // dashboard, hosted
+  "https://kalacar.in", // shop, real domain
+  "https://www.kalacar.in", // shop, real domain
+  "https://admin.kalacar.in", // dashboard, real domain
 ];
 
 /** The dashboard's small server sets this, because the shop's own host replaces X-Forwarded-Host. */
