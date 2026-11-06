@@ -963,3 +963,15 @@ button { color: inherit; }
   .home-story { grid-template-columns: 1fr; }
   .sticky-add { display: none; }
 }
+
+/* Hero: centred text and side-by-side buttons, as in the owner's reference. Colours stay Kalacar's. */
+.home-hero-copy { justify-items: center; gap: 8px; text-align: center; }
+.home-hero h1 { font: 700 clamp(26px, 4.2vw, 48px)/1.15 Arial, Helvetica, sans-serif; letter-spacing: -.01em; }
+.home-hero .intro-copy { max-width: 620px; font: 400 clamp(13px, 1.5vw, 17px)/1.45 Arial, Helvetica, sans-serif; color: var(--muted); }
+.home-hero .eyebrow { margin: 0; font-size: 11px; }
+.home-hero-buttons { flex-wrap: nowrap; justify-content: center; width: min(100%, 460px); gap: 10px; margin-top: 10px; }
+.home-hero-buy, .home-hero-explore { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 6px 14px; border-radius: 999px; font-size: 13px; line-height: 1.2; text-align: center; }
+.home-hero.with-image { min-height: clamp(380px, 100vw, 620px); padding: 96px 16px 26px; }
+.home-hero.with-image .intro-copy { color: #f4eee4; }
+.home-hero.with-image::after { background: linear-gradient(180deg, rgb(20 14 10 / 0%) 35%, rgb(20 14 10 / 82%) 100%); }
+.home-hero.with-image .home-hero-explore { background: rgb(20 14 10 / 28%); }

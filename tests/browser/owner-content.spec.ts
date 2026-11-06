@@ -87,6 +87,18 @@ test.describe("home page follows the dashboard", () => {
   });
 });
 
+test("hero text is centred with both buttons side by side", async ({ page }) => {
+  await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh" } }) });
+  await page.goto("/");
+  const [buy, explore] = [page.locator(".home-hero-buy"), page.locator(".home-hero-explore")];
+  await expect(buy).toBeVisible();
+  const [one, two] = [await buy.boundingBox(), await explore.boundingBox()];
+  expect(Math.abs((one?.y ?? 0) - (two?.y ?? 99))).toBeLessThan(2);
+  expect(two?.x).toBeGreaterThan((one?.x ?? 0) + (one?.width ?? 0) - 1);
+  await expect(page.locator(".home-hero-copy")).toHaveCSS("text-align", "center");
+  await expectFits(page);
+});
+
 test.describe("product page follows the dashboard", () => {
   test("shows description, offer, how it's made, FAQs and WhatsApp", async ({ page }) => {
     const errors = watchErrors(page);
