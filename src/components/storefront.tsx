@@ -34,7 +34,6 @@ export default function Storefront() {
   return (
     <main className="storefront" id="top">
       {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Catalogue values come from the temporary database. Confirm product facts, prices, and stock before launch. Payments remain in test mode.</p>}
-      <div className="top-note">Small devotional murtis</div>
 
       <div className={home.hero.show && home.hero.backgroundImage ? "home-top over-photo" : "home-top"}>
       <header className="shop-header">
@@ -50,7 +49,6 @@ export default function Storefront() {
         </Link>
 
         <nav className="header-nav" aria-label="Shop categories">
-          <a href="#catalogue" onClick={() => setActiveFilter("All murtis")}>Shop all</a>
           {categories.map(category => <a key={category} href="#catalogue" onClick={() => setActiveFilter(category)}>{category}</a>)}
         </nav>
 
