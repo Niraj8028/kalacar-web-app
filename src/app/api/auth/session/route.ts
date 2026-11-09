@@ -8,6 +8,6 @@ export async function GET(request: Request) {
     const user = scopeFrom(new URL(request.url).searchParams.get("scope")) === "owner" ? await currentOwnerSession() : await currentCustomer();
     return NextResponse.json({ user, isOwner: isOwnerEmail(user?.email), googleEnabled: Boolean(googleConfig()) }, { headers: { "Cache-Control": "no-store" } });
   } catch {
-    return NextResponse.json({ user: null, error: "Account service is unavailable. Check the local database connection and try again." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ user: null, error: "Sign-in isn't available right now. Please try again in a few minutes." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }

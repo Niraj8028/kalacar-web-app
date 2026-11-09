@@ -29,9 +29,9 @@ export async function POST(request: Request) {
     const response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: `Basic ${auth}` }, signal: AbortSignal.timeout(12000) });
     const payment = await response.json() as { order_id?: string; amount?: number; currency?: string; status?: string };
     if (!response.ok || payment.order_id !== razorpayOrderId || payment.amount !== order.amount * 100 || payment.currency !== "INR") return NextResponse.json({ error: "Razorpay payment details do not match this order." }, { status: 400 });
-    if (payment.status !== "captured") return NextResponse.json({ error: "Payment is not captured yet. Please wait for confirmation." }, { status: 202 });
+    if (payment.status !== "captured") return NextResponse.json({ error: "Your payment hasn't been confirmed yet. Please wait a moment and check again." }, { status: 202 });
     const paid = await markOrderPaid(orderId, razorpayOrderId, paymentId);
-    return paid ? NextResponse.json({ ok: true, orderId, status: "paid" }) : NextResponse.json({ error: "Payment was checked but order status is still pending." }, { status: 409 });
+    return paid ? NextResponse.json({ ok: true, orderId, status: "paid" }) : NextResponse.json({ error: "We've checked your payment, but your order is still being confirmed. Please check again shortly." }, { status: 409 });
   } catch (error) {
     console.error("Payment verification unavailable:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Could not confirm payment with Razorpay yet. Keep this page open and retry." }, { status: 503 });

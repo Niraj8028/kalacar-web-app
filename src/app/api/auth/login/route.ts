@@ -25,6 +25,6 @@ export async function POST(request: Request) {
     response.cookies.set(CUSTOMER_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/", maxAge: 60 * 60 * 24 * 7 });
     return response;
   } catch {
-    return NextResponse.json({ error: "Account service is unavailable. Check the local database connection and try again." }, { status: 503 });
+    return NextResponse.json({ error: "Sign-in isn't available right now. Please try again in a few minutes." }, { status: 503 });
   }
 }

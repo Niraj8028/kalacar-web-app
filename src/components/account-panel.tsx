@@ -67,7 +67,7 @@ export default function AccountPanel() {
       cancelled: "Google sign-in was cancelled.",
       expired: "Google sign-in expired. Please try again.",
       unverified: "Your Google email isn’t verified, so we couldn’t sign you in.",
-      google: "Google didn’t accept the sign-in. Check the OAuth client settings and try again.",
+      google: "Google sign-in didn’t work. Please try again, or use email and password.",
     };
     return messages[reason] ?? "Google sign-in is unavailable right now. Please try again.";
   };
@@ -77,7 +77,7 @@ export default function AccountPanel() {
     const session = await response.json().catch(() => null) as { user?: User | null; error?: string } | null;
     if (!response.ok || !session) {
       setUser(null); setOrders([]);
-      setError(session?.error || "Account service is unavailable. Check the local database connection and try again.");
+      setError(session?.error || "Sign-in isn't available right now. Please try again in a few minutes.");
       return;
     }
     setError(googleErrorFromUrl());
@@ -151,7 +151,7 @@ export default function AccountPanel() {
         try {
           const verify = await fetch("/api/checkout/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: checkout.orderId, ...payment }) });
           const result = await verify.json() as { status?: string; error?: string };
-          if (!verify.ok || result.status !== "paid") setError(result.error || "Payment received. We are still confirming it—check status again shortly.");
+          if (!verify.ok || result.status !== "paid") setError(result.error || "Payment received. We're still confirming it, so please check the status again shortly.");
           else setNotice(`Payment confirmed for order ${order.id.slice(0, 8)}.`);
         } catch { setError("We could not confirm payment just now. Your order remains saved; use Check payment status before retrying."); }
         await refresh();
