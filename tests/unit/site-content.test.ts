@@ -59,7 +59,9 @@ describe("home and product page settings", () => {
   it("keeps saved choices, including switching things off", async () => {
     const { parseHome } = await import("@/lib/site-content");
     const home = parseHome({ hero: { show: false, showTitle: false, title: "New" }, firstLaunch: { show: true, productIds: ["a", "a", "BAD ID", "b"] }, comingSoon: { items: [{ name: "Soon", image: "/uploads/a.png" }, { name: "", image: "" }] } });
-    expect(home.hero).toMatchObject({ show: false, showTitle: false, title: "New" });
+    expect(home.hero.show).toBe(false);
+    expect(home.hero.slides).toHaveLength(1);
+    expect(home.hero.slides[0]).toMatchObject({ showTitle: false, title: "New" });
     expect(home.firstLaunch.productIds).toEqual(["a", "b"]);
     expect(home.comingSoon.items).toEqual([{ name: "Soon", image: "/uploads/a.png" }]);
   });
@@ -69,7 +71,23 @@ describe("home and product page settings", () => {
     for (const bad of ["https://evil.com/a.png", "/uploads/../x", "javascript:alert(1)", "/admin", 5]) expect(safeImage(bad)).toBe("");
     for (const good of ["#catalogue", "/about", "https://kalacar.in/x"]) expect(safeLink(good, "#")).toBe(good);
     for (const bad of ["javascript:alert(1)", "//evil.com", "http://evil.com", "/\\evil.com", "data:text/html,x"]) expect(safeLink(bad, "#")).toBe("#");
-    expect(parseHome({ hero: { explore: { link: "javascript:alert(1)" } } }).hero.explore.link).toBe("#catalogue");
+    expect(parseHome({ hero: { explore: { link: "javascript:alert(1)" } } }).hero.slides[0].explore.link).toBe("#catalogue");
+    expect(parseHome({ hero: { slides: [{ backgroundImage: "https://evil.com/a.png", explore: { link: "//evil.com" } }] } }).hero.slides[0]).toMatchObject({ backgroundImage: "", explore: { link: "#catalogue" } });
+  });
+  it("reads hero slides, and older single-hero saves as one slide", async () => {
+    const { parseHome } = await import("@/lib/site-content");
+    const { MAX_HERO_SLIDES } = await import("@/data/site-content");
+    const old = parseHome({ hero: { show: true, title: "Old hero", backgroundImage: "/uploads/old.png", productId: "krishna" } }).hero;
+    expect(old).toMatchObject({ show: true, autoplay: true, interval: 5 });
+    expect(old.slides).toHaveLength(1);
+    expect(old.slides[0]).toMatchObject({ title: "Old hero", backgroundImage: "/uploads/old.png", productId: "krishna" });
+    const many = parseHome({ hero: { show: true, autoplay: false, interval: 9, slides: [{ title: "One" }, { title: "Two", productId: "BAD ID" }] } }).hero;
+    expect(many).toMatchObject({ autoplay: false, interval: 9 });
+    expect(many.slides.map(slide => slide.title)).toEqual(["One", "Two"]);
+    expect(many.slides[1].productId).toBe("");
+    expect(parseHome({ hero: { slides: Array.from({ length: 20 }, (_, i) => ({ title: `S${i}` })) } }).hero.slides).toHaveLength(MAX_HERO_SLIDES);
+    expect(parseHome({ hero: { slides: [] } }).hero.slides).toHaveLength(1);
+    for (const interval of [0, 2, 16, 4.5, "7"]) expect(parseHome({ hero: { interval } }).hero.interval).toBe(5);
   });
   it("keeps numbers in range and has no made-up activity on by default", async () => {
     const { parseProductPage } = await import("@/lib/site-content");
