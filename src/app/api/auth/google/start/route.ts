@@ -6,7 +6,7 @@ import { CALLBACK_PATH, OAUTH_STATE_COOKIE, googleConfig, newOAuthRequest, reque
 export async function GET(request: Request) {
 
   const config = googleConfig();
-  if (!config) return NextResponse.json({ error: "Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET." }, { status: 503 });
+  if (!config) return NextResponse.json({ error: "Google sign-in isn't available right now. Please use email and password." }, { status: 503 });
   const origin = requestOrigin(request);
   if (!origin) return NextResponse.json({ error: "Google sign-in isn't set up for this address." }, { status: 400 });
 

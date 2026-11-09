@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 });
   const data = body as { items?: unknown; customer?: unknown; idempotencyKey?: unknown; giftWrap?: unknown; couponCode?: unknown };
-  if (typeof data.idempotencyKey !== "string" || !/^[0-9a-f-]{36}$/i.test(data.idempotencyKey)) return NextResponse.json({ error: "Checkout session is invalid. Reload the cart and try again." }, { status: 400 });
+  if (typeof data.idempotencyKey !== "string" || !/^[0-9a-f-]{36}$/i.test(data.idempotencyKey)) return NextResponse.json({ error: "Your checkout session has expired. Reload your bag and try again." }, { status: 400 });
   const cart = parseCartItems(data.items);
   if ("error" in cart) return NextResponse.json({ error: cart.error }, { status: 400 });
   const items = cart.items;
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   catch (error) {
     // Nothing was reserved or charged; the cart shows why the coupon no longer applies.
     if (error instanceof CouponError) return NextResponse.json({ error: error.message, coupon: true }, { status: 409 });
-    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") return NextResponse.json({ error: "One or more items no longer have enough stock. Your cart has not been charged." }, { status: 409 });
+    if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") return NextResponse.json({ error: "One or more items no longer have enough stock. You haven't been charged." }, { status: 409 });
     console.error("Order reservation failed:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Could not reserve your items. Please try again." }, { status: 503 });
   }
