@@ -40,12 +40,12 @@ export function BagLines({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function GiftChoice() {
-  const { giftOffer, wantGift, setWantGift } = useCart();
+  const { giftOffer, wantGift, setWantGift, count } = useCart();
   if (!giftOffer) return null;
   return <label className={`gift-option${wantGift ? " selected" : ""}`}>
     <input type="checkbox" checked={wantGift} onChange={e => setWantGift(e.target.checked)} />
     <GiftIcon />
     <span><b>{giftOffer.title}</b>{giftOffer.description && <small>{giftOffer.description}</small>}</span>
-    <strong>{giftOffer.price > 0 ? `+${money(giftOffer.price)}` : "Free"}</strong>
+    <strong>{giftOffer.price > 0 ? (count > 1 ? `+${money(giftOffer.price)} each` : `+${money(giftOffer.price)}`) : "Free"}</strong>
   </label>;
 }

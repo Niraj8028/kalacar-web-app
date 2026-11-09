@@ -8,11 +8,12 @@ import { DEFAULT_BRAND, DEFAULT_LOGO } from "@/data/site-content";
 
 /** The owner's logo from dashboard Settings (or the built-in one), with its colour and size choices. */
 export function useLogo() {
-  const brand = useSiteContent().brand ?? DEFAULT_BRAND;
+  const { brand = DEFAULT_BRAND, ready } = useSiteContent();
   const own = Boolean(brand.logo) && !brand.white;
   return {
     src: brand.logo || DEFAULT_LOGO,
-    className: `brand-logo${own ? " own-colours" : ""}${brand.width ? " sized" : ""}`,
+    // Until the settings arrive the logo keeps its space but stays invisible, so the built-in white logo never flashes first.
+    className: `brand-logo${own ? " own-colours" : ""}${brand.width ? " sized" : ""}${ready ? "" : " logo-pending"}`,
     style: brand.width ? { "--logo-w": `${brand.width}px` } as CSSProperties : undefined,
   };
 }

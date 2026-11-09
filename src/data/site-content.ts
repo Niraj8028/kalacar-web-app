@@ -14,7 +14,9 @@ export type WhyItem = { title: string; text: string };
 export type WhySection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: WhyItem[] };
 export type ReviewsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; showText: boolean; showVideo: boolean };
 export type StorySection = { show: boolean; showTitle: boolean; title: string; showText: boolean; text: string; showImage: boolean; image: string; showFounder: boolean; founder: string };
-export type HomeContent = { hero: HeroSection; firstLaunch: ProductGridSection; comingSoon: ComingSoonSection; collections: CollectionsSection; why: WhySection; reviews: ReviewsSection; story: StorySection };
+/** One featured murti below the hero: owner's heading, one photo (or a collage made as one image), and the product's own name, price and rating. */
+export type SpotlightSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; productId: string; image: string; showLogo: boolean; whatsapp: { show: boolean; label: string } };
+export type HomeContent = { hero: HeroSection; spotlight: SpotlightSection; firstLaunch: ProductGridSection; comingSoon: ComingSoonSection; collections: CollectionsSection; why: WhySection; reviews: ReviewsSection; story: StorySection };
 
 export type FaqItem = { question: string; answer: string };
 export type ProductPageContent = {
@@ -39,6 +41,7 @@ export const DEFAULT_HOME: HomeContent = {
   why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: false, description: "", items: [] },
   reviews: { show: false, showTitle: true, title: "Customer love", showDescription: false, description: "", showText: true, showVideo: true },
   story: { show: false, showTitle: true, title: "Our Story", showText: true, text: "", showImage: true, image: "", showFounder: true, founder: "" },
+  spotlight: { show: false, showTitle: true, title: "Bring home the divine", showDescription: true, description: "", productId: "", image: "", showLogo: true, whatsapp: { show: true, label: "WhatsApp to order" } },
 };
 
 export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {

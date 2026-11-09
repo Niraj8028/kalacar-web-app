@@ -30,3 +30,6 @@ export async function saveGiftWrap(value: GiftWrapSettings) {
   const db = await addressDb();
   await db.execute("INSERT INTO kalacar_settings (name,value) VALUES ('gift_wrap',?) ON DUPLICATE KEY UPDATE value=VALUES(value)", [JSON.stringify(value)]);
 }
+
+/** Gift packaging is charged for every murti in the bag (2 murtis, or one murti × 2, = 2 × the price). */
+export const giftWrapCharge = (price: number, items: Array<{ quantity: number }>) => price * items.reduce((total, item) => total + item.quantity, 0);

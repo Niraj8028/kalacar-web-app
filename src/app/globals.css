@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  /* Page content is never wider than this; the hero photo still spans the screen. */
+  --content-max: 1400px;
   color-scheme: light;
   --page: #f8f5ef;
   --surface: #fffdfa;
@@ -72,17 +74,17 @@ button { color: inherit; }
 .intro-copy { max-width: 340px; margin: 0 0 4px; color: var(--muted); font: 16px/1.6 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
 
 .catalogue-section { padding: 27px clamp(18px, 5vw, 76px) 78px; background: var(--surface); border-top: 1px solid var(--line); }
-.catalogue-heading { max-width: 1320px; margin: 0 auto 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.catalogue-heading { max-width: var(--content-max); margin: 0 auto 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .catalogue-heading .eyebrow { margin-bottom: 6px; }
 .catalogue-heading h2 { margin: 0; font: 400 clamp(24px, 3vw, 34px)/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
 .result-count { margin: 0 0 2px; color: var(--muted); font-size: 12px; }
-.catalogue-controls { max-width: 1320px; margin: 0 auto 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.catalogue-controls { max-width: var(--content-max); margin: 0 auto 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .filter-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-chip { min-height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
 .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
 .filter-chip.active { border-color: var(--ink); background: var(--ink); color: var(--page); }
 .reference-note { margin: 0; color: var(--muted); font-size: 12px; text-align: right; }
-.product-grid { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.product-grid { max-width: var(--content-max); margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
 .product-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); transition: box-shadow 160ms ease, transform 160ms ease; }
 .product-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
 .product-image-wrap { position: relative; aspect-ratio: 1.06 / 1; overflow: hidden; background: var(--surface-soft); }
@@ -104,7 +106,7 @@ button { color: inherit; }
 .product-price-block small { width: 100%; color: var(--muted); font-size: 11px; }
 .add-button { min-height: 35px; padding: 0 13px; border: 1px solid var(--accent); border-radius: 3px; background: var(--accent); color: #fffdfa; cursor: pointer; font-size: 12px; transition: background-color 150ms ease; }
 .add-button:hover { background: var(--accent-dark); }
-.empty-results { max-width: 1320px; margin: auto; padding: 40px; background: var(--page); text-align: center; color: var(--muted); }
+.empty-results { max-width: var(--content-max); margin: auto; padding: 40px; background: var(--page); text-align: center; color: var(--muted); }
 .empty-results p { margin-top: 0; }
 .empty-results button { padding: 9px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 
@@ -124,7 +126,7 @@ button { color: inherit; }
 .back-to-shop { color: var(--muted); font-size: 13px; }
 .back-to-shop:hover, .detail-breadcrumb a:hover { color: var(--accent); }
 .detail-breadcrumb { display: flex; gap: 10px; padding: 20px clamp(18px, 7vw, 100px); color: var(--muted); font-size: 13px; }
-.detail-layout { max-width: 1320px; margin: 0 auto; padding: 12px clamp(18px, 5vw, 76px) 48px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); align-items: start; gap: clamp(32px, 6vw, 84px); }
+.detail-layout { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: 12px clamp(18px, 5vw, 76px) 48px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); align-items: start; gap: clamp(32px, 6vw, 84px); }
 .detail-gallery { min-width: 0; }
 .detail-main-image { position: relative; aspect-ratio: 1 / .88; overflow: hidden; background: var(--surface-soft); }
 .detail-main-image img, .detail-thumbnail img { object-fit: cover; }
@@ -143,7 +145,7 @@ button { color: inherit; }
 .product-facts > div { padding: 11px 0; display: flex; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .product-facts dt { color: var(--muted); }
 .product-facts dd { margin: 0; text-align: right; }
-.product-detail-accordions { max-width: 1320px; margin: 0 auto; padding: 0 clamp(18px, 5vw, 76px) 80px; }
+.product-detail-accordions { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: 0 clamp(18px, 5vw, 76px) 80px; }
 .product-detail-accordions h2 { margin: 0 0 14px; font: 400 26px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
 .product-detail-accordion { border-top: 1px solid var(--line); }
 .product-detail-accordion:last-child { border-bottom: 1px solid var(--line); }
@@ -519,7 +521,7 @@ button { color: inherit; }
 @media (max-width: 620px) { .product-highlights { grid-template-columns: 1fr; } .spec-cards dl { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 360px) { .spec-cards dl { grid-template-columns: 1fr; } }
 /* You may also like */
-.recommended { max-width: 1320px; margin: 0 auto; padding: 36px clamp(18px, 5vw, 76px) 60px; border-top: 1px solid var(--line); }
+.recommended { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: 36px clamp(18px, 5vw, 76px) 60px; border-top: 1px solid var(--line); }
 .recommended-head h2 { margin: 4px 0 18px; font: 400 clamp(26px, 3vw, 34px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
 .recommended-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
 .recommended-card { display: grid; height: 100%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; transition: border-color .15s; }
@@ -859,7 +861,7 @@ button { color: inherit; }
 .quick-buy-options button:disabled { opacity: .55; cursor: not-allowed; }
 .quick-buy-options small { margin-left: auto; color: var(--muted); }
 .quick-buy-close { min-height: 42px; border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer; }
-.home-section { max-width: 1180px; margin: 0 auto; padding: 36px 18px; }
+.home-section { max-width: calc(var(--content-max) + 36px); margin: 0 auto; padding: 36px 18px; }
 .home-section-head { margin-bottom: 18px; }
 .home-section-head h2, .home-story-copy h2 { margin: 0; font: 400 clamp(26px, 4vw, 36px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
 .home-section-head p { margin: 6px 0 0; color: var(--muted); }
@@ -908,7 +910,7 @@ button { color: inherit; }
 .sold-this-week { margin: 2px 0 8px; color: var(--muted); font-size: 13px; }
 .offer-box { margin: 12px 0; padding: 11px 13px; border: 1px dashed var(--gold); border-radius: 8px; background: var(--surface); }
 .offer-box p { margin: 2px 0 0; font-size: 14px; }
-.detail-more { display: grid; gap: 18px; max-width: 1180px; margin: 0 auto; padding: 0 18px 24px; }
+.detail-more { display: grid; gap: 18px; max-width: calc(var(--content-max) + 36px); margin: 0 auto; padding: 0 18px 24px; }
 .how-made, .common-faqs details { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .how-made summary, .common-faqs summary { min-height: 46px; padding: 12px 14px; font-weight: 600; cursor: pointer; }
 .how-made > div { display: flex; gap: 12px; padding: 0 14px 14px; }
@@ -1043,7 +1045,8 @@ button { color: inherit; }
 :root[data-theme="dark"] .brand-logo { filter: brightness(0) invert(1); }
 /* Uploaded logo: its own colours unless the owner chose white; size from dashboard Settings (phones get 70%). */
 .brand-logo.own-colours, :root[data-theme="dark"] .brand-logo.own-colours, .footer-wordmark .brand-logo.own-colours { filter: none; }
-.home-top.over-photo .brand-logo.own-colours { filter: drop-shadow(0 1px 3px rgb(0 0 0 / 35%)); }
+.home-top.over-photo .brand-logo.own-colours { filter: none; }
+.brand-logo.logo-pending { visibility: hidden; }
 .shop-header .brand-logo.sized, .shop-logo .brand-logo.sized { width: var(--logo-w); max-width: none; }
 @media (max-width: 620px) { .shop-header .brand-logo.sized, .shop-logo .brand-logo.sized { width: calc(var(--logo-w) * .7); } }
 
@@ -1199,4 +1202,63 @@ button { color: inherit; }
 @media (min-width: 901px) {
   .hero-carousel:has(.with-image)::after { background: linear-gradient(90deg, rgb(20 14 10 / 0%) 30%, rgb(20 14 10 / 3%) 38%, rgb(20 14 10 / 10%) 46%, rgb(20 14 10 / 21%) 53%, rgb(20 14 10 / 34%) 60%, rgb(20 14 10 / 47%) 67%, rgb(20 14 10 / 56%) 74%, rgb(20 14 10 / 61%) 81%, rgb(20 14 10 / 63%) 88%); }
   .hero-carousel .home-hero:not(.has-wide) .home-hero-image { right: 0 !important; width: 100% !important; -webkit-mask-image: none; mask-image: none; }
+}
+
+/* Wide screens: full-width bands (header, catalogue, notes, footer) keep their background edge to edge,
+   but their content lines up with the 1400px content column. */
+@media (min-width: 1500px) {
+  .shop-header, .detail-header, .detail-breadcrumb, .catalogue-section, .placement-note, .shop-footer, .policy-footer {
+    padding-left: max(76px, calc((100% - var(--content-max)) / 2));
+    padding-right: max(76px, calc((100% - var(--content-max)) / 2));
+  }
+}
+
+/* Product spotlight under the hero. Desktop: cream | peach split, details left, one photo right.
+   Phone: heading, logo and photo on peach, details on a cream band below. */
+:root { --spot-cream: #fcf3e6; --spot-peach: #f7ddc6; --spot-ink: #3b2116; --spot-accent: #8b4a36; --spot-button: #3f2016; }
+:root[data-theme="dark"] { --spot-cream: #241c16; --spot-peach: #2f231b; --spot-ink: #f4e7d8; --spot-accent: #e2a38b; --spot-button: #f1dcc6; }
+.spotlight { background: linear-gradient(90deg, var(--spot-cream) 50%, var(--spot-peach) 50%); color: var(--spot-ink); overflow: hidden; }
+.spotlight-inner { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: clamp(36px, 5vw, 64px) clamp(18px, 5vw, 76px);
+  display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-areas: "head head" "logo visual" "copy visual"; grid-template-rows: auto auto 1fr; column-gap: clamp(28px, 4vw, 64px); align-items: start; }
+.spotlight-head { grid-area: head; text-align: center; margin-bottom: clamp(20px, 3vw, 36px); }
+.spotlight-head h2 { margin: 0; font: 400 clamp(28px, 3.6vw, 48px)/1.1 var(--font-display, "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif); letter-spacing: .04em; text-transform: uppercase; text-wrap: balance; }
+.spotlight-head p { margin: 10px 0 0; font-size: clamp(16px, 1.6vw, 20px); color: var(--spot-ink); opacity: .85; }
+.spotlight-logo { grid-area: logo; margin-bottom: 18px; }
+.spotlight-logo .brand-logo { width: clamp(130px, 13vw, 180px); max-width: 100%; height: auto; }
+.spotlight-visual { grid-area: visual; position: relative; align-self: center; aspect-ratio: 16 / 10; }
+.spotlight-visual img { object-fit: contain; }
+.spotlight-copy { grid-area: copy; display: grid; justify-items: start; gap: 12px; }
+.spotlight-badge { padding: 5px 14px; border-radius: 999px; background: var(--spot-accent); color: #fff; font-size: 14px; font-weight: 600; }
+:root[data-theme="dark"] .spotlight-badge { color: #241c16; }
+.spotlight-copy h3 { margin: 0; font: 600 clamp(30px, 3.2vw, 44px)/1.1 var(--font-body, Arial, sans-serif); }
+.spotlight-copy h3 a { color: inherit; text-decoration: none; }
+.spotlight-copy h3 a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.spotlight-text { margin: 0; max-width: 46ch; font-size: clamp(15px, 1.3vw, 18px); line-height: 1.5; }
+.spotlight-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 4px 0 0; font-size: clamp(17px, 1.5vw, 21px); font-variant-numeric: tabular-nums; }
+.spotlight-price strong { font-size: clamp(28px, 2.6vw, 36px); }
+.spotlight-price del { opacity: .6; }
+.spotlight-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0; font-size: 15px; }
+.spotlight-rating { display: inline-flex; align-items: center; gap: 6px; }
+.spotlight-stock { padding-left: 14px; border-left: 1px solid currentColor; color: #2f7a3b; }
+.spotlight-rating + .spotlight-stock { border-left-color: rgb(59 33 22 / 25%); }
+.spotlight-meta > .spotlight-stock:first-child { padding-left: 0; border-left: 0; }
+.spotlight-stock.out { color: #a14636; }
+.spotlight-buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.spotlight-buttons button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 170px; min-height: 52px; padding: 0 26px; border-radius: 8px; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.spotlight-add { border: 1.5px solid var(--spot-button); background: var(--spot-button); color: var(--spot-cream); }
+.spotlight-buy { border: 1.5px solid var(--spot-button); background: transparent; color: var(--spot-ink); }
+.spotlight-add:hover:not(:disabled) { filter: brightness(1.15); }
+.spotlight-buy:hover:not(:disabled) { background: rgb(63 32 22 / 6%); }
+.spotlight-buttons button:disabled { opacity: .45; cursor: not-allowed; }
+.spotlight-whatsapp { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--spot-ink); font-size: 16px; text-decoration: none; }
+.spotlight-whatsapp:hover { text-decoration: underline; }
+@media (max-width: 900px) {
+  .spotlight { background: var(--spot-peach); }
+  .spotlight-inner { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "logo" "visual" "copy"; grid-template-rows: none; padding-bottom: 0; }
+  .spotlight-logo { justify-self: center; margin-bottom: 12px; }
+  .spotlight-visual { aspect-ratio: 16 / 10; margin-bottom: 20px; }
+  /* Details sit on a cream band that reaches both screen edges. */
+  .spotlight-copy { padding: 28px 0 40px; background: var(--spot-cream); box-shadow: 0 0 0 100vmax var(--spot-cream); clip-path: inset(0 -100vmax); }
+  .spotlight-buttons { width: 100%; }
+  .spotlight-buttons button { flex: 1 1 0; min-width: 0; }
 }

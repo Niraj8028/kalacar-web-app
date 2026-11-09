@@ -41,7 +41,7 @@ export default function CartDrawer() {
     if (previousPath.current !== pathname) { previousPath.current = pathname; closeDrawer(true); }
   }, [pathname, closeDrawer]);
 
-  const giftTotal = giftOffer && wantGift ? giftOffer.price : 0;
+  const giftTotal = giftOffer && wantGift ? giftOffer.price * count : 0;
   const leave = () => closeDrawer(true);
   return <div className={`bag-drawer${open ? " open" : ""}`} aria-hidden={!open}>
     <button type="button" className="bag-backdrop" aria-label="Close" tabIndex={-1} onClick={() => closeDrawer()} />
@@ -61,7 +61,7 @@ export default function CartDrawer() {
           <GiftChoice />
           <div className="bag-totals">
             <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
-            {giftTotal > 0 && <div><span>{giftOffer?.title}</span><span>{money(giftTotal)}</span></div>}
+            {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
             <div className="bag-total"><span>Total</span><strong>{money(subtotal + giftTotal)}</strong></div>
           </div>
           <Link className="checkout-demo-button" href="/cart" onClick={leave}>Proceed to checkout <ArrowRight /></Link>
