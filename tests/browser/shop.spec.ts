@@ -134,7 +134,7 @@ test("phone search covers the header row while typing, and search works", async 
   await page.goto("/");
   const box = page.locator(".header-search");
   await box.click();
-  const input = page.getByRole("searchbox", { name: "Search murtis" });
+  const input = page.getByRole("searchbox", { name: "Search" });
   await expect(input).toBeFocused();
   const rect = await box.boundingBox();
   expect(rect?.x).toBeLessThanOrEqual(13);
