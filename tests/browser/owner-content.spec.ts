@@ -1,15 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { DEFAULT_HOME, DEFAULT_PRODUCT_PAGE } from "../../src/data/site-content";
+import { DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE } from "../../src/data/site-content";
 import { expectFits, mockShop, PRODUCTS, watchErrors } from "./mock-shop";
 
 const review = (over: object) => ({ id: 1, productId: "ganesh", author: "Real Buyer", city: "Pune", rating: 4, text: "Lovely finish", photos: [], videoUrl: "", showOnHome: true, published: true, ...over });
 const content = (home: object = {}, productPage: object = {}) => ({ home: { ...DEFAULT_HOME, ...home }, productPage: { ...DEFAULT_PRODUCT_PAGE, ...productPage }, collections: [{ name: "Ganesh", image: "", productCount: 1 }, { name: "Krishna", image: "", productCount: 1 }] });
-const hero = { ...DEFAULT_HOME.hero, title: "Owner Title", description: "Owner text" };
+/** A hero with one owner slide; `over` changes that slide. */
+const heroWith = (over: object = {}, ...more: object[]) => ({ ...DEFAULT_HOME.hero, slides: [{ ...DEFAULT_HERO_SLIDE, title: "Owner Title", description: "Owner text", ...over }, ...more.map(slide => ({ ...DEFAULT_HERO_SLIDE, ...slide }))] });
+const hero = heroWith();
 
 test.describe("home page follows the dashboard", () => {
   test("shows the owner's hero", async ({ page }) => {
     const errors = watchErrors(page);
-    await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh", buy: { show: true, label: "Buy today", showPrice: true } } }) });
+    await mockShop(page, { content: content({ hero: heroWith({ productId: "ganesh", buy: { show: true, label: "Buy today", showPrice: true } }) }) });
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Owner Title" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Buy today · ₹999/ })).toBeVisible();
@@ -19,18 +21,18 @@ test.describe("home page follows the dashboard", () => {
   test("defaults keep the page working if settings can't load", async ({ page }) => {
     await mockShop(page);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: DEFAULT_HOME.hero.title })).toBeVisible();
+    await expect(page.getByRole("heading", { name: DEFAULT_HERO_SLIDE.title })).toBeVisible();
     await expect(page.locator(".result-count")).toHaveText("3 items");
   });
   test("each checkbox hides its part", async ({ page }) => {
-    await mockShop(page, { content: content({ hero: { ...hero, showDescription: false, buy: { ...hero.buy, show: false }, explore: { ...hero.explore, show: false } } }) });
+    await mockShop(page, { content: content({ hero: heroWith({ showDescription: false, buy: { ...DEFAULT_HERO_SLIDE.buy, show: false }, explore: { ...DEFAULT_HERO_SLIDE.explore, show: false } }) }) });
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Owner Title" })).toBeVisible();
     await expect(page.getByText("Owner text")).toHaveCount(0);
     await expect(page.locator(".home-hero-explore")).toHaveCount(0);
   });
   test("Buy now with one colour adds to the bag and opens it", async ({ page }) => {
-    await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh" } }) });
+    await mockShop(page, { content: content({ hero: heroWith({ productId: "ganesh" }) }) });
     await page.goto("/");
     await page.locator(".home-hero-buy").click();
     await expect(page.getByRole("dialog").or(page.locator(".cart-drawer")).first()).toBeVisible();
@@ -40,7 +42,7 @@ test.describe("home page follows the dashboard", () => {
   test("Buy now with several colours asks first, and stays on the page", async ({ page }) => {
     const krushna = PRODUCTS[0];
     const twoInStock = { ...krushna, variants: [...krushna.variants, { ...krushna.variants[0], id: "rose", name: "Rose" }] };
-    await mockShop(page, { products: [twoInStock, ...PRODUCTS.slice(1)], content: content({ hero: { ...hero, productId: "krushna" } }) });
+    await mockShop(page, { products: [twoInStock, ...PRODUCTS.slice(1)], content: content({ hero: heroWith({ productId: "krushna" }) }) });
     await page.goto("/");
     await page.locator(".home-hero-buy").click();
     const dialog = page.getByRole("dialog", { name: /Choose a colour/ });
@@ -94,7 +96,7 @@ test.describe("home page follows the dashboard", () => {
 
 test("hero text and both side-by-side buttons are placed for each device", async ({ page }, info) => {
   await page.route("**/_next/image**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='600' height='900'/>" }));
-  await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh", backgroundImage: "/uploads/a.png" } }) });
+  await mockShop(page, { content: content({ hero: heroWith({ productId: "ganesh", backgroundImage: "/uploads/a.png" }) }) });
   await page.goto("/");
   const [buy, explore] = [page.locator(".home-hero-buy"), page.locator(".home-hero-explore")];
   await expect(buy).toBeVisible();
@@ -172,7 +174,7 @@ test.describe("product page follows the dashboard", () => {
 
 test("a clean Buy label fits one line on phones, and shows the price", async ({ page }, info) => {
   test.skip(info.project.name !== "phone");
-  await mockShop(page, { content: content({ hero: { ...hero, productId: "ganesh", backgroundImage: "/uploads/a.png" } }) });
+  await mockShop(page, { content: content({ hero: heroWith({ productId: "ganesh", backgroundImage: "/uploads/a.png" }) }) });
   await page.goto("/");
   const buy = page.locator(".home-hero-buy");
   await expect(buy).toContainText("₹999");
@@ -257,5 +259,53 @@ test.describe("info pages", () => {
     await page.goto("/");
     await expect(page.locator(".shop-footer").getByRole("link", { name: "About Kalacar" })).toBeVisible();
     await expect(page.locator(".shop-footer").getByRole("link", { name: "Terms" })).toHaveCount(0);
+  });
+});
+
+test.describe("hero slides", () => {
+  const three = heroWith({ title: "First slide", backgroundImage: "/uploads/a.png" }, { title: "Second slide", backgroundImage: "/uploads/b.png" }, { title: "Third slide", backgroundImage: "" });
+  test("one slide has no dots and no carousel", async ({ page }) => {
+    await mockShop(page, { content: content({ hero }) });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Owner Title" })).toBeVisible();
+    await expect(page.locator(".hero-carousel")).toHaveCount(0);
+    await expect(page.locator(".hero-dots")).toHaveCount(0);
+  });
+  test("several slides: dots move between them, only the first title is the page heading, no arrows", async ({ page }) => {
+    const errors = watchErrors(page);
+    await mockShop(page, { content: content({ hero: { ...three, autoplay: false } }) });
+    await page.goto("/");
+    await expect(page.locator(".hero-dots button")).toHaveCount(3);
+    await expect(page.locator(".hero-arrow")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("First slide");
+    await expect(page.locator(".home-hero h2", { hasText: "Second slide" })).toBeAttached();
+    await page.getByRole("button", { name: "Show slide 2" }).click();
+    await expect(page.getByRole("button", { name: "Show slide 2" })).toHaveAttribute("aria-current", "true");
+    await expect(page.locator(".home-hero[aria-hidden='true']")).toHaveCount(2);
+    await page.getByRole("button", { name: "Show slide 3" }).click();
+    await expect(page.getByRole("button", { name: "Show slide 3" })).toHaveAttribute("aria-current", "true");
+    await expectFits(page);
+    expect(errors).toEqual([]);
+  });
+  test("timer moves to the next slide, and stays put when turned off", async ({ page }) => {
+    await mockShop(page, { content: content({ hero: { ...three, autoplay: true, interval: 3 } }) });
+    await page.goto("/");
+    await page.mouse.move(1, 1);
+    await expect(page.getByRole("button", { name: "Show slide 2" })).toHaveAttribute("aria-current", "true", { timeout: 6000 });
+  });
+  test("timer off: no movement", async ({ page }) => {
+    await mockShop(page, { content: content({ hero: { ...three, autoplay: false, interval: 3 } }) });
+    await page.goto("/");
+    await page.mouse.move(1, 1);
+    await page.waitForTimeout(4000);
+    await expect(page.getByRole("button", { name: "Show slide 1" })).toHaveAttribute("aria-current", "true");
+  });
+  test("a server still sending the old single hero shows it as one slide", async ({ page }) => {
+    const errors = watchErrors(page);
+    const { slides, ...rest } = hero;
+    await mockShop(page, { content: content({ hero: { show: rest.show, ...slides[0], title: "Old shape title" } }) });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Old shape title" })).toBeVisible();
+    expect(errors).toEqual([]);
   });
 });
