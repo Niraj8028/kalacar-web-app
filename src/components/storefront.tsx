@@ -35,7 +35,7 @@ export default function Storefront() {
     <main className="storefront" id="top">
       {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Catalogue values come from the temporary database. Confirm product facts, prices, and stock before launch. Payments remain in test mode.</p>}
 
-      <div className={home.hero.show && home.hero.backgroundImage ? "home-top over-photo" : "home-top"}>
+      <div className={home.hero.show && home.hero.slides.some(slide => slide.backgroundImage) ? "home-top over-photo" : "home-top"}>
       <header className="shop-header">
         <Link className="wordmark" href="/" aria-label="Kalacar home">
           <Image
