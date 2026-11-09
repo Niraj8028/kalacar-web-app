@@ -4,8 +4,10 @@ import { PolicyLinks } from "@/components/policy-links";
 import { Collections, ComingSoon, FirstLaunch, HomeHero, ProductSpotlight, HomeReviews, OurStory, WhyChooseUs, InstagramBand } from "@/components/home-sections";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ThemeToggle from "@/components/theme-toggle";
+import { MobileMenu } from "@/components/mobile-menu";
+import { listenForShopFilter } from "@/lib/shop-filter";
 import { GoogleReviews } from "@/components/google-reviews";
 import { useLogo } from "@/components/shop-logo";
 import { useSiteContent } from "@/components/site-content-provider";
@@ -18,6 +20,12 @@ export default function Storefront() {
   const { products, catalogueLoading, catalogueError } = useCart();
   const [activeFilter, setActiveFilter] = useState("All murtis");
   const [search, setSearch] = useState("");
+  // The phone menu's category and search choices land here, then the catalogue scrolls into view.
+  useEffect(() => listenForShopFilter(filter => {
+    if (filter.category !== undefined) setActiveFilter(filter.category);
+    if (filter.search !== undefined) setSearch(filter.search);
+    window.setTimeout(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }), []);
 
   const deityFilters = useMemo(() => ["All murtis", ...new Set(products.map(item => item.deity))], [products]);
   const categories = useMemo(() => [...new Set(products.map(item => item.deity))], [products]);
@@ -38,6 +46,7 @@ export default function Storefront() {
 
       <div className={home.hero.show && home.hero.slides.some(slide => slide.backgroundImage) ? "home-top over-photo" : "home-top"}>
       <header className="shop-header">
+        <MobileMenu />
         <Link className="wordmark" href="/" aria-label="Kalacar home">
           <Image
             src={logo.src}
