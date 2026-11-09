@@ -1186,18 +1186,20 @@ button { color: inherit; }
 .hero-track::-webkit-scrollbar { display: none; }
 @media (pointer: fine) { .hero-track { cursor: grab; user-select: none; } .hero-track img { -webkit-user-drag: none; } }
 .hero-track > .home-hero { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; }
-.hero-dots { position: absolute; bottom: 14px; left: 50%; z-index: 4; display: flex; gap: 8px; transform: translateX(-50%); }
-.hero-dots button { width: 9px; height: 9px; padding: 0; border: 1px solid #fff; border-radius: 50%; background: rgb(255 255 255 / 35%); cursor: pointer; transition: width 200ms ease, background 200ms ease; }
-.hero-dots button.active { width: 24px; border-radius: 5px; background: #fff; }
-.hero-carousel:not(:has(.with-image)) .hero-dots button { border-color: var(--ink); }
-.hero-carousel:not(:has(.with-image)) .hero-dots button.active { background: var(--ink); }
+.hero-dots { position: absolute; bottom: 4px; left: 50%; z-index: 4; display: flex; gap: 0; transform: translateX(-50%); }
+.hero-dots button { position: relative; width: 22px; height: 32px; padding: 0; border: 0; background: none; cursor: pointer; transition: width 200ms ease; }
+.hero-dots button::before { content: ""; position: absolute; top: 50%; left: 50%; box-sizing: border-box; width: 9px; height: 9px; border: 1px solid #fff; border-radius: 50%; background: rgb(255 255 255 / 35%); transform: translate(-50%, -50%); transition: width 200ms ease, background 200ms ease; }
+.hero-dots button.active { width: 32px; }
+.hero-dots button.active::before { width: 24px; border-radius: 5px; background: #fff; }
+.hero-carousel:not(:has(.with-image)) .hero-dots button::before { border-color: var(--ink); }
+.hero-carousel:not(:has(.with-image)) .hero-dots button.active::before { background: var(--ink); }
 .hero-carousel .home-hero.with-image { padding-bottom: calc(clamp(36px, 5vw, 72px) + 18px); }
 @media (min-width: 901px) { .hero-carousel .home-hero.with-image { padding-bottom: 90px; } }
 @media (max-width: 760px) {
   .hero-carousel .home-hero.with-image { padding-bottom: 40px; }
-  .hero-dots { bottom: 14px; }
+  .hero-dots { bottom: 4px; }
 }
-@media (prefers-reduced-motion: reduce) { .hero-dots button { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .hero-dots button, .hero-dots button::before { transition: none; } }
 /* With several slides, one overlay stays fixed while the photos and text slide underneath it.
    Every photo fills the width, so all slides share the same look as a wide-photo slide. */
 .hero-carousel .home-hero.with-image::after { display: none; }
@@ -1297,4 +1299,128 @@ button { color: inherit; }
     max-width: none; padding-left: var(--page-gutter); padding-right: var(--page-gutter);
   }
   .home-hero.with-image { padding-left: var(--page-gutter); padding-right: var(--page-gutter); }
+}
+
+/* Google reviews of our sister studio (static). Same cream and brown as the spotlight; cards in a 3-column grid. */
+.greviews { background: var(--surface); }
+.greviews-inner { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: clamp(40px, 5vw, 72px) clamp(18px, 5vw, 76px); display: grid; gap: clamp(24px, 3vw, 36px); }
+.greviews-head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.greviews-head .eyebrow { margin: 0; }
+.greviews-head h2 { margin: 0; font: 400 clamp(30px, 3.4vw, 46px)/1.1 var(--font-display); color: var(--ink); text-wrap: balance; }
+.greviews-head > p:not(.eyebrow) { margin: 0; max-width: 52ch; color: var(--muted); font-size: clamp(14px, 1.2vw, 16px); }
+.greviews-badge { display: inline-flex; align-items: center; gap: 8px; margin: 6px 0 0; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--page); color: var(--ink); font-size: 14px; text-decoration: none; }
+.greviews-badge b { font-size: 16px; }
+.greviews-badge span:last-child { color: var(--muted); }
+.greview-stars { color: #f4b400; letter-spacing: 2px; font-size: 15px; line-height: 1; }
+.greviews-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 0; list-style: none; }
+.greview { display: flex; flex-direction: column; gap: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--page); }
+.greview-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.greview-head b { display: block; color: var(--ink); font-size: 15px; }
+.greview-head small { color: var(--muted); font-size: 12px; }
+.greview-avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; }
+.greview-title { margin: 0; color: var(--ink); font-weight: 600; }
+.greview-text { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.55; }
+.greview-text.clamped { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.greview-more { align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.greview-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: auto; }
+.greview-photos.count-1 { grid-template-columns: minmax(0, 1fr); }
+.greview-photo { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; background: var(--surface-soft); }
+.greview-photos:not(.count-1) .greview-photo { aspect-ratio: 3 / 4; }
+.greview-photo img { object-fit: cover; }
+@media (max-width: 980px) { .greviews-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) {
+  /* Phones: swipe through the cards instead of a very long stack. */
+  .greviews-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-left: 18px; scrollbar-width: none; margin: 0 -18px; padding: 0 18px 4px; }
+  .greviews-grid::-webkit-scrollbar { display: none; }
+  .greview { flex: 0 0 82vw; scroll-snap-align: start; }
+  .greviews-badge { flex-wrap: wrap; justify-content: center; }
+}
+@media (min-width: 1100px) { .greviews-inner { max-width: none; padding-left: var(--page-gutter); padding-right: var(--page-gutter); } }
+
+/* Phone polish (2026-11-09 audit at 390px and 360px). */
+/* The video-review row and "How it's made" no longer push the product page wider than the screen. */
+.detail-more > * { min-width: 0; }
+/* "View murti" is a mouse-hover hint; on touch screens it only covered the badges. */
+@media (hover: none) { .image-tag { display: none; } }
+@media (max-width: 620px) {
+  /* Product and bag headers: logo and icons on one row, not three. The breadcrumb already links back. */
+  .detail-header-links { flex-direction: row; align-items: center; gap: 4px; }
+  .product-page .detail-header-links .back-to-shop { display: none; }
+  .detail-header-links .account-link, .detail-header-links .bag-link { min-width: 40px; min-height: 40px; justify-content: center; }
+  .detail-header-links .account-link span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* Everything you tap is at least about 40px tall. */
+  .header-nav a { display: inline-flex; align-items: center; min-height: 40px; }
+  .back-to-shop { min-height: 40px; }
+  .filter-chip { min-height: 40px; padding: 0 16px; font-size: 13px; }
+  .details-link { min-height: 36px; margin: -8px 0 4px; }
+  .quantity-control button { min-width: 40px; min-height: 40px; }
+  .detail-breadcrumb a, .rating-line, .bag-help { display: inline-flex; align-items: center; min-height: 36px; }
+  .detail-breadcrumb { align-items: center; padding-top: 8px; padding-bottom: 8px; }
+  .image-tag { display: none; }
+  .bag-remove { width: 40px; height: 40px; }
+  /* Nothing smaller than 12px. */
+  .store-announcement, .reference-note, .product-deity, .product-price-block small, .home-hero .eyebrow { font-size: 12px; }
+  /* Spotlight: one full-width button per row, so "Order on WhatsApp" never wraps. */
+  .spotlight-buttons { flex-direction: column; }
+  .spotlight-buttons > * { width: 100%; flex: none; }
+  /* A single collection without a photo is a short card, not a 340px empty box. */
+  .home-collections.count-1 { grid-auto-rows: 120px; }
+  .home-collections.count-1 li:first-child { grid-row: auto; }
+  .home-collections.count-1 a.has-image { min-height: 200px; }
+  /* Video reviews: a little narrower so the next card peeks in. */
+  .video-card-wrap { flex-basis: 66vw; }
+}
+
+/* Phone header: logo, bag, then ☰ menu at the right. Search, categories, account and theme live in the menu. */
+.menu-button { display: none; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer; }
+.shop-header .menu-button { border: 1px solid var(--line); background: var(--surface); }
+.home-top.over-photo .menu-button { border-color: rgb(255 255 255 / 55%); background: rgb(20 14 10 / 18%); color: #fff; }
+@media (max-width: 760px) {
+  .menu-button { display: grid; }
+  .shop-header { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 6px; padding-top: 10px; padding-bottom: 10px; }
+  .shop-header .wordmark { margin-right: auto; }
+  .shop-header .header-nav, .shop-header .header-search, .shop-header .header-tools .theme-toggle, .shop-header .header-tools .account-link { display: none; }
+  .shop-header .header-tools { order: 1; }
+  .shop-header .menu-button, .detail-header .menu-button { order: 2; }
+  .detail-header { justify-content: flex-start; gap: 6px; }
+  .detail-header .shop-logo { margin-right: auto; }
+  .detail-header-links .account-link { display: none; }
+}
+.mobile-menu-backdrop { position: fixed; inset: 0; z-index: 60; background: rgb(28 22 16 / 48%); }
+.mobile-menu { position: absolute; inset: 0 0 0 auto; display: flex; flex-direction: column; gap: 18px; width: min(340px, 86vw); padding: calc(14px + env(safe-area-inset-top, 0px)) 18px calc(24px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; background: var(--page); color: var(--ink); box-shadow: -8px 0 30px rgb(0 0 0 / 18%); animation: menu-in 220ms ease-out; }
+@keyframes menu-in { from { transform: translateX(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mobile-menu { animation: none; } }
+.mobile-menu-top { display: flex; align-items: center; justify-content: space-between; }
+.mobile-menu-top b { font: 400 24px/1 var(--font-display); }
+.mobile-menu-close { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer; }
+.mobile-menu-search { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; border: 1px solid var(--line); border-radius: 23px; background: var(--surface); color: var(--muted); }
+.mobile-menu-search input { flex: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; }
+.mobile-menu-section { display: grid; gap: 2px; padding-top: 14px; border-top: 1px solid var(--line); }
+.mobile-menu-section > p { margin: 0 0 6px; color: var(--accent); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.mobile-menu-section > button, .mobile-menu-section > a { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 4px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 17px; text-align: left; text-decoration: none; cursor: pointer; }
+.mobile-menu-section > button:active, .mobile-menu-section > a:active { color: var(--accent); }
+.mobile-menu-theme { display: flex; align-items: center; justify-content: space-between; min-height: 46px; padding: 0 4px; font-size: 17px; }
+.mobile-menu-theme .theme-toggle { display: grid; }
+.mobile-menu-links { display: grid; }
+.mobile-menu-links a { display: flex; align-items: center; min-height: 42px; padding: 0 4px; color: var(--ink); font-size: 15px; text-decoration: none; }
+.mobile-menu-info > a { font-size: 15px; color: var(--muted); }
+
+/* Computers too: the account link is an icon in a circle like the others; "Your account" shows on hover. */
+.detail-header-links .account-link { box-sizing: border-box; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); }
+.detail-header-links .account-link:hover { border-color: var(--accent); }
+.detail-header-links .account-link span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Phones: one white header on every page that stays at the top while scrolling; the home hero sits below it
+   and fills 95% of the screen height left under the banner and header. */
+@media (max-width: 760px) {
+  .home-top, .home-top.over-photo { display: contents; }
+  .shop-header, .home-top.over-photo .shop-header, .detail-header { position: sticky; top: 0; z-index: 40; background: var(--surface); color: var(--ink); border-bottom: 1px solid var(--line); }
+  .shop-header, .detail-header { min-height: 64px; padding-top: 6px; padding-bottom: 6px; }
+  .home-top.over-photo .shop-header .brand-logo { filter: none; }
+  :root[data-theme="dark"] .home-top.over-photo .shop-header .brand-logo:not(.own-colours) { filter: brightness(0) invert(1); }
+  .home-top.over-photo .shop-header .bag-link, .home-top.over-photo .shop-header .bag-link svg, .home-top.over-photo .menu-button { color: var(--ink); text-shadow: none; }
+  .home-top.over-photo .shop-header .header-tools .bag-link, .home-top.over-photo .menu-button { border-color: var(--line); background: var(--surface); filter: none; }
+  .home-hero.with-image, .hero-carousel .home-hero.with-image { min-height: 0; height: calc((100svh - var(--hero-top, 100px)) * .95); padding: 24px 16px 22px; }
+  .hero-carousel .home-hero.with-image { padding-bottom: 42px; }
+  .home-hero.with-image::after, .hero-carousel:has(.with-image)::after { background: linear-gradient(180deg, rgb(20 14 10 / 0%) 45%, rgb(20 14 10 / 62%) 100%); }
 }

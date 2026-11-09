@@ -1,6 +1,7 @@
 "use client";
 
 import { ShopLogo } from "@/components/shop-logo";
+import { MobileMenu } from "@/components/mobile-menu";
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -54,7 +55,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
 
   return <main className="product-page">
     {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Confirm this database product’s details, price, and stock before launch. Payments remain in test mode.</p>}
-    <header className="detail-header"><ShopLogo /><div className="detail-header-links"><Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link><CartLink /><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></div></header>
+    <header className="detail-header"><MobileMenu /><ShopLogo /><div className="detail-header-links"><Link className="account-link" href="/account" aria-label="Your account" title="Your account"><UserCircle size={20} /><span>Account</span></Link><CartLink /><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></div></header>
     <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span>/</span><Link href="/#catalogue">Murtis</Link><span>/</span><span>{item.name}</span></nav>
     <section className="detail-layout">
       <div className="detail-gallery">

@@ -128,28 +128,49 @@ test.describe("no constant calling, and failures don't harm the page", () => {
   });
 });
 
-test("phone search covers the header row while typing, and search works", async ({ page }, info) => {
+test("phone header: logo, bag and menu; search, categories and account are in the menu", async ({ page }, info) => {
   test.skip(info.project.name !== "phone");
   await mockShop(page);
   await page.goto("/");
-  const box = page.locator(".header-search");
-  await box.click();
-  const input = page.getByRole("searchbox", { name: "Search" });
-  await expect(input).toBeFocused();
-  const rect = await box.boundingBox();
-  expect(rect?.x).toBeLessThanOrEqual(13);
-  expect(rect?.width).toBeGreaterThan(330);
-  await input.fill("Ganesh");
+  const header = page.locator(".shop-header");
+  for (const hidden of [".header-search", ".header-nav", ".header-tools .account-link", ".header-tools .theme-toggle"]) await expect(header.locator(hidden).first(), hidden).toBeHidden();
+  await expect(header.locator(".bag-link")).toBeVisible();
+  const menuButton = page.getByRole("button", { name: "Open menu" });
+  const [bag, menu] = [await header.locator(".bag-link").boundingBox(), await menuButton.boundingBox()];
+  expect(menu!.x, "menu sits right of the bag").toBeGreaterThan(bag!.x);
+  await menuButton.click();
+  const panel = page.getByRole("dialog", { name: "Menu" });
+  await expect(panel.getByRole("link", { name: /Account & orders/ })).toBeVisible();
+  await panel.getByRole("button", { name: "Ganesh" }).click();
+  await expect(panel).toBeHidden();
   await expect(page.locator(".result-count")).toHaveText("1 item");
+  await menuButton.click();
+  await panel.getByRole("searchbox", { name: "Search murtis" }).fill("Krushna");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".filter-chip.active")).toHaveText("Ganesh");
+  await page.locator(".filter-chip", { hasText: "All murtis" }).click();
+  await expect(page.locator(".result-count")).toHaveText("1 item");
+  await page.keyboard.press("Escape");
   await expectFits(page);
+});
+
+test("phone menu from another page filters the home catalogue", async ({ page }, info) => {
+  test.skip(info.project.name !== "phone");
+  await mockShop(page);
+  await page.goto("/products/ganesh");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("dialog", { name: "Menu" }).getByRole("button", { name: "Krishna" }).click();
+  await expect(page).toHaveURL(/\/#catalogue$/);
+  await expect(page.locator(".filter-chip.active")).toHaveText("Krishna");
 });
 
 test("header icons all match", async ({ page }, info) => {
   await mockShop(page);
   await page.goto("/");
-  const tools = [".account-link", ".theme-toggle", ".bag-link", ...(info.project.name === "phone" ? [".header-search"] : [])];
+  // Phones show only the bag and the menu; computers show account, theme and bag.
+  const tools = info.project.name === "phone" ? [".header-tools .bag-link", ".menu-button"] : [".header-tools .account-link", ".header-tools .theme-toggle", ".header-tools .bag-link"];
   for (const tool of tools) {
-    const circle = page.locator(`.shop-header .header-tools ${tool}`);
+    const circle = page.locator(`.shop-header ${tool}`);
     const box = await circle.boundingBox();
     expect(Math.round(box?.width ?? 0), tool).toBe(40);
     expect(Math.round(box?.height ?? 0), tool).toBe(40);

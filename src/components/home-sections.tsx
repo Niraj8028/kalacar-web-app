@@ -102,6 +102,20 @@ export function HomeHero() {
     dragged.current = true;
     go(active + (moved < 0 ? 1 : -1));
   }
+  useEffect(() => {
+    // Phones size the hero to the screen below the banner and header (see --hero-top in globals.css).
+    const root = document.documentElement;
+    const measure = () => {
+      const first = document.querySelector(".home-hero");
+      if (first) root.style.setProperty("--hero-top", `${Math.round(first.getBoundingClientRect().top + window.scrollY)}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    const header = document.querySelector(".shop-header");
+    if (header) observer.observe(header);
+    return () => observer.disconnect();
+  }, [hero.show, total]);
   if (!hero.show || !total) return null;
   const dark = slides.some(slide => slide.backgroundImage);
   if (total === 1) return <><HeroSlideView slide={slides[0]} index={0} total={1} active dark={dark} onBuy={start} />{dialog}</>;

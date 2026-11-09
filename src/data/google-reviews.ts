@@ -1,0 +1,14 @@
+// Real Google reviews of Murtiverse, Kalacar's sister studio, copied from murtiverse.com on 9 Nov 2026.
+// Shown as Murtiverse's reviews, never as Kalacar's own. Photos are stored here with their metadata removed.
+export const SISTER_STUDIO = { name: "Murtiverse", rating: 5.0, reviewCount: 157 };
+
+export type GoogleReview = { name: string; initials: string; when: string; rating: number; title?: string; text: string; photos: string[] };
+
+export const GOOGLE_REVIEWS: GoogleReview[] = [
+  { name: "Oshmi Pandey", initials: "OP", when: "Oct 2026", rating: 5, text: "Absolutely in love with this Krishna Ji idol! 💙 The detailing is simply perfect from the beautiful peacock feather to the tiny ornaments and outfit. The colors are vibrant and beautifully finished, making the idol look so lively and charming. The cutest part is the eyes; they are crafted so realistically that it feels as if Krishna Ji is actually looking at you. 🥹 The expression on the face is full of innocence and divine charm, bringing a sense of peace and happiness. Every time I look at it, it feels like little Kanha is truly present and watching over us. Highly recommended for anyone who loves beautifully crafted devotional decor. 💙", photos: ["/google-reviews/oshmi-photo-1.jpg", "/google-reviews/oshmi-photo-2.jpg"] },
+  { name: "Chanchal Sinha", initials: "CS", when: "Oct 2026", rating: 5, text: "I ordered Thakur jii Neel varna and he looks so cute in the pose Murtiverse designed. So happy and grateful to come across this brand. Wish you all the luck and success ahead. Radhe Radhe.", photos: ["/google-reviews/chanchal-photo-1.jpg"] },
+  { name: "Aarushi Pandeya", initials: "AP", when: "Oct 2026", rating: 5, text: "A genuinely beautiful experience with the Murtiverse team... not only did they exceed my expectations of baby Kanha’s murti, they were also professional, yet kindest and humble people out there. Would definitely love to be connected with them for more high quality future products. Highly recommended for everyone who is a spiritual person, looking for a timeless gift for loved ones, or looking for a beautiful showpiece for their home. This was a beautiful experience and I would love to be their customer in the future again.", photos: ["/google-reviews/aarushi-photo-1.jpg"] },
+  { name: "Deepika", initials: "D", when: "Oct 2026", rating: 5, text: "I received really very cute and smiling Kannayaa. My stress reliever with his cute smile and looks.", photos: ["/google-reviews/deepika-photo-1.jpg"] },
+  { name: "Chandni", initials: "C", when: "Oct 2026", rating: 5, title: "Beautiful Krishna Idol", text: "Absolutely loved this beautiful Krishna idol! 💖 The detailing, finishing, and …", photos: ["/google-reviews/chandni-photo-1.jpg", "/google-reviews/chandni-photo-2.jpg"] },
+  { name: "Karkar Tejas", initials: "KT", when: "Nov 2026", rating: 5, text: "", photos: ["/google-reviews/tejas-photo-1.jpg"] },
+];
