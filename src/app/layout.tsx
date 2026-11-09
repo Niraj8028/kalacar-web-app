@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Montserrat } from "next/font/google";
+import { Jost, Marcellus } from "next/font/google";
 import type { ReactNode } from "react";
 import { CartProvider } from "@/components/cart-provider";
 import { FestiveOverlay } from "@/components/festive-overlay";
@@ -8,9 +8,9 @@ import CartDrawer from "@/components/cart-drawer";
 import StoreGate from "@/components/store-gate";
 import "./globals.css";
 
-// Headings: Cormorant Garamond (thin, classic serif). Everything else: Montserrat. Served from this site.
-const display = Cormorant_Garamond({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-cormorant", display: "swap" });
-const body = Montserrat({ subsets: ["latin"], variable: "--font-montserrat", display: "swap" });
+// Headings: Marcellus (classical, inscription-style serif; one weight). Everything else: Jost. Served from this site.
+const display = Marcellus({ subsets: ["latin"], weight: "400", variable: "--font-marcellus", display: "swap" });
+const body = Jost({ subsets: ["latin"], variable: "--font-jost", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Kalacar — Small Devotional Murtis",

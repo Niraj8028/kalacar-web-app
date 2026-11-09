@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --font-display: var(--font-cormorant), "Kohinoor Devanagari", "Noto Serif Devanagari", Georgia, serif;
-  --font-body: var(--font-montserrat), "Kohinoor Devanagari", Arial, sans-serif;
+  --font-display: var(--font-marcellus), "Kohinoor Devanagari", "Noto Serif Devanagari", Georgia, serif;
+  --font-body: var(--font-jost), "Kohinoor Devanagari", Arial, sans-serif;
   color-scheme: light;
   --page: #f8f5ef;
   --surface: #fffdfa;
@@ -36,6 +36,8 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-body); }
+/* Marcellus has one weight; never fake a bold or italic version of it. */
+:where(h1, h2, h3, h4) { font-synthesis: none; }
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
 button { color: inherit; }
@@ -453,7 +455,7 @@ button { color: inherit; }
 .product-price-block del { margin-left: 6px; color: var(--muted); font-size: 13px; }
 .choose-colour { display: inline-grid; place-items: center; text-decoration: none; }
 /* Product page */
-.detail-tagline { margin: 6px 0 0; color: var(--muted); font-size: 15px; font-style: italic; }
+.detail-tagline { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
 .detail-price .save-chip { align-self: center; padding: 3px 9px; border-radius: 20px; font-size: 13px; }
 .detail-tax-note { margin: 2px 0 18px; color: var(--muted); font-size: 13px; }
 .detail-thumbnails { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
@@ -963,7 +965,7 @@ button { color: inherit; }
 /* Hero: one photo across the whole banner, header on top of it, text and buttons at the lower left. */
 .home-top { position: relative; }
 .home-hero-copy { gap: 10px; }
-.home-hero h1, .home-hero h2 { font: 500 clamp(34px, 4.4vw, 62px)/1.08 var(--font-display); }
+.home-hero h1, .home-hero h2 { font: 400 clamp(32px, 4vw, 56px)/1.12 var(--font-display); }
 .home-hero .intro-copy { max-width: 560px; font: 400 clamp(14px, 1.3vw, 17px)/1.45 var(--font-body); color: var(--muted); }
 .home-hero .eyebrow { margin: 0; font-size: 13px; letter-spacing: .06em; }
 .home-hero-buttons { flex-wrap: nowrap; gap: 10px; margin-top: 10px; }
@@ -1088,7 +1090,7 @@ button { color: inherit; }
 @media (max-width: 620px) {
   .home-hero.with-image { padding: 170px 16px 20px; }
   .home-hero-copy { gap: 6px; }
-  .home-hero h1, .home-hero h2 { font-size: 31px; line-height: 1.1; }
+  .home-hero h1, .home-hero h2 { font-size: 28px; line-height: 1.15; }
   .home-hero .intro-copy { font-size: 13px; line-height: 1.4; }
   .home-hero .eyebrow { font-size: 11px; }
   .home-hero-buttons { width: 100%; gap: 8px; margin-top: 8px; }
