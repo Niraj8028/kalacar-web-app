@@ -5,13 +5,15 @@ import { Collections, ComingSoon, FirstLaunch, HomeHero, HomeReviews, OurStory, 
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useSiteContent } from "@/components/site-content-provider";
 import ThemeToggle from "@/components/theme-toggle";
+import { useLogo } from "@/components/shop-logo";
+import { useSiteContent } from "@/components/site-content-provider";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import { ArrowRight, Search, UserCircle } from "@/components/icons";
 
 export default function Storefront() {
   const { home } = useSiteContent();
+  const logo = useLogo();
   const { products, catalogueLoading, catalogueError } = useCart();
   const [activeFilter, setActiveFilter] = useState("All murtis");
   const [search, setSearch] = useState("");
@@ -38,7 +40,7 @@ export default function Storefront() {
       <header className="shop-header">
         <Link className="wordmark" href="/" aria-label="Kalacar home">
           <Image
-            src="/images/kalakar-logo.png"
+            src={logo}
             alt="Kalacar — Small Devotional Murtis"
             width={220}
             height={94}
@@ -53,19 +55,19 @@ export default function Storefront() {
         </nav>
 
         <div className="header-tools">
-          <Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link>
           <label className="header-search">
             <Search />
             <input
-              aria-label="Search murtis"
+              aria-label="Search"
               type="search"
-              placeholder="Search murtis"
+              placeholder="Search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
           <ThemeToggle />
           <CartLink />
+          <Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link>
         </div>
       </header>
 
@@ -160,7 +162,7 @@ export default function Storefront() {
       <footer className="shop-footer">
         <Link className="wordmark footer-wordmark" href="/" aria-label="Kalacar home">
           <Image
-            src="/images/kalakar-logo.png"
+            src={logo}
             alt="Kalacar — Small Devotional Murtis"
             width={180}
             height={77}
