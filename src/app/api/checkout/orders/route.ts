@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { MINUTE, limitOrNull } from "@/lib/rate-limit";
 import { attachRazorpayOrder, fillMissingCustomerPhone, releaseOrderAfterPaymentSetupFailure, reserveOrder } from "@/lib/catalogue-db";
 import { createAddress, findMatchingAddress, parseAddress } from "@/lib/addresses";
-import { getGiftWrap } from "@/lib/settings";
+import { getGiftWrap, giftWrapCharge } from "@/lib/settings";
 import { currentCustomer } from "@/lib/customer-auth";
 import { parseCartItems } from "@/lib/cart-items";
 import { CouponError, normalizeCode } from "@/lib/coupons";
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   if (data.giftWrap === true) {
     const gift = await getGiftWrap().catch(() => null);
     if (!gift?.enabled) return NextResponse.json({ error: "Gift packaging isn't available right now. Untick it and try again." }, { status: 409 });
-    giftWrapPrice = gift.price;
+    giftWrapPrice = giftWrapCharge(gift.price, items);
   }
   try { order = await reserveOrder(data.idempotencyKey, items, normalized, account.id, giftWrapPrice, couponCode); }
   catch (error) {

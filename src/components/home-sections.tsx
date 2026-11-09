@@ -3,12 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
 import { useSiteContent } from "@/components/site-content-provider";
 import { Stars, VideoRow } from "@/components/reviews";
-import { instagramLink, videoEmbed } from "@/data/site-content";
+import { instagramLink, reviewSummary, videoEmbed } from "@/data/site-content";
 import type { HeroSlide } from "@/data/site-content";
 import type { StoreItem } from "@/data/catalogue";
+import { useLogo } from "@/components/shop-logo";
+import { WHATSAPP_URL } from "@/components/policy-links";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const cheapest = (item: StoreItem) => [...item.variants].filter(v => v.stock > 0).sort((a, b) => a.price - b.price)[0];
@@ -110,6 +113,53 @@ export function HomeHero() {
     <div className="hero-dots">{slides.map((_, index) => <button key={index} type="button" className={index === active ? "active" : ""} aria-label={`Show slide ${index + 1}`} aria-current={index === active ? "true" : undefined} onClick={() => go(index)} />)}</div>
     {dialog}
   </div>;
+}
+
+const WhatsAppIcon = () => <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#25d366" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Z" /><path fill="#fff" d="M17.2 14.4c-.3-.1-1.7-.8-1.9-.9s-.5-.1-.7.1-.8 1-.9 1.2-.3.2-.6.1a7.6 7.6 0 0 1-3.8-3.3c-.3-.5.3-.5.8-1.6.1-.2 0-.4 0-.5l-.9-2c-.2-.5-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.4 3.4 0 0 0-1 2.5 5.9 5.9 0 0 0 1.2 3.1 13.4 13.4 0 0 0 5.2 4.6c1.9.8 2.7.9 3.7.7a3.1 3.1 0 0 0 2-1.4 2.5 2.5 0 0 0 .2-1.4c-.1-.1-.3-.2-.6-.3Z" /></svg>;
+
+/** One featured murti under the hero. Heading, photo and switches come from the dashboard; name, price, rating and stock come from the product itself. */
+export function ProductSpotlight() {
+  const { home, reviews } = useSiteContent();
+  const spot = home.spotlight;
+  const { products, add, canAdd } = useCart();
+  const router = useRouter();
+  const logo = useLogo();
+  const item = spot?.show ? products.find(product => product.id === spot.productId) : undefined;
+  if (!spot || !item) return null;
+  const price = cheapest(item);
+  const save = price && price.originalPrice > price.price ? Math.round((1 - price.price / price.originalPrice) * 100) : 0;
+  const summary = reviewSummary(reviews.filter(review => review.productId === item.id));
+  const available = item.variants.filter(colour => colour.stock > 0);
+  const buyNow = () => {
+    if (available.length !== 1) { router.push(`/products/${item.id}`); return; }
+    if (canAdd(item.id, available[0].id)) add(item.id, available[0].id, 1);
+    router.push("/cart");
+  };
+  const hasHead = (spot.showTitle && spot.title) || (spot.showDescription && spot.description);
+  return <section className="spotlight" aria-labelledby="spotlight-name">
+    <div className="spotlight-inner">
+      {hasHead && <div className="spotlight-head">
+        {spot.showTitle && spot.title && <h2>{spot.title}</h2>}
+        {spot.showDescription && spot.description && <p>{spot.description}</p>}
+      </div>}
+      {spot.showLogo && <div className="spotlight-logo"><Image src={logo.src} alt="Kalacar" width={220} height={94} className={logo.className.replace(" sized", "")} /></div>}
+      <div className="spotlight-visual"><Image src={spot.image || item.image} alt={item.imageAlt || item.name} fill sizes="(max-width: 900px) 92vw, 760px" /></div>
+      <div className="spotlight-copy">
+        {item.badge && <span className="spotlight-badge">{item.badge}</span>}
+        <h3 id="spotlight-name"><Link href={`/products/${item.id}`}>{item.name}</Link></h3>
+        {item.tagline && <p className="spotlight-text">{item.tagline}</p>}
+        {price ? <p className="spotlight-price"><strong>{money(price.price)}</strong>{save > 0 && <><del>{money(price.originalPrice)}</del><span>(Save {save}%)</span></>}</p> : null}
+        <p className="spotlight-meta">
+          {summary && <span className="spotlight-rating"><Stars rating={summary.average} /> {summary.average.toFixed(1)} ({summary.count} {summary.count === 1 ? "review" : "reviews"})</span>}
+          <span className={price ? "spotlight-stock" : "spotlight-stock out"}>{price ? "In stock" : "Out of stock"}</span>
+        </p>
+        <div className="spotlight-buttons">
+          <button className="spotlight-buy" type="button" disabled={!price} onClick={buyNow}>Buy now</button>
+          {spot.whatsapp.show && <a className="spotlight-order" href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Hi Kalacar, I'd like to order ${item.name}.`)}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon /> {spot.whatsapp.label}</a>}
+        </div>
+      </div>
+    </div>
+  </section>;
 }
 
 function SectionHead({ id, showTitle, title, showDescription, description }: { id: string; showTitle: boolean; title: string; showDescription?: boolean; description?: string }) {

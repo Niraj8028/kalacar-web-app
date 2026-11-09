@@ -60,11 +60,11 @@ function loadRazorpay() {
 
 /** The full bag page: items on the left, summary and checkout on the right. All prices and stock are decided again by the server at payment. */
 export default function BagFlow() {
-  const { lines, resolved, subtotal, clear, catalogueLoading, catalogueError, giftOffer, wantGift, setWantGift } = useCart();
+  const { lines, resolved, subtotal, count, clear, catalogueLoading, catalogueError, giftOffer, wantGift, setWantGift } = useCart();
   const router = useRouter();
   const [notice, setNotice] = useState("");
   const [paidOrderId, setPaidOrderId] = useState("");
-  const giftTotal = giftOffer && wantGift ? giftOffer.price : 0;
+  const giftTotal = giftOffer && wantGift ? giftOffer.price * count : 0;
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [couponNote, setCouponNote] = useState("");
   const discount = coupon?.discount ?? 0;
@@ -265,7 +265,7 @@ export default function BagFlow() {
   const totals = <div className="bag-totals">
     <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
     {discount > 0 && <div className="cart-discount"><span>Coupon {coupon?.code}</span><span>−{money(discount)}</span></div>}
-    {giftTotal > 0 && <div><span>{giftOffer?.title}</span><span>{money(giftTotal)}</span></div>}
+    {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
     <div className="bag-total"><span>Total</span><strong>{money(total)}</strong></div>
   </div>;
   const unpaid = savedCheckout && !showSuccess && <div className="bag-unpaid" role="status">

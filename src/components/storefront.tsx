@@ -1,7 +1,7 @@
 "use client";
 
 import { PolicyLinks } from "@/components/policy-links";
-import { Collections, ComingSoon, FirstLaunch, HomeHero, HomeReviews, OurStory, WhyChooseUs, InstagramBand } from "@/components/home-sections";
+import { Collections, ComingSoon, FirstLaunch, HomeHero, ProductSpotlight, HomeReviews, OurStory, WhyChooseUs, InstagramBand } from "@/components/home-sections";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -71,6 +71,7 @@ export default function Storefront() {
 
       <HomeHero />
       </div>
+      <ProductSpotlight />
       <FirstLaunch />
       <ComingSoon />
       <Collections onChoose={setActiveFilter} />
