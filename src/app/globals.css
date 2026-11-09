@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-display: var(--font-marcellus), "Kohinoor Devanagari", "Noto Serif Devanagari", Georgia, serif;
+  --font-body: var(--font-jost), "Kohinoor Devanagari", Arial, sans-serif;
   /* Page content is never wider than this; the hero photo still spans the screen. */
   --content-max: 1400px;
   color-scheme: light;
@@ -35,7 +37,9 @@
 @theme inline { --color-background: var(--page); --color-foreground: var(--ink); }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--page); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-body); }
+/* Marcellus has one weight; never fake a bold or italic version of it. */
+:where(h1, h2, h3, h4) { font-synthesis: none; }
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
 button { color: inherit; }
@@ -46,9 +50,9 @@ button { color: inherit; }
 .shop-header .wordmark { width: 100%; min-width: 0; }
 .brand-logo { display: block; max-width: 100%; height: auto; object-fit: contain; }
 .shop-header .brand-logo { width: clamp(110px, 14vw, 184px); }
-.wordmark { width: fit-content; display: grid; font: 27px/.9 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; letter-spacing: -.07em; }
+.wordmark { width: fit-content; display: grid; font: 27px/.9 var(--font-display); letter-spacing: -.07em; }
 .wordmark > span { color: var(--accent); }
-.wordmark small { margin-top: 7px; color: var(--muted); font: 11px Arial, sans-serif; letter-spacing: .18em; }
+.wordmark small { margin-top: 7px; color: var(--muted); font: 11px var(--font-body); letter-spacing: .18em; }
 .header-nav { display: flex; align-items: center; gap: clamp(14px, 2.5vw, 32px); white-space: nowrap; }
 .header-nav a { color: var(--muted); font-size: 13px; transition: color 160ms ease; }
 .header-nav a:hover { color: var(--accent); }
@@ -69,14 +73,14 @@ button { color: inherit; }
 .breadcrumb a:hover { color: var(--accent); }
 .intro-row { max-width: 1250px; margin: 20px auto 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
 .eyebrow { margin: 0 0 10px; color: var(--accent); font-size: 12px; letter-spacing: .17em; text-transform: uppercase; }
-.intro-row h1 { margin: 0; font: 400 clamp(39px, 5vw, 62px)/.97 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; letter-spacing: -.045em; }
+.intro-row h1 { margin: 0; font: 400 clamp(39px, 5vw, 62px)/.97 var(--font-display); letter-spacing: -.045em; }
 .intro-row h1 em { color: var(--accent); font-weight: 400; }
-.intro-copy { max-width: 340px; margin: 0 0 4px; color: var(--muted); font: 16px/1.6 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.intro-copy { max-width: 340px; margin: 0 0 4px; color: var(--muted); font: 16px/1.6 var(--font-display); }
 
 .catalogue-section { padding: 27px clamp(18px, 5vw, 76px) 78px; background: var(--surface); border-top: 1px solid var(--line); }
 .catalogue-heading { max-width: var(--content-max); margin: 0 auto 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .catalogue-heading .eyebrow { margin-bottom: 6px; }
-.catalogue-heading h2 { margin: 0; font: 400 clamp(24px, 3vw, 34px)/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.catalogue-heading h2 { margin: 0; font: 400 clamp(24px, 3vw, 34px)/1.1 var(--font-display); }
 .result-count { margin: 0 0 2px; color: var(--muted); font-size: 12px; }
 .catalogue-controls { max-width: var(--content-max); margin: 0 auto 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .filter-list { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -95,7 +99,7 @@ button { color: inherit; }
 .discount-tag { position: absolute; right: 12px; top: 12px; padding: 6px 8px; background: var(--accent); color: #fffdfa; font-size: 11px; letter-spacing: .09em; }
 .product-info { padding: 16px 16px 17px; }
 .product-deity { margin: 0 0 6px; color: var(--accent); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
-.product-info h3 { margin: 0; font: 400 22px/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.product-info h3 { margin: 0; font: 400 22px/1.1 var(--font-display); }
 .product-placement { margin: 8px 0 15px; color: var(--muted); font-size: 12px; }
 .details-link { display: inline-flex; align-items: center; gap: 6px; margin: -5px 0 12px; color: var(--accent); font-size: 12px; font-weight: 600; }
 .details-link:hover { color: var(--accent-dark); text-decoration: underline; }
@@ -111,9 +115,9 @@ button { color: inherit; }
 .empty-results button { padding: 9px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 
 .placement-note { padding: 45px clamp(20px, 7vw, 100px); display: flex; align-items: center; justify-content: center; gap: 27px; background: var(--surface-soft); text-align: left; }
-.placement-mark { color: var(--gold); font: 50px/1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.placement-mark { color: var(--gold); font: 50px/1 var(--font-display); }
 .placement-note .eyebrow { margin-bottom: 7px; }
-.placement-note h2 { margin: 0; font: 400 clamp(21px, 3vw, 31px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.placement-note h2 { margin: 0; font: 400 clamp(21px, 3vw, 31px)/1.15 var(--font-display); }
 .placement-note div > p:last-child { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
 .shop-footer { min-height: 145px; padding: 28px clamp(20px, 5vw, 76px); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 26px; border-top: 1px solid var(--line); background: var(--ink); color: var(--page); }
 .footer-wordmark { padding: 4px; border-radius: 3px; background: #fffdfa; }
@@ -134,19 +138,19 @@ button { color: inherit; }
 .detail-thumbnail { position: relative; aspect-ratio: 1.15 / 1; overflow: hidden; background: var(--surface-soft); }
 .detail-image-note { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .detail-copy { position: sticky; top: 24px; padding-top: 13px; }
-.detail-copy h1 { margin: 0; font: 400 clamp(34px, 4vw, 48px)/1.08 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.detail-copy h1 { margin: 0; font: 400 clamp(34px, 4vw, 48px)/1.08 var(--font-display); }
 .detail-placement { margin: 13px 0 24px; color: var(--muted); font-size: 14px; }
 .detail-price { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
 .detail-add-button { width: 100%; min-height: 48px; border: 0; background: var(--disabled); color: var(--muted); cursor: not-allowed; font-size: 13px; }
 .detail-rule { margin: 28px 0 22px; border-top: 1px solid var(--line); }
-.detail-copy h2 { margin: 0 0 9px; font: 400 24px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.detail-copy h2 { margin: 0 0 9px; font: 400 24px/1.2 var(--font-display); }
 .detail-copy > p:not(.eyebrow):not(.detail-placement):not(.detail-price) { color: var(--muted); font-size: 13px; line-height: 1.7; }
 .product-facts { margin: 23px 0 0; border-top: 1px solid var(--line); }
 .product-facts > div { padding: 11px 0; display: flex; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .product-facts dt { color: var(--muted); }
 .product-facts dd { margin: 0; text-align: right; }
+.product-detail-accordions h2 { margin: 0 0 14px; font: 400 26px/1.2 var(--font-display); }
 .product-detail-accordions { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: 0 clamp(18px, 5vw, 76px) 80px; }
-.product-detail-accordions h2 { margin: 0 0 14px; font: 400 26px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
 .product-detail-accordion { border-top: 1px solid var(--line); }
 .product-detail-accordion:last-child { border-bottom: 1px solid var(--line); }
 .product-detail-accordion summary { min-height: 52px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); background: var(--surface-soft); color: var(--ink); cursor: pointer; font-size: 14px; font-weight: 600; list-style: none; }
@@ -167,7 +171,7 @@ button { color: inherit; }
 
 .cart-page { min-height: 100vh; background: var(--page); }
 .cart-content { max-width: 1180px; margin: 0 auto; padding: 50px clamp(18px, 5vw, 70px) 80px; }
-.cart-content > h1 { margin: 0 0 18px; font: 400 clamp(36px, 5vw, 52px)/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.cart-content > h1 { margin: 0 0 18px; font: 400 clamp(36px, 5vw, 52px)/1.1 var(--font-display); }
 .cart-demo-banner { margin: 0 0 25px; padding: 12px 15px; border: 1px solid var(--gold); background: var(--surface-soft); color: var(--ink); font-size: 13px; line-height: 1.55; }
 .cart-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
 .cart-lines { border-top: 1px solid var(--line); }
@@ -175,7 +179,7 @@ button { color: inherit; }
 .cart-line-image { position: relative; display: block; width: 112px; aspect-ratio: 1; background: var(--surface-soft); }
 .cart-line-image img { object-fit: cover; }
 .cart-line-info .product-deity { margin: 1px 0 5px; }
-.cart-line-info h2 { margin: 0; font: 400 20px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.cart-line-info h2 { margin: 0; font: 400 20px/1.2 var(--font-display); }
 .cart-unit-price { margin: 6px 0 10px; font-size: 13px; }
 .cart-unit-price span { color: var(--muted); font-size: 12px; }
 .cart-line-total { padding-top: 4px; font-size: 14px; white-space: nowrap; }
@@ -185,14 +189,14 @@ button { color: inherit; }
 .quantity-control span { min-width: 24px; text-align: center; font-size: 13px; }
 .remove-button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; text-decoration: underline; }
 .cart-summary { padding: 20px; border: 1px solid var(--line); background: var(--surface); }
-.cart-summary h2 { margin: 0 0 17px; font: 400 22px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.cart-summary h2 { margin: 0 0 17px; font: 400 22px/1.2 var(--font-display); }
 .cart-summary > div { margin: 11px 0; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
 .cart-summary > p { color: var(--muted); font-size: 12px; line-height: 1.6; }
 .checkout-demo-button, .continue-button { min-height: 42px; padding: 0 15px; display: grid; place-items: center; border: 1px solid var(--accent); background: var(--accent); color: #fffdfa; cursor: pointer; font-size: 13px; }
 .checkout-demo-button { width: 100%; margin-top: 15px; }
 .demo-checkout-message { padding: 10px; background: var(--surface-soft); color: var(--ink) !important; }
 .checkout-form { display: grid; gap: 10px; margin-top: 20px; }
-.checkout-form h3 { margin: 5px 0; font: 400 20px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.checkout-form h3 { margin: 5px 0; font: 400 20px/1.2 var(--font-display); }
 .checkout-form label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
 .checkout-form input, .checkout-form textarea { width: 100%; min-height: 39px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; }
 .checkout-form textarea { min-height: 68px; resize: vertical; }
@@ -220,7 +224,7 @@ button { color: inherit; }
 .footer-whatsapp { justify-self: end; color: #e5d8c6; font-size: 12px; line-height: 1.5; }
 .account-page { min-height: 100vh; background: var(--page); }
 .account-content { max-width: 880px; margin: 0 auto; padding: 50px clamp(18px, 5vw, 64px) 80px; }
-.account-content > h1 { margin: 0 0 10px; font: 400 clamp(36px, 5vw, 54px)/1.08 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.account-content > h1 { margin: 0 0 10px; font: 400 clamp(36px, 5vw, 54px)/1.08 var(--font-display); }
 .account-lede { max-width: 560px; color: var(--muted); font-size: 14px; line-height: 1.7; }
 .account-demo-banner { margin: 20px 0; padding: 11px 13px; border: 1px solid var(--gold); background: var(--surface-soft); font-size: 12px; line-height: 1.5; }
 .account-card { margin-top: 20px; padding: clamp(18px, 4vw, 32px); border: 1px solid var(--line); background: var(--surface); }
@@ -272,7 +276,7 @@ button { color: inherit; }
 /* Saved addresses (account address book + checkout picker) */
 .address-book { margin: 26px 0 8px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .address-book-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.address-book h2, .account-orders-title { margin: 0; font: 400 22px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.address-book h2, .account-orders-title { margin: 0; font: 400 22px/1.2 var(--font-display); }
 .account-orders-title { margin-top: 24px; }
 .address-add, .address-link { min-height: 36px; padding: 6px 2px; border: 0; background: transparent; color: var(--accent); cursor: pointer; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
 .address-link.danger { color: #a14636; }
@@ -315,7 +319,7 @@ button { color: inherit; }
 .account-profile strong { font-size: 14px; }
 .account-profile span { color: var(--muted); font-size: 12px; }
 .account-signout, .sync-order-button { padding: 8px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; font-size: 12px; }
-.account-card > h2 { margin: 23px 0 12px; font: 400 22px "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.account-card > h2 { margin: 23px 0 12px; font: 400 22px var(--font-display); }
 .account-order { padding: 17px 0; border-top: 1px solid var(--line); }
 .order-heading, .order-status-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .order-heading > div { display: grid; gap: 5px; font-size: 13px; }
@@ -453,7 +457,7 @@ button { color: inherit; }
 .product-price-block del { margin-left: 6px; color: var(--muted); font-size: 13px; }
 .choose-colour { display: inline-grid; place-items: center; text-decoration: none; }
 /* Product page */
-.detail-tagline { margin: 6px 0 0; color: var(--muted); font-size: 15px; font-style: italic; }
+.detail-tagline { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
 .detail-price .save-chip { align-self: center; padding: 3px 9px; border-radius: 20px; font-size: 13px; }
 .detail-tax-note { margin: 2px 0 18px; color: var(--muted); font-size: 13px; }
 .detail-thumbnails { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
@@ -521,8 +525,8 @@ button { color: inherit; }
 @media (max-width: 620px) { .product-highlights { grid-template-columns: 1fr; } .spec-cards dl { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 360px) { .spec-cards dl { grid-template-columns: 1fr; } }
 /* You may also like */
+.recommended-head h2 { margin: 4px 0 18px; font: 400 clamp(26px, 3vw, 34px)/1.15 var(--font-display); }
 .recommended { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: 36px clamp(18px, 5vw, 76px) 60px; border-top: 1px solid var(--line); }
-.recommended-head h2 { margin: 4px 0 18px; font: 400 clamp(26px, 3vw, 34px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
 .recommended-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
 .recommended-card { display: grid; height: 100%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; transition: border-color .15s; }
 .recommended-card:hover { border-color: var(--accent); }
@@ -565,11 +569,11 @@ button { color: inherit; }
 /* Store policy pages */
 .policy-page { min-height: 100vh; background: var(--page); color: var(--ink); }
 .policy-content { max-width: 720px; margin: 0 auto; padding: 40px 18px 56px; }
-.policy-content h1 { margin: 6px 0 12px; font: 400 clamp(32px, 6vw, 46px)/1.1 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.policy-content h1 { margin: 6px 0 12px; font: 400 clamp(32px, 6vw, 46px)/1.1 var(--font-display); }
 .policy-intro { margin: 0 0 18px; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .policy-draft { margin: 0 0 28px; padding: 12px 14px; border: 1px solid #c2922e; background: rgba(194, 146, 46, .12); font-size: 14px; line-height: 1.5; }
 .policy-content section { padding: 20px 0; border-top: 1px solid var(--line); }
-.policy-content h2 { margin: 0 0 10px; font: 400 22px/1.25 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.policy-content h2 { margin: 0 0 10px; font: 400 22px/1.25 var(--font-display); }
 .policy-content p, .policy-content li { margin: 0 0 10px; font-size: 15px; line-height: 1.7; }
 .policy-content ul, .policy-content ol { margin: 0; padding-left: 22px; }
 .policy-content ul { list-style: disc; }
@@ -680,7 +684,7 @@ button { color: inherit; }
 .bag-flow.page { max-width: 560px; margin: 0 auto; border: 1px solid var(--line); background: var(--surface); }
 .cart-page-flow { padding: 24px 16px 56px; }
 .bag-head { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 18px; border-bottom: 1px solid var(--line); }
-.bag-head h2 { display: flex; align-items: center; gap: 8px; margin: 0; font: 400 22px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.bag-head h2 { display: flex; align-items: center; gap: 8px; margin: 0; font: 400 22px/1.2 var(--font-display); }
 .bag-head svg { color: var(--accent); }
 .bag-head-title { order: 1; flex: 1; justify-content: center; }
 .bag-back { order: 0; display: inline-flex; align-items: center; gap: 5px; min-height: 40px; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font-size: 13px; white-space: nowrap; }
@@ -688,7 +692,7 @@ button { color: inherit; }
 .bag-close:hover { background: var(--surface-soft); }
 .bag-close svg { color: inherit; }
 .bag-head-title + .bag-close { margin-left: 0; }
-.bag-count { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--surface-soft); font: 600 12px/1.6 Arial, sans-serif; text-align: center; }
+.bag-count { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--surface-soft); font: 600 12px/1.6 var(--font-body); text-align: center; }
 .bag-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 18px; }
 .bag-flow.page .bag-body { overflow: visible; }
 .bag-test-note { margin: 0 0 12px; padding: 7px 10px; border: 1px solid var(--gold); background: var(--surface-soft); font-size: 12px; }
@@ -721,7 +725,7 @@ button { color: inherit; }
 .bag-empty svg { color: var(--muted); }
 .bag-empty p, .bag-done p { margin: 0; color: var(--muted); line-height: 1.5; }
 .bag-empty .checkout-demo-button, .bag-done .checkout-demo-button { width: auto; min-width: 200px; margin: 4px 0 0; padding: 0 20px; }
-.bag-done h3 { margin: 0; font: 400 26px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.bag-done h3 { margin: 0; font: 400 26px/1.2 var(--font-display); }
 .bag-text-link { color: var(--accent); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
 .bag-checkout { gap: 12px; margin: 0; }
 .bag-checkout .gift-option { margin: 0; }
@@ -756,7 +760,7 @@ button { color: inherit; }
 .bag-link { position: relative; display: grid; place-items: center; flex: none; width: 40px; min-width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer; }
 .bag-link:hover { background: var(--surface-soft); }
 .bag-link svg { color: var(--ink); }
-.bag-link-count { position: absolute; top: 1px; right: -1px; min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: var(--surface); font: 600 11px/1 Arial, sans-serif; }
+.bag-link-count { position: absolute; top: 1px; right: -1px; min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: var(--surface); font: 600 11px/1 var(--font-body); }
 .detail-header-links { display: flex; align-items: center; gap: 12px; }
 .product-grid { align-items: stretch; }
 .product-card { display: flex; flex-direction: column; border-radius: 8px; }
@@ -793,11 +797,11 @@ button { color: inherit; }
 /* Full bag page: items on the left, checkout on the right. */
 .cart-page-flow { padding: 24px clamp(16px, 5vw, 64px) 56px; }
 .bag-page { max-width: 1120px; margin: 0 auto; font-size: 14px; color: var(--ink); }
-.bag-page > h1 { margin: 2px 0 12px; font: 400 clamp(30px, 4vw, 40px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.bag-page > h1 { margin: 2px 0 12px; font: 400 clamp(30px, 4vw, 40px)/1.15 var(--font-display); }
 .bag-page-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 430px); gap: 24px; align-items: start; }
 .bag-page-items, .bag-page-side { padding: 18px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .bag-page-side { position: sticky; top: 16px; }
-.bag-page-side h2 { margin: 0 0 12px; font: 400 24px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.bag-page-side h2 { margin: 0 0 12px; font: 400 24px/1.2 var(--font-display); }
 .bag-page .bag-pay { display: flex; align-items: center; justify-content: center; min-height: 48px; margin: 0; border-radius: 6px; font-size: 15px; }
 .bag-page .bag-line { grid-template-columns: 112px minmax(0, 1fr) auto; }
 .bag-page .bag-line-image { width: 112px; height: 112px; }
@@ -815,7 +819,7 @@ button { color: inherit; }
 .order-confirmed { display: grid; gap: 20px; }
 .order-confirmed-head { display: grid; justify-items: center; gap: 8px; padding: 12px 0 4px; text-align: center; }
 .order-confirmed-mark { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #e5efe2; color: #315b35; }
-.order-confirmed-head h1 { margin: 4px 0 0; font: 400 clamp(28px, 4vw, 38px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; outline: none; }
+.order-confirmed-head h1 { margin: 4px 0 0; font: 400 clamp(28px, 4vw, 38px)/1.15 var(--font-display); outline: none; }
 .order-confirmed-head p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
 .order-confirmed-head strong { color: var(--ink); letter-spacing: .03em; }
 .order-confirmed-head .order-confirmed-test { padding: 5px 10px; border: 1px solid var(--gold); background: var(--surface-soft); color: var(--ink); font-size: 12px; }
@@ -843,7 +847,7 @@ button { color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .home-hero { position: relative; padding: 44px 18px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .home-hero-copy { position: relative; z-index: 1; display: grid; gap: 12px; max-width: 1180px; margin: 0 auto; }
-.home-hero h1, .home-hero h2 { margin: 0; font: 400 clamp(38px, 7vw, 68px)/1.08 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.home-hero h1, .home-hero h2 { margin: 0; font: 400 clamp(38px, 7vw, 68px)/1.08 var(--font-display); }
 .home-hero .intro-copy { max-width: 560px; margin: 0; }
 .home-hero.with-image { display: grid; align-items: end; min-height: min(78vh, 620px); padding-top: 120px; color: #fff; border-bottom: 0; }
 .home-hero-image { object-fit: cover; }
@@ -863,7 +867,7 @@ button { color: inherit; }
 .quick-buy-close { min-height: 42px; border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer; }
 .home-section { max-width: calc(var(--content-max) + 36px); margin: 0 auto; padding: 36px 18px; }
 .home-section-head { margin-bottom: 18px; }
-.home-section-head h2, .home-story-copy h2 { margin: 0; font: 400 clamp(26px, 4vw, 36px)/1.15 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.home-section-head h2, .home-story-copy h2 { margin: 0; font: 400 clamp(26px, 4vw, 36px)/1.15 var(--font-display); }
 .home-section-head p { margin: 6px 0 0; color: var(--muted); }
 .home-product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 240px), 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
 .home-product-grid li { display: grid; gap: 6px; align-content: start; }
@@ -881,7 +885,7 @@ button { color: inherit; }
 .home-collection-image img { object-fit: cover; }
 .home-why-list { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
 .home-why-list li { display: flex; gap: 18px; padding: 18px 0; border-bottom: 1px solid var(--line); }
-.home-why-number { color: var(--gold); font: 400 28px/1 "Tiro Devanagari Sanskrit", Georgia, serif; }
+.home-why-number { color: var(--gold); font: 400 28px/1 var(--font-display); }
 .home-why-list h3 { margin: 0 0 4px; font-size: 17px; }
 .home-why-list p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .home-story { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 28px; align-items: center; }
@@ -920,7 +924,7 @@ button { color: inherit; }
 .how-made-image img { object-fit: cover; }
 .common-faqs { display: grid; gap: 8px; }
 .common-faqs p { margin: 0; padding: 0 14px 14px; line-height: 1.6; }
-.common-faqs h2, .bundle-box h2, .product-reviews h2 { margin: 0 0 6px; font: 400 24px/1.2 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.common-faqs h2, .bundle-box h2, .product-reviews h2 { margin: 0 0 6px; font: 400 24px/1.2 var(--font-display); }
 .bundle-box { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .bundle-box ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .bundle-box li { display: grid; gap: 4px; font-size: 13px; }
@@ -945,7 +949,7 @@ button { color: inherit; }
 .recent-sale button { min-width: 32px; min-height: 32px; border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; }
 
 /* Managed pages and the contact form */
-.managed-page-body h2 { padding-top: 20px; border-top: 1px solid var(--line); margin: 20px 0 10px; font: 400 22px/1.25 "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif; }
+.managed-page-body h2 { padding-top: 20px; border-top: 1px solid var(--line); margin: 20px 0 10px; font: 400 22px/1.25 var(--font-display); }
 .managed-page-body mark:not(.policy-confirm) { background: none; color: inherit; }
 .contact-form { display: grid; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
 .contact-form h2 { margin: 0; }
@@ -963,8 +967,8 @@ button { color: inherit; }
 /* Hero: one photo across the whole banner, header on top of it, text and buttons at the lower left. */
 .home-top { position: relative; }
 .home-hero-copy { gap: 10px; }
-.home-hero h1, .home-hero h2 { font: 600 clamp(30px, 3.9vw, 56px)/1.15 Arial, Helvetica, sans-serif; }
-.home-hero .intro-copy { max-width: 560px; font: 400 clamp(14px, 1.3vw, 17px)/1.45 Arial, Helvetica, sans-serif; color: var(--muted); }
+.home-hero h1, .home-hero h2 { font: 400 clamp(32px, 4vw, 56px)/1.12 var(--font-display); }
+.home-hero .intro-copy { max-width: 560px; font: 400 clamp(14px, 1.3vw, 17px)/1.45 var(--font-body); color: var(--muted); }
 .home-hero .eyebrow { margin: 0; font-size: 13px; letter-spacing: .06em; }
 .home-hero-buttons { flex-wrap: nowrap; gap: 10px; margin-top: 10px; }
 .home-hero-buy, .home-hero-explore { flex: 0 1 auto; min-width: 0; min-height: 50px; padding: 6px 30px; border-radius: 30px; font-size: 15px; line-height: 1.2; text-align: center; }
@@ -1089,7 +1093,7 @@ button { color: inherit; }
 @media (max-width: 620px) {
   .home-hero.with-image { padding: 170px 16px 20px; }
   .home-hero-copy { gap: 6px; }
-  .home-hero h1, .home-hero h2 { font-size: 25px; line-height: 1.2; }
+  .home-hero h1, .home-hero h2 { font-size: 28px; line-height: 1.15; }
   .home-hero .intro-copy { font-size: 13px; line-height: 1.4; }
   .home-hero .eyebrow { font-size: 11px; }
   .home-hero-buttons { width: 100%; gap: 8px; margin-top: 8px; }
@@ -1221,7 +1225,7 @@ button { color: inherit; }
 .spotlight-inner { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: clamp(36px, 5vw, 64px) clamp(18px, 5vw, 76px);
   display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-areas: "head head" "logo visual" "copy visual"; grid-template-rows: auto auto 1fr; column-gap: clamp(28px, 4vw, 64px); align-items: start; }
 .spotlight-head { grid-area: head; text-align: center; margin-bottom: clamp(20px, 3vw, 36px); }
-.spotlight-head h2 { margin: 0; font: 400 clamp(28px, 3.6vw, 48px)/1.1 var(--font-display, "Tiro Devanagari Sanskrit", "Kohinoor Devanagari", Georgia, serif); letter-spacing: .04em; text-transform: uppercase; text-wrap: balance; }
+.spotlight-head h2 { margin: 0; font: 400 clamp(28px, 3.6vw, 48px)/1.1 var(--font-display); letter-spacing: .04em; text-transform: uppercase; text-wrap: balance; }
 .spotlight-head p { margin: 10px 0 0; font-size: clamp(16px, 1.6vw, 20px); color: var(--spot-ink); opacity: .85; }
 .spotlight-logo { grid-area: logo; margin-bottom: 18px; }
 .spotlight-logo .brand-logo { width: clamp(130px, 13vw, 180px); max-width: 100%; height: auto; }
@@ -1230,7 +1234,7 @@ button { color: inherit; }
 .spotlight-copy { grid-area: copy; display: grid; justify-items: start; gap: 12px; }
 .spotlight-badge { padding: 5px 14px; border-radius: 999px; background: var(--spot-accent); color: #fff; font-size: 14px; font-weight: 600; }
 :root[data-theme="dark"] .spotlight-badge { color: #241c16; }
-.spotlight-copy h3 { margin: 0; font: 600 clamp(30px, 3.2vw, 44px)/1.1 var(--font-body, Arial, sans-serif); }
+.spotlight-copy h3 { margin: 0; font: 600 clamp(30px, 3.2vw, 44px)/1.1 var(--font-body); }
 .spotlight-copy h3 a { color: inherit; text-decoration: none; }
 .spotlight-copy h3 a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .spotlight-text { margin: 0; max-width: 46ch; font-size: clamp(15px, 1.3vw, 18px); line-height: 1.5; }
