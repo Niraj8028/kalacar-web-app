@@ -34,6 +34,6 @@ export async function requireOwner() {
     if (!isOwnerEmail(user.email)) return NextResponse.json({ error: "This account is not allowed to use the owner dashboard." }, { status: 403 });
     return null;
   } catch {
-    return NextResponse.json({ error: "Account service is unavailable. Check the local database connection and try again." }, { status: 503 });
+    return NextResponse.json({ error: "Sign-in isn't available right now. Please try again in a few minutes." }, { status: 503 });
   }
 }

@@ -30,7 +30,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
   const [imageIndex, setImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  if (!item) return <main className="product-page"><header className="detail-header"><ShopLogo /></header><section className="cart-content"><h1>{catalogueError || (catalogueLoading ? "Loading product…" : "Product not found in the current catalogue.")}</h1><Link href="/#catalogue"><ArrowLeft /> Back to all products</Link></section></main>;
+  if (!item) return <main className="product-page"><header className="detail-header"><ShopLogo /></header><section className="cart-content"><h1>{catalogueError || (catalogueLoading ? "Loading product…" : "Product not found in the current catalogue.")}</h1><Link href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></section></main>;
 
   const itemReviews = reviews.filter(review => review.productId === item.id);
   const colours = item.variants;
