@@ -1404,3 +1404,23 @@ button { color: inherit; }
 .mobile-menu-links { display: grid; }
 .mobile-menu-links a { display: flex; align-items: center; min-height: 42px; padding: 0 4px; color: var(--ink); font-size: 15px; text-decoration: none; }
 .mobile-menu-info > a { font-size: 15px; color: var(--muted); }
+
+/* Computers too: the account link is an icon in a circle like the others; "Your account" shows on hover. */
+.detail-header-links .account-link { box-sizing: border-box; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); }
+.detail-header-links .account-link:hover { border-color: var(--accent); }
+.detail-header-links .account-link span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Phones: one white header on every page that stays at the top while scrolling; the home hero sits below it
+   and fills 95% of the screen height left under the banner and header. */
+@media (max-width: 760px) {
+  .home-top, .home-top.over-photo { display: contents; }
+  .shop-header, .home-top.over-photo .shop-header, .detail-header { position: sticky; top: 0; z-index: 40; background: var(--surface); color: var(--ink); border-bottom: 1px solid var(--line); }
+  .shop-header, .detail-header { min-height: 64px; padding-top: 6px; padding-bottom: 6px; }
+  .home-top.over-photo .shop-header .brand-logo { filter: none; }
+  :root[data-theme="dark"] .home-top.over-photo .shop-header .brand-logo:not(.own-colours) { filter: brightness(0) invert(1); }
+  .home-top.over-photo .shop-header .bag-link, .home-top.over-photo .shop-header .bag-link svg, .home-top.over-photo .menu-button { color: var(--ink); text-shadow: none; }
+  .home-top.over-photo .shop-header .header-tools .bag-link, .home-top.over-photo .menu-button { border-color: var(--line); background: var(--surface); filter: none; }
+  .home-hero.with-image, .hero-carousel .home-hero.with-image { min-height: 0; height: calc((100svh - var(--hero-top, 100px)) * .95); padding: 24px 16px 22px; }
+  .hero-carousel .home-hero.with-image { padding-bottom: 42px; }
+  .home-hero.with-image::after, .hero-carousel:has(.with-image)::after { background: linear-gradient(180deg, rgb(20 14 10 / 0%) 45%, rgb(20 14 10 / 62%) 100%); }
+}

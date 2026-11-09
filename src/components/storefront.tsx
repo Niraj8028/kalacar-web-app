@@ -75,7 +75,7 @@ export default function Storefront() {
           </label>
           <ThemeToggle />
           <CartLink />
-          <Link className="account-link" href="/account" aria-label="Your account"><UserCircle size={20} /><span>Account</span></Link>
+          <Link className="account-link" href="/account" aria-label="Your account" title="Your account"><UserCircle size={20} /><span>Account</span></Link>
         </div>
       </header>
 
