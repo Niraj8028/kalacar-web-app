@@ -2,12 +2,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_FESTIVE, DEFAULT_HOME, DEFAULT_INSTAGRAM, DEFAULT_PRODUCT_PAGE } from "@/data/site-content";
+import { DEFAULT_BRAND, DEFAULT_FESTIVE, DEFAULT_HOME, DEFAULT_INSTAGRAM, DEFAULT_PRODUCT_PAGE } from "@/data/site-content";
 import type { Review, SiteContent } from "@/data/site-content";
 import { useLiveLoad } from "@/lib/realtime-client";
 
 type Value = SiteContent & { reviews: Review[] };
-const DEFAULTS: Value = { home: DEFAULT_HOME, productPage: DEFAULT_PRODUCT_PAGE, collections: [], instagram: DEFAULT_INSTAGRAM, festive: DEFAULT_FESTIVE, reviews: [] };
+const DEFAULTS: Value = { home: DEFAULT_HOME, productPage: DEFAULT_PRODUCT_PAGE, collections: [], instagram: DEFAULT_INSTAGRAM, festive: DEFAULT_FESTIVE, brand: DEFAULT_BRAND, reviews: [] };
 const Context = createContext<Value>(DEFAULTS);
 
 /** Owner's settings and reviews for the whole shop. If they can't load, built-in defaults keep every page working. */

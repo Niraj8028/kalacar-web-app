@@ -1164,3 +1164,8 @@ button { color: inherit; }
   .festive-overlay *, .festive-overlay { animation: none !important; }
   .festive-shower { display: none; }
 }
+
+/* "Small devotional murtis" strip: solid black in both themes. */
+.top-note { background: #000; color: #fff; }
+/* Account stays in the far-right corner on phones too, after the search icon. */
+@media (max-width: 760px) { .shop-header .header-tools .account-link { order: 4; } }

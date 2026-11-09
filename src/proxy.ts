@@ -22,7 +22,8 @@ function sameOrigin(request: NextRequest) {
   return request.headers.get("sec-fetch-site") === "same-origin";
 }
 
-// Upper bounds on request bodies: product photo uploads (5 × 5 MB + form fields) vs. everything else.
+// Upper bounds on request bodies: photo uploads (products, or one site photo) vs. everything else.
+const UPLOAD_PATHS = ["/api/admin/products", "/api/admin/uploads"];
 const MAX_UPLOAD_BYTES = 26 * 1024 * 1024;
 const MAX_JSON_BYTES = 100 * 1024;
 
@@ -30,7 +31,7 @@ export function proxy(request: NextRequest) {
   if (!WRITE_METHODS.has(request.method)) return NextResponse.next();
   const length = Number(request.headers.get("content-length") ?? "0");
   const multipart = (request.headers.get("content-type") ?? "").includes("multipart/form-data");
-  if (length > (multipart && request.nextUrl.pathname.startsWith("/api/admin/products") ? MAX_UPLOAD_BYTES : MAX_JSON_BYTES)) {
+  if (length > (multipart && UPLOAD_PATHS.some(path => request.nextUrl.pathname.startsWith(path)) ? MAX_UPLOAD_BYTES : MAX_JSON_BYTES)) {
     return NextResponse.json({ error: "This request is too large." }, { status: 413 });
   }
   if (EXEMPT_PREFIXES.some(prefix => request.nextUrl.pathname.startsWith(prefix))) return NextResponse.next();

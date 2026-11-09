@@ -2,6 +2,7 @@ import type { RowDataPacket } from "mysql2/promise";
 import { addressDb } from "@/lib/catalogue-db";
 import { getFestive } from "@/lib/festive";
 import { getInstagram } from "@/lib/instagram";
+import { getBrand } from "@/lib/brand";
 import { listCategories } from "@/lib/categories";
 import { DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, videoEmbed } from "@/data/site-content";
 import type { HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
@@ -69,8 +70,8 @@ export const saveHome = (value: HomeContent) => writeRow("home_page", value);
 export const saveProductPage = (value: ProductPageContent) => writeRow("product_page", value);
 
 export async function getSiteContent(): Promise<SiteContent> {
-  const [home, productPage, categories, instagram, festive] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram(), getFestive()]);
-  return { home, productPage, instagram, festive, collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
+  const [home, productPage, categories, instagram, festive, brand] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram(), getFestive(), getBrand()]);
+  return { home, productPage, instagram, festive, brand, collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
 }
 
 // Reviews are entered by the owner from real customers. Ratings shown on the shop are worked out from these.

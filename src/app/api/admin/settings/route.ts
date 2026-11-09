@@ -3,6 +3,7 @@ import { requireOwner } from "@/lib/customer-auth";
 import { getGiftWrap, parseGiftWrap, saveGiftWrap } from "@/lib/settings";
 import { getFestive, parseFestive, saveFestive } from "@/lib/festive";
 import { getInstagram, parseInstagram, saveInstagram } from "@/lib/instagram";
+import { getBrand, parseBrand, saveBrand } from "@/lib/brand";
 import { getShopLink, parseShopLink, saveShopLink } from "@/lib/shop-link";
 import { getStoreSettings, parseStoreSettings, saveStoreSettings } from "@/lib/store-status";
 import { signalled } from "@/lib/realtime";
@@ -10,18 +11,23 @@ import { signalled } from "@/lib/realtime";
 export async function GET() {
   const denied = await requireOwner();
   if (denied) return denied;
-  try { return NextResponse.json({ giftWrap: await getGiftWrap(), store: await getStoreSettings(), shopLink: await getShopLink(), instagram: await getInstagram(), festive: await getFestive() }, { headers: { "Cache-Control": "no-store" } }); }
+  try { return NextResponse.json({ giftWrap: await getGiftWrap(), store: await getStoreSettings(), shopLink: await getShopLink(), instagram: await getInstagram(), festive: await getFestive(), brand: await getBrand() }, { headers: { "Cache-Control": "no-store" } }); }
   catch { return NextResponse.json({ error: "Settings are unavailable right now." }, { status: 503 }); }
 }
 
 async function handlePATCH(request: Request) {
   const denied = await requireOwner();
   if (denied) return denied;
-  const body = await request.json().catch(() => null) as { giftWrap?: unknown; store?: unknown; shopLink?: unknown; instagram?: unknown; festive?: unknown } | null;
+  const body = await request.json().catch(() => null) as { giftWrap?: unknown; store?: unknown; shopLink?: unknown; instagram?: unknown; festive?: unknown; brand?: unknown } | null;
   if (body?.shopLink !== undefined) {
     const link = parseShopLink(body.shopLink);
     if ("error" in link) return NextResponse.json({ error: link.error }, { status: 400 });
     try { await saveShopLink(link.value); return NextResponse.json({ shopLink: await getShopLink() }); }
+    catch { return NextResponse.json({ error: "Could not save settings." }, { status: 503 }); }
+  }
+  if (body?.brand !== undefined) {
+    const brand = parseBrand(body.brand);
+    try { await saveBrand(brand); return NextResponse.json({ brand }); }
     catch { return NextResponse.json({ error: "Could not save settings." }, { status: 503 }); }
   }
   if (body?.festive !== undefined) {

@@ -52,12 +52,16 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
 export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; published: boolean };
 export type ShopCategory = { name: string; image: string; productCount: number };
 export type InstagramSettings = { show: boolean; username: string };
+/** The shop logo. Empty means the built-in Kalacar logo. */
+export type BrandSettings = { logo: string };
+export const DEFAULT_LOGO = "/images/kalakar-logo.png";
+export const DEFAULT_BRAND: BrandSettings = { logo: "" };
 export const DEFAULT_INSTAGRAM: InstagramSettings = { show: false, username: "" };
 export const instagramLink = (username: string) => `https://www.instagram.com/${encodeURIComponent(username)}/`;
 export const FESTIVE_OVERLAYS = ["off", "diwali", "ganpati", "janmashtami"] as const;
 export type FestiveSettings = { overlay: typeof FESTIVE_OVERLAYS[number] };
 export const DEFAULT_FESTIVE: FestiveSettings = { overlay: "off" };
-export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings };
+export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings; brand: BrandSettings };
 
 /** Average and count from real reviews only. */
 export function reviewSummary(reviews: Pick<Review, "rating">[]) {
