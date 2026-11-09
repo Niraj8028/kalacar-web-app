@@ -31,14 +31,14 @@ export function DeliveryLine() {
 
 export function ProductHighlights({ items }: { items: string[] }) {
   if (!items.length) return null;
-  return <ul className="product-highlights" aria-label="Highlights">{items.map(item => <li key={item}><svg aria-hidden="true" viewBox="0 0 16 16" width="15" height="15"><path d="M3.5 8.5 6.5 11.5 12.5 5" {...stroke} strokeWidth={1.8} /></svg>{item}</li>)}</ul>;
+  return <ul className="product-highlights" aria-label="Highlights">{items.map((item, index) => <li key={`${index}-${item}`}><svg aria-hidden="true" viewBox="0 0 16 16" width="15" height="15"><path d="M3.5 8.5 6.5 11.5 12.5 5" {...stroke} strokeWidth={1.8} /></svg>{item}</li>)}</ul>;
 }
 
 export function SpecCards({ specs }: { specs: Array<{ label: string; value: string }> }) {
   if (!specs.length) return null;
   return <section className="spec-cards" aria-labelledby="spec-cards-title">
     <h2 id="spec-cards-title">Specifications &amp; craftsmanship</h2>
-    <dl>{specs.map(spec => <div className="spec-card" key={`${spec.label}-${spec.value}`}>
+    <dl>{specs.map((spec, index) => <div className="spec-card" key={`${index}-${spec.label}-${spec.value}`}>
       <span className="spec-icon"><svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">{iconFor(spec.label)}</svg></span>
       <dt>{spec.label}</dt><dd>{spec.value}</dd>
     </div>)}</dl>
