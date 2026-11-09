@@ -1298,3 +1298,42 @@ button { color: inherit; }
   }
   .home-hero.with-image { padding-left: var(--page-gutter); padding-right: var(--page-gutter); }
 }
+
+/* Google reviews of our sister studio (static). Same cream and brown as the spotlight; cards in a 3-column grid. */
+.greviews { background: var(--surface); }
+.greviews-inner { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: clamp(40px, 5vw, 72px) clamp(18px, 5vw, 76px); display: grid; gap: clamp(24px, 3vw, 36px); }
+.greviews-head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.greviews-head .eyebrow { margin: 0; }
+.greviews-head h2 { margin: 0; font: 400 clamp(30px, 3.4vw, 46px)/1.1 var(--font-display); color: var(--ink); text-wrap: balance; }
+.greviews-head > p:not(.eyebrow) { margin: 0; max-width: 52ch; color: var(--muted); font-size: clamp(14px, 1.2vw, 16px); }
+.greviews-badge { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--page); color: var(--ink); font-size: 14px; text-decoration: none; }
+.greviews-badge:hover { border-color: var(--accent); }
+.greviews-badge b { font-size: 16px; }
+.greviews-badge span:last-child { color: var(--muted); }
+.greview-stars { color: #f4b400; letter-spacing: 2px; font-size: 15px; line-height: 1; }
+.greviews-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0; padding: 0; list-style: none; }
+.greview { display: flex; flex-direction: column; gap: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--page); }
+.greview-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.greview-head b { display: block; color: var(--ink); font-size: 15px; }
+.greview-head small { color: var(--muted); font-size: 12px; }
+.greview-avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; }
+.greview-title { margin: 0; color: var(--ink); font-weight: 600; }
+.greview-text { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.55; }
+.greview-text.clamped { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.greview-more { align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.greview-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: auto; }
+.greview-photos.count-1 { grid-template-columns: minmax(0, 1fr); }
+.greview-photo { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; background: var(--surface-soft); }
+.greview-photos:not(.count-1) .greview-photo { aspect-ratio: 3 / 4; }
+.greview-photo img { object-fit: cover; }
+.greviews-all { justify-self: center; display: inline-flex; align-items: center; min-height: 46px; padding: 0 24px; border: 1px solid var(--ink); border-radius: 30px; color: var(--ink); font-weight: 600; text-decoration: none; }
+.greviews-all:hover { background: var(--ink); color: var(--page); }
+@media (max-width: 980px) { .greviews-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) {
+  /* Phones: swipe through the cards instead of a very long stack. */
+  .greviews-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-left: 18px; scrollbar-width: none; margin: 0 -18px; padding: 0 18px 4px; }
+  .greviews-grid::-webkit-scrollbar { display: none; }
+  .greview { flex: 0 0 82vw; scroll-snap-align: start; }
+  .greviews-badge { flex-wrap: wrap; justify-content: center; }
+}
+@media (min-width: 1100px) { .greviews-inner { max-width: none; padding-left: var(--page-gutter); padding-right: var(--page-gutter); } }

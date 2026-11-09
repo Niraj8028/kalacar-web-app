@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import ThemeToggle from "@/components/theme-toggle";
+import { GoogleReviews } from "@/components/google-reviews";
 import { useLogo } from "@/components/shop-logo";
 import { useSiteContent } from "@/components/site-content-provider";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
@@ -72,6 +73,7 @@ export default function Storefront() {
       <HomeHero />
       </div>
       <ProductSpotlight />
+      <GoogleReviews />
       <FirstLaunch />
       <ComingSoon />
       <Collections onChoose={setActiveFilter} />
