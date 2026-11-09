@@ -1188,3 +1188,12 @@ button { color: inherit; }
   .hero-dots { bottom: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .hero-dots button { transition: none; } }
+/* With several slides, one overlay stays fixed while the photos and text slide underneath it.
+   Every photo fills the width, so all slides share the same look as a wide-photo slide. */
+.hero-carousel .home-hero.with-image::after { display: none; }
+.hero-carousel:has(.with-image)::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(180deg, rgb(20 14 10 / 42%) 0%, rgb(20 14 10 / 0%) 24%, rgb(20 14 10 / 0%) 48%, rgb(20 14 10 / 62%) 100%); }
+.hero-carousel .home-hero-copy { z-index: 3; }
+@media (min-width: 901px) {
+  .hero-carousel:has(.with-image)::after { background: linear-gradient(90deg, rgb(20 14 10 / 0%) 40%, rgb(20 14 10 / 63%) 70%); }
+  .hero-carousel .home-hero:not(.has-wide) .home-hero-image { right: 0 !important; width: 100% !important; -webkit-mask-image: none; mask-image: none; }
+}
