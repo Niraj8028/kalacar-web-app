@@ -52,10 +52,11 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
 export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; published: boolean };
 export type ShopCategory = { name: string; image: string; productCount: number };
 export type InstagramSettings = { show: boolean; username: string };
-/** The shop logo. Empty means the built-in Kalacar logo. */
-export type BrandSettings = { logo: string };
+/** The shop logo. Empty logo means the built-in one; width 0 means the default size; white turns an uploaded logo white on dark backgrounds. */
+export type BrandSettings = { logo: string; width: number; white: boolean };
+export const LOGO_WIDTH = { min: 60, max: 320 };
 export const DEFAULT_LOGO = "/images/kalakar-logo.png";
-export const DEFAULT_BRAND: BrandSettings = { logo: "" };
+export const DEFAULT_BRAND: BrandSettings = { logo: "", width: 0, white: false };
 export const DEFAULT_INSTAGRAM: InstagramSettings = { show: false, username: "" };
 export const instagramLink = (username: string) => `https://www.instagram.com/${encodeURIComponent(username)}/`;
 export const FESTIVE_OVERLAYS = ["off", "diwali", "ganpati", "janmashtami"] as const;

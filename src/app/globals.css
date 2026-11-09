@@ -1041,6 +1041,11 @@ button { color: inherit; }
 .shop-logo { display: inline-flex; align-items: center; }
 .shop-logo .brand-logo { display: block; width: clamp(104px, 11vw, 148px); height: auto; }
 :root[data-theme="dark"] .brand-logo { filter: brightness(0) invert(1); }
+/* Uploaded logo: its own colours unless the owner chose white; size from dashboard Settings (phones get 70%). */
+.brand-logo.own-colours, :root[data-theme="dark"] .brand-logo.own-colours, .footer-wordmark .brand-logo.own-colours { filter: none; }
+.home-top.over-photo .brand-logo.own-colours { filter: drop-shadow(0 1px 3px rgb(0 0 0 / 35%)); }
+.shop-header .brand-logo.sized, .shop-logo .brand-logo.sized { width: var(--logo-w); max-width: none; }
+@media (max-width: 620px) { .shop-header .brand-logo.sized, .shop-logo .brand-logo.sized { width: calc(var(--logo-w) * .7); } }
 
 /* Desktop hero: murti on the left, text and buttons on the right, sitting a little above centre. */
 @media (min-width: 901px) {
