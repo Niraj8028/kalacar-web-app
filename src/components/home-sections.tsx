@@ -10,7 +10,6 @@ import { Stars, VideoRow } from "@/components/reviews";
 import { instagramLink, reviewSummary, videoEmbed } from "@/data/site-content";
 import type { HeroSlide } from "@/data/site-content";
 import type { StoreItem } from "@/data/catalogue";
-import { BagIcon } from "@/components/icons";
 import { useLogo } from "@/components/shop-logo";
 import { WHATSAPP_URL } from "@/components/policy-links";
 
@@ -123,7 +122,6 @@ export function ProductSpotlight() {
   const { home, reviews } = useSiteContent();
   const spot = home.spotlight;
   const { products, add, canAdd } = useCart();
-  const { start, dialog } = useQuickBuy();
   const router = useRouter();
   const logo = useLogo();
   const item = spot?.show ? products.find(product => product.id === spot.productId) : undefined;
@@ -156,13 +154,11 @@ export function ProductSpotlight() {
           <span className={price ? "spotlight-stock" : "spotlight-stock out"}>{price ? "In stock" : "Out of stock"}</span>
         </p>
         <div className="spotlight-buttons">
-          <button className="spotlight-add" type="button" disabled={!price} onClick={() => start(item)}><BagIcon /> Add to bag</button>
           <button className="spotlight-buy" type="button" disabled={!price} onClick={buyNow}>Buy now</button>
+          {spot.whatsapp.show && <a className="spotlight-order" href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Hi Kalacar, I'd like to order ${item.name}.`)}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon /> {spot.whatsapp.label}</a>}
         </div>
-        {spot.whatsapp.show && <a className="spotlight-whatsapp" href={`${WHATSAPP_URL}?text=${encodeURIComponent(`Hi Kalacar, I'd like to order ${item.name}.`)}`} target="_blank" rel="noopener noreferrer"><WhatsAppIcon /> {spot.whatsapp.label}</a>}
       </div>
     </div>
-    {dialog}
   </section>;
 }
 

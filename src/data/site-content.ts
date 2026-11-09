@@ -41,7 +41,7 @@ export const DEFAULT_HOME: HomeContent = {
   why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: false, description: "", items: [] },
   reviews: { show: false, showTitle: true, title: "Customer love", showDescription: false, description: "", showText: true, showVideo: true },
   story: { show: false, showTitle: true, title: "Our Story", showText: true, text: "", showImage: true, image: "", showFounder: true, founder: "" },
-  spotlight: { show: false, showTitle: true, title: "Bring home the divine", showDescription: true, description: "", productId: "", image: "", showLogo: true, whatsapp: { show: true, label: "WhatsApp to order" } },
+  spotlight: { show: false, showTitle: true, title: "Bring home the divine", showDescription: true, description: "", productId: "", image: "", showLogo: true, whatsapp: { show: true, label: "Order on WhatsApp" } },
 };
 
 export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {

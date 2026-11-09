@@ -12,7 +12,7 @@ describe("product spotlight setting", () => {
     const spot = parseHome({ spotlight: { show: true, title: "Bring home the divine", description: "Joy", productId: "shree-krushna", image: "/uploads/collage.png", showLogo: false, whatsapp: { show: false, label: "Order on WhatsApp" } } }).spotlight;
     expect(spot).toEqual({ show: true, showTitle: true, title: "Bring home the divine", showDescription: true, description: "Joy", productId: "shree-krushna", image: "/uploads/collage.png", showLogo: false, whatsapp: { show: false, label: "Order on WhatsApp" } });
     const bad = parseHome({ spotlight: { productId: "BAD ID", image: "https://evil.com/x.png", whatsapp: { label: "" } } }).spotlight;
-    expect(bad).toMatchObject({ productId: "", image: "", whatsapp: { label: "WhatsApp to order" } });
+    expect(bad).toMatchObject({ productId: "", image: "", whatsapp: { label: "Order on WhatsApp" } });
   });
 });
 

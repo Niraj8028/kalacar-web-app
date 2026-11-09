@@ -1208,14 +1208,6 @@ button { color: inherit; }
   .hero-carousel .home-hero:not(.has-wide) .home-hero-image { right: 0 !important; width: 100% !important; -webkit-mask-image: none; mask-image: none; }
 }
 
-/* Wide screens: full-width bands (header, catalogue, notes, footer) keep their background edge to edge,
-   but their content lines up with the 1400px content column. */
-@media (min-width: 1500px) {
-  .shop-header, .detail-header, .detail-breadcrumb, .catalogue-section, .placement-note, .shop-footer, .policy-footer {
-    padding-left: max(76px, calc((100% - var(--content-max)) / 2));
-    padding-right: max(76px, calc((100% - var(--content-max)) / 2));
-  }
-}
 
 /* Product spotlight under the hero. Desktop: cream | peach split, details left, one photo right.
    Phone: heading, logo and photo on peach, details on a cream band below. */
@@ -1265,4 +1257,44 @@ button { color: inherit; }
   .spotlight-copy { padding: 28px 0 40px; background: var(--spot-cream); box-shadow: 0 0 0 100vmax var(--spot-cream); clip-path: inset(0 -100vmax); }
   .spotlight-buttons { width: 100%; }
   .spotlight-buttons button { flex: 1 1 0; min-width: 0; }
+}
+/* Spotlight matches the hero: pill buttons, Marcellus product name, quieter section heading, soft join under the hero. */
+.spotlight { position: relative; }
+.spotlight::before { content: ""; position: absolute; inset: 0 0 auto; height: 56px; background: linear-gradient(180deg, rgb(42 36 32 / 10%), rgb(42 36 32 / 0%)); pointer-events: none; }
+.spotlight-head { margin-bottom: clamp(16px, 2.4vw, 28px); }
+.spotlight-head h2 { font-size: clamp(20px, 2vw, 26px); letter-spacing: .16em; }
+.spotlight-head p { margin-top: 6px; font-size: clamp(14px, 1.2vw, 16px); letter-spacing: .02em; opacity: .75; }
+.spotlight-logo { display: none; }
+.spotlight-copy { gap: 14px; }
+.spotlight-badge { padding: 4px 12px; font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.spotlight-copy h3 { font: 400 clamp(32px, 4vw, 56px)/1.12 var(--font-display); text-transform: none; }
+.spotlight-text { font-size: clamp(14px, 1.3vw, 17px); line-height: 1.45; opacity: .85; }
+.spotlight-price { gap: 10px; font-weight: 400; }
+.spotlight-price strong { font-weight: 500; font-size: clamp(26px, 2.2vw, 32px); }
+.spotlight-buttons { gap: 10px; margin-top: 10px; }
+.spotlight-buttons button { min-width: 0; min-height: 50px; padding: 6px 30px; border-radius: 30px; font-size: 15px; font-weight: 600; }
+.spotlight-whatsapp { font-size: 15px; }
+@media (max-width: 900px) {
+  .spotlight-logo { display: block; }
+  .spotlight-buttons button { min-height: 46px; padding: 6px 12px; border-radius: 22px; font-size: 14px; }
+}
+.spotlight-copy { max-width: 540px; }
+/* Desktop: the details sit in from the margin, towards the middle of the section. */
+@media (min-width: 901px) { .spotlight-copy { margin-left: clamp(24px, 5vw, 110px); } }
+.spotlight-buy { border-color: var(--spot-button); background: var(--spot-button); color: var(--spot-cream); }
+.spotlight-buy:hover:not(:disabled) { background: var(--spot-button); filter: brightness(1.15); }
+.spotlight-order { border: 1.5px solid var(--spot-button); background: transparent; color: var(--spot-ink); text-decoration: none; }
+.spotlight-order:hover { background: rgb(63 32 22 / 6%); }
+.spotlight-buttons .spotlight-order { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 6px 26px; border-radius: 30px; font-size: 15px; font-weight: 600; }
+@media (max-width: 900px) { .spotlight-buttons .spotlight-order { flex: 1 1 0; min-height: 46px; padding: 6px 12px; border-radius: 22px; font-size: 14px; } }
+
+/* Laptops and up: every section below the hero, plus the header, keeps equal side margins of at least 8% of
+   the screen, and content is never wider than 1400px (1980px screen: 290px each side). Backgrounds still reach the edges. */
+@media (min-width: 1100px) {
+  :root { --page-gutter: max(8vw, calc((100vw - var(--content-max)) / 2)); }
+  .shop-header, .detail-header, .detail-breadcrumb, .catalogue-section, .placement-note, .shop-footer, .policy-footer,
+  .home-section, .detail-layout, .product-detail-accordions, .recommended, .detail-more, .spotlight-inner {
+    max-width: none; padding-left: var(--page-gutter); padding-right: var(--page-gutter);
+  }
+  .home-hero.with-image { padding-left: var(--page-gutter); padding-right: var(--page-gutter); }
 }

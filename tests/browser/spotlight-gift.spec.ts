@@ -10,7 +10,7 @@ test.describe("product spotlight", () => {
     await page.goto("/");
     await expect(page.locator(".spotlight")).toHaveCount(0);
   });
-  test("shows the product's own name, price and stock, and Add to bag works", async ({ page }) => {
+  test("shows the product's own name, price and stock; Buy now goes to the bag", async ({ page }) => {
     const errors = watchErrors(page);
     await mockShop(page, { content: content({ show: true, title: "Bring home the divine", description: "Experience the joy", productId: "ganesh" }) });
     await page.goto("/");
@@ -20,18 +20,20 @@ test.describe("product spotlight", () => {
     await expect(spot.getByText("₹999")).toBeVisible();
     await expect(spot.getByText("(Save 23%)")).toBeVisible();
     await expect(spot.getByText("In stock")).toBeVisible();
-    await expect(spot.getByRole("link", { name: /WhatsApp to order/ })).toHaveAttribute("href", /wa\.me\/918830646308\?text=.*Test%20Ganesh/);
+    await expect(spot.getByRole("link", { name: /Order on WhatsApp/ })).toHaveAttribute("href", /wa\.me\/918830646308\?text=.*Test%20Ganesh/);
+    await expect(spot.getByRole("button", { name: /Add to bag/ })).toHaveCount(0);
     await expect(page.locator(".hero-arrow, .spotlight .hero-dots")).toHaveCount(0);
-    await spot.getByRole("button", { name: /Add to bag/ }).click();
-    expect(await page.evaluate(() => JSON.stringify(window.localStorage))).toContain("ganesh");
     await expectFits(page);
+    await spot.getByRole("button", { name: "Buy now" }).click();
+    await expect(page).toHaveURL(/\/cart$/);
+    expect(await page.evaluate(() => JSON.stringify(window.localStorage))).toContain("ganesh");
     expect(errors).toEqual([]);
   });
   test("a sold-out murti can't be bought from the spotlight", async ({ page }) => {
     await mockShop(page, { content: content({ show: true, productId: "soldout" }) });
     await page.goto("/");
     await expect(page.locator(".spotlight").getByText("Out of stock")).toBeVisible();
-    await expect(page.locator(".spotlight").getByRole("button", { name: /Add to bag/ })).toBeDisabled();
+    await expect(page.locator(".spotlight").getByRole("button", { name: "Buy now" })).toBeDisabled();
   });
 });
 
