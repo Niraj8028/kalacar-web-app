@@ -40,11 +40,11 @@ export default function Storefront() {
       <header className="shop-header">
         <Link className="wordmark" href="/" aria-label="Kalacar home">
           <Image
-            src={logo}
+            src={logo.src}
             alt="Kalacar — Small Devotional Murtis"
             width={220}
             height={94}
-            className="brand-logo"
+            className={logo.className} style={logo.style}
             priority
           />
         </Link>
@@ -162,11 +162,11 @@ export default function Storefront() {
       <footer className="shop-footer">
         <Link className="wordmark footer-wordmark" href="/" aria-label="Kalacar home">
           <Image
-            src={logo}
+            src={logo.src}
             alt="Kalacar — Small Devotional Murtis"
             width={180}
             height={77}
-            className="brand-logo"
+            className={logo.className} style={logo.style}
           />
         </Link>
         <p>Prices and availability reflect the current catalogue.</p>

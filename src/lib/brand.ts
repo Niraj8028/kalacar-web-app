@@ -1,6 +1,6 @@
 import type { RowDataPacket } from "mysql2/promise";
 import { addressDb } from "@/lib/catalogue-db";
-import { DEFAULT_BRAND } from "@/data/site-content";
+import { DEFAULT_BRAND, LOGO_WIDTH } from "@/data/site-content";
 import type { BrandSettings } from "@/data/site-content";
 
 // The shop logo, set in dashboard Settings. Shown in the header and footer of every page.
@@ -8,9 +8,10 @@ const ROW = "brand";
 
 /** Only photos stored by this site; anything else falls back to the built-in logo. */
 export function parseBrand(input: unknown): BrandSettings {
-  const raw = (input && typeof input === "object" ? input as Record<string, unknown> : {}).logo;
-  const logo = typeof raw === "string" ? raw.trim().slice(0, 300) : "";
-  return { logo: /^\/(uploads|images)\/[\w./-]+$/.test(logo) && !logo.includes("..") ? logo : "" };
+  const body = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const logo = typeof body.logo === "string" ? body.logo.trim().slice(0, 300) : "";
+  const width = Number.isSafeInteger(body.width) && Number(body.width) >= LOGO_WIDTH.min && Number(body.width) <= LOGO_WIDTH.max ? Number(body.width) : 0;
+  return { logo: /^\/(uploads|images)\/[\w./-]+$/.test(logo) && !logo.includes("..") ? logo : "", width, white: body.white === true };
 }
 
 export async function getBrand(): Promise<BrandSettings> {

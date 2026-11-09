@@ -1169,3 +1169,9 @@ button { color: inherit; }
 .top-note { background: #000; color: #fff; }
 /* Account stays in the far-right corner on phones too, after the search icon. */
 @media (max-width: 760px) { .shop-header .header-tools .account-link { order: 4; } }
+
+/* Uploaded logo: its own colours unless the owner chose white; size from dashboard Settings (phones get 70%). */
+.brand-logo.own-colours, :root[data-theme="dark"] .brand-logo.own-colours, .footer-wordmark .brand-logo.own-colours { filter: none; }
+.home-top.over-photo .brand-logo.own-colours { filter: drop-shadow(0 1px 3px rgb(0 0 0 / 35%)); }
+.shop-header .brand-logo.sized, .shop-logo .brand-logo.sized { width: var(--logo-w); max-width: none; }
+@media (max-width: 620px) { .shop-header .brand-logo.sized, .shop-logo .brand-logo.sized { width: calc(var(--logo-w) * .7); } }
