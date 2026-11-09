@@ -1194,6 +1194,6 @@ button { color: inherit; }
 .hero-carousel:has(.with-image)::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(180deg, rgb(20 14 10 / 42%) 0%, rgb(20 14 10 / 0%) 24%, rgb(20 14 10 / 0%) 48%, rgb(20 14 10 / 62%) 100%); }
 .hero-carousel .home-hero-copy { z-index: 3; }
 @media (min-width: 901px) {
-  .hero-carousel:has(.with-image)::after { background: linear-gradient(90deg, rgb(20 14 10 / 0%) 40%, rgb(20 14 10 / 63%) 70%); }
+  .hero-carousel:has(.with-image)::after { background: linear-gradient(90deg, rgb(20 14 10 / 0%) 30%, rgb(20 14 10 / 3%) 38%, rgb(20 14 10 / 10%) 46%, rgb(20 14 10 / 21%) 53%, rgb(20 14 10 / 34%) 60%, rgb(20 14 10 / 47%) 67%, rgb(20 14 10 / 56%) 74%, rgb(20 14 10 / 61%) 81%, rgb(20 14 10 / 63%) 88%); }
   .hero-carousel .home-hero:not(.has-wide) .home-hero-image { right: 0 !important; width: 100% !important; -webkit-mask-image: none; mask-image: none; }
 }
