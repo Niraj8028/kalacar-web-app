@@ -8,7 +8,6 @@ import { useSiteContent } from "@/components/site-content-provider";
 import { Stars, VideoRow } from "@/components/reviews";
 import { instagramLink, videoEmbed } from "@/data/site-content";
 import type { HeroSlide } from "@/data/site-content";
-import { ArrowLeft, ArrowRight } from "@/components/icons";
 import type { StoreItem } from "@/data/catalogue";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -66,6 +65,8 @@ export function HomeHero() {
   const track = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  const drag = useRef<number | null>(null);
+  const dragged = useRef(false);
   const slides = hero.slides;
   const total = slides.length;
   const go = useCallback((index: number) => {
@@ -88,16 +89,24 @@ export function HomeHero() {
     const timer = window.setInterval(() => { if (!document.hidden) go(active + 1); }, hero.interval * 1000);
     return () => window.clearInterval(timer);
   }, [hero.show, hero.autoplay, hero.interval, total, paused, active, go]);
+  // Phones and trackpads swipe natively; a mouse drags left or right to change slide.
+  function onDragStart(event: React.PointerEvent) { if (event.pointerType === "mouse" && event.button === 0) drag.current = event.clientX; }
+  function onDragEnd(event: React.PointerEvent) {
+    if (drag.current === null) return;
+    const moved = event.clientX - drag.current;
+    drag.current = null;
+    if (Math.abs(moved) < 40) return;
+    dragged.current = true;
+    go(active + (moved < 0 ? 1 : -1));
+  }
   if (!hero.show || !total) return null;
   const dark = slides.some(slide => slide.backgroundImage);
   if (total === 1) return <><HeroSlideView slide={slides[0]} index={0} total={1} active dark={dark} onBuy={start} />{dialog}</>;
   return <div className="hero-carousel" role="region" aria-roledescription="carousel" aria-label="Featured murtis"
     onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} onTouchStart={() => setPaused(true)}>
-    <div className="hero-track" ref={track}>
+    <div className="hero-track" ref={track} onPointerDown={onDragStart} onPointerUp={onDragEnd} onPointerCancel={() => { drag.current = null; }} onClickCapture={event => { if (dragged.current) { event.preventDefault(); event.stopPropagation(); dragged.current = false; } }}>
       {slides.map((slide, index) => <HeroSlideView key={index} slide={slide} index={index} total={total} active={index === active} dark={dark} onBuy={start} />)}
     </div>
-    <button className="hero-arrow prev" type="button" aria-label="Previous slide" onClick={() => go(active - 1)}><ArrowLeft /></button>
-    <button className="hero-arrow next" type="button" aria-label="Next slide" onClick={() => go(active + 1)}><ArrowRight /></button>
     <div className="hero-dots">{slides.map((_, index) => <button key={index} type="button" className={index === active ? "active" : ""} aria-label={`Show slide ${index + 1}`} aria-current={index === active ? "true" : undefined} onClick={() => go(index)} />)}</div>
     {dialog}
   </div>;
