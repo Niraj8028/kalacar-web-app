@@ -40,7 +40,6 @@ button { color: inherit; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 ::selection { background: var(--gold); color: #211b15; }
 
-.top-note { min-height: 34px; display: grid; place-items: center; padding: 6px 14px; background: var(--ink); color: var(--page); font-size: 12px; letter-spacing: .08em; text-align: center; }
 .shop-header { min-height: 88px; padding: 0 clamp(18px, 5vw, 76px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 26px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .shop-header .wordmark { width: 100%; min-width: 0; }
 .brand-logo { display: block; max-width: 100%; height: auto; object-fit: contain; }
@@ -346,7 +345,6 @@ button { color: inherit; }
 }
 
 @media (max-width: 620px) {
-  .top-note { min-height: 32px; font-size: 11px; letter-spacing: .04em; }
   .shop-header { min-height: 70px; grid-template-columns: minmax(0, 1fr) auto; padding: 0 16px; }
   .shop-header .brand-logo { width: clamp(88px, 29vw, 112px); }
   .wordmark { font-size: 24px; }
@@ -597,7 +595,9 @@ button { color: inherit; }
 .coming-soon > p:not(.wordmark) { max-width: 460px; margin: 0; line-height: 1.6; }
 .coming-soon nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 10px; font-size: 14px; }
 .store-announcement, .store-preview-note { margin: 0; padding: 9px 16px; text-align: center; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
-.store-announcement { background: var(--accent-dark); color: #fff; }
+/* The owner's banner: a black strip across the top, in both themes. */
+.store-announcement { min-height: 34px; display: grid; place-items: center; padding: 6px 14px; background: #000; color: #fff; font-size: 12px; letter-spacing: .08em; }
+@media (max-width: 620px) { .store-announcement { min-height: 32px; font-size: 11px; letter-spacing: .04em; } }
 .store-preview-note { background: var(--surface-soft); color: var(--ink); }
 
 .account-link { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; color: var(--ink); font-size: 13px; }
@@ -1165,7 +1165,5 @@ button { color: inherit; }
   .festive-shower { display: none; }
 }
 
-/* "Small devotional murtis" strip: solid black in both themes. */
-.top-note { background: #000; color: #fff; }
 /* Account stays in the far-right corner on phones too, after the search icon. */
 @media (max-width: 760px) { .shop-header .header-tools .account-link { order: 4; } }
