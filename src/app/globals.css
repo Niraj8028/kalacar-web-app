@@ -1169,3 +1169,26 @@ button { color: inherit; }
 .top-note { background: #000; color: #fff; }
 /* Account stays in the far-right corner on phones too, after the search icon. */
 @media (max-width: 760px) { .shop-header .header-tools .account-link { order: 4; } }
+
+/* Hero slider: native swipe with scroll snap; arrows on larger screens, dots everywhere. */
+.hero-carousel { position: relative; }
+.hero-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.hero-track::-webkit-scrollbar { display: none; }
+.hero-track > .home-hero { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; }
+.hero-arrow { position: absolute; top: 50%; z-index: 4; display: grid; place-items: center; width: 44px; height: 44px; margin-top: -22px; padding: 0; border: 1px solid rgb(255 255 255 / 55%); border-radius: 50%; background: rgb(20 14 10 / 35%); color: #fff; cursor: pointer; }
+.hero-arrow:hover { background: rgb(20 14 10 / 60%); }
+.hero-arrow.prev { left: 16px; }
+.hero-arrow.next { right: 16px; }
+.hero-dots { position: absolute; bottom: 14px; left: 50%; z-index: 4; display: flex; gap: 8px; transform: translateX(-50%); }
+.hero-dots button { width: 9px; height: 9px; padding: 0; border: 1px solid #fff; border-radius: 50%; background: rgb(255 255 255 / 35%); cursor: pointer; transition: width 200ms ease, background 200ms ease; }
+.hero-dots button.active { width: 24px; border-radius: 5px; background: #fff; }
+.hero-carousel:not(:has(.with-image)) .hero-dots button { border-color: var(--ink); }
+.hero-carousel:not(:has(.with-image)) .hero-dots button.active { background: var(--ink); }
+.hero-carousel .home-hero.with-image { padding-bottom: calc(clamp(36px, 5vw, 72px) + 18px); }
+@media (min-width: 901px) { .hero-carousel .home-hero.with-image { padding-bottom: 90px; } }
+@media (max-width: 760px) {
+  .hero-arrow { display: none; }
+  .hero-carousel .home-hero.with-image { padding-bottom: 40px; }
+  .hero-dots { bottom: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .hero-dots button { transition: none; } }

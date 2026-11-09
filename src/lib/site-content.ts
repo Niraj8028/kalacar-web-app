@@ -4,8 +4,8 @@ import { getFestive } from "@/lib/festive";
 import { getInstagram } from "@/lib/instagram";
 import { getBrand } from "@/lib/brand";
 import { listCategories } from "@/lib/categories";
-import { DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, videoEmbed } from "@/data/site-content";
-import type { HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
+import { DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, MAX_HERO_SLIDES, videoEmbed } from "@/data/site-content";
+import type { HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
 
 const text = (value: unknown, max: number, fallback = "") => typeof value === "string" ? value.trim().slice(0, max) : fallback;
 const bool = (value: unknown, fallback: boolean) => typeof value === "boolean" ? value : fallback;
@@ -23,11 +23,22 @@ const ids = (value: unknown, max: number) => Array.isArray(value) ? [...new Set(
 const header = (input: Record<string, unknown>, defaults: { show: boolean; showTitle: boolean; title: string }) => ({ show: bool(input.show, defaults.show), showTitle: bool(input.showTitle, defaults.showTitle), title: text(input.title, 120, defaults.title) });
 const described = (input: Record<string, unknown>, defaults: { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string }) => ({ ...header(input, defaults), showDescription: bool(input.showDescription, defaults.showDescription), description: text(input.description, 400, defaults.description) });
 
+function parseSlide(input: Record<string, unknown>): HeroSlide {
+  const d = DEFAULT_HERO_SLIDE, buy = obj(input.buy), explore = obj(input.explore);
+  return { productId: ids([input.productId], 1)[0] ?? "", backgroundImage: safeImage(input.backgroundImage), desktopImage: safeImage(input.desktopImage), showEyebrow: bool(input.showEyebrow, d.showEyebrow), eyebrow: text(input.eyebrow, 60, d.eyebrow), showTitle: bool(input.showTitle, d.showTitle), title: text(input.title, 120, d.title), showDescription: bool(input.showDescription, d.showDescription), description: text(input.description, 300, d.description), buy: { show: bool(buy.show, d.buy.show), label: text(buy.label, 40, d.buy.label) || d.buy.label, showPrice: bool(buy.showPrice, d.buy.showPrice) }, explore: { show: bool(explore.show, d.explore.show), label: text(explore.label, 40, d.explore.label) || d.explore.label, link: safeLink(explore.link, d.explore.link) } };
+}
+/** Hero slides. Older saves kept one slide's fields directly on the hero; those become the first slide. */
+function parseHero(hero: Record<string, unknown>): HomeContent["hero"] {
+  const d = DEFAULT_HOME.hero;
+  const slides = Array.isArray(hero.slides) ? hero.slides.slice(0, MAX_HERO_SLIDES).map(slide => parseSlide(obj(slide))) : [parseSlide(hero)];
+  return { show: bool(hero.show, d.show), autoplay: bool(hero.autoplay, d.autoplay), interval: whole(hero.interval, 3, 15, d.interval), slides: slides.length ? slides : [DEFAULT_HERO_SLIDE] };
+}
+
 export function parseHome(body: unknown): HomeContent {
   const input = obj(body), d = DEFAULT_HOME;
-  const hero = obj(input.hero), buy = obj(hero.buy), explore = obj(hero.explore), grid = obj(input.firstLaunch), soon = obj(input.comingSoon), collections = obj(input.collections), why = obj(input.why), reviews = obj(input.reviews), story = obj(input.story);
+  const hero = obj(input.hero), grid = obj(input.firstLaunch), soon = obj(input.comingSoon), collections = obj(input.collections), why = obj(input.why), reviews = obj(input.reviews), story = obj(input.story);
   return {
-    hero: { show: bool(hero.show, d.hero.show), productId: ids([hero.productId], 1)[0] ?? "", backgroundImage: safeImage(hero.backgroundImage), desktopImage: safeImage(hero.desktopImage), showEyebrow: bool(hero.showEyebrow, d.hero.showEyebrow), eyebrow: text(hero.eyebrow, 60, d.hero.eyebrow), showTitle: bool(hero.showTitle, d.hero.showTitle), title: text(hero.title, 120, d.hero.title), showDescription: bool(hero.showDescription, d.hero.showDescription), description: text(hero.description, 300, d.hero.description), buy: { show: bool(buy.show, d.hero.buy.show), label: text(buy.label, 40, d.hero.buy.label) || d.hero.buy.label, showPrice: bool(buy.showPrice, d.hero.buy.showPrice) }, explore: { show: bool(explore.show, d.hero.explore.show), label: text(explore.label, 40, d.hero.explore.label) || d.hero.explore.label, link: safeLink(explore.link, d.hero.explore.link) } },
+    hero: parseHero(hero),
     firstLaunch: { ...described(grid, d.firstLaunch), productIds: ids(grid.productIds, 12) },
     comingSoon: { ...described(soon, d.comingSoon), items: (Array.isArray(soon.items) ? soon.items : []).slice(0, 12).map(item => ({ name: text(obj(item).name, 80), image: safeImage(obj(item).image) })).filter(item => item.name || item.image) },
     collections: described(collections, d.collections),

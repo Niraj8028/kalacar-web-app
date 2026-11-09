@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { useSiteContent } from "@/components/site-content-provider";
 import { Stars, VideoRow } from "@/components/reviews";
 import { instagramLink, videoEmbed } from "@/data/site-content";
+import type { HeroSlide } from "@/data/site-content";
+import { ArrowLeft, ArrowRight } from "@/components/icons";
 import type { StoreItem } from "@/data/catalogue";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -35,29 +37,70 @@ function useQuickBuy() {
   return { start, dialog };
 }
 
-export function HomeHero() {
-  const { hero } = useSiteContent().home;
+function HeroSlideView({ slide, index, total, active, dark, onBuy }: { slide: HeroSlide; index: number; total: number; active: boolean; dark: boolean; onBuy: (item: StoreItem) => void }) {
   const { products } = useCart();
-  const { start, dialog } = useQuickBuy();
-  if (!hero.show) return null;
-  const item = products.find(product => product.id === hero.productId);
+  const item = products.find(product => product.id === slide.productId);
   const price = item && cheapest(item);
-  const hasImage = Boolean(hero.backgroundImage);
-  const explore = hero.explore.link;
-  return <section className={`home-hero${hasImage ? " with-image" : ""}${hero.desktopImage ? " has-wide" : ""}`} aria-labelledby="shop-title">
-    {hasImage && <Image className="home-hero-image" src={hero.backgroundImage} alt="" fill priority sizes="100vw" />}
-    {hasImage && hero.desktopImage && <Image className="home-hero-wide" src={hero.desktopImage} alt="" fill sizes="(min-width: 901px) 100vw, 1px" />}
+  const hasImage = Boolean(slide.backgroundImage);
+  const explore = slide.explore.link;
+  const Title = index === 0 ? "h1" : "h2";
+  return <section className={`home-hero${hasImage || dark ? " with-image" : ""}${hasImage && slide.desktopImage ? " has-wide" : ""}`} aria-labelledby={`hero-title-${index}`} aria-roledescription={total > 1 ? "slide" : undefined} aria-label={total > 1 ? `${index + 1} of ${total}` : undefined} aria-hidden={total > 1 && !active ? true : undefined} inert={total > 1 && !active ? true : undefined}>
+    {hasImage && <Image className="home-hero-image" src={slide.backgroundImage} alt="" fill priority={index === 0} sizes="100vw" />}
+    {hasImage && slide.desktopImage && <Image className="home-hero-wide" src={slide.desktopImage} alt="" fill priority={index === 0} sizes="(min-width: 901px) 100vw, 1px" />}
     <div className="home-hero-copy">
-      {hero.showEyebrow && hero.eyebrow && <p className="eyebrow">{hero.eyebrow}</p>}
-      <h1 id="shop-title">{hero.showTitle ? hero.title : <span className="sr-only">Kalacar</span>}</h1>
-      {hero.showDescription && hero.description && <p className="intro-copy">{hero.description}</p>}
+      {slide.showEyebrow && slide.eyebrow && <p className="eyebrow">{slide.eyebrow}</p>}
+      <Title id={`hero-title-${index}`}>{slide.showTitle ? slide.title : <span className="sr-only">Kalacar</span>}</Title>
+      {slide.showDescription && slide.description && <p className="intro-copy">{slide.description}</p>}
       <div className="home-hero-buttons">
-        {hero.buy.show && item && price && <button className="home-hero-buy" type="button" onClick={() => start(item)}>{hero.buy.label}{hero.buy.showPrice && <> · {money(price.price)}</>}</button>}
-        {hero.explore.show && (/^https:/.test(explore) ? <a className="home-hero-explore" href={explore} target="_blank" rel="noopener noreferrer">{hero.explore.label}</a> : explore.startsWith("#") ? <a className="home-hero-explore" href={explore}>{hero.explore.label}</a> : <Link className="home-hero-explore" href={explore}>{hero.explore.label}</Link>)}
+        {slide.buy.show && item && price && <button className="home-hero-buy" type="button" onClick={() => onBuy(item)}>{slide.buy.label}{slide.buy.showPrice && <> · {money(price.price)}</>}</button>}
+        {slide.explore.show && (/^https:/.test(explore) ? <a className="home-hero-explore" href={explore} target="_blank" rel="noopener noreferrer">{slide.explore.label}</a> : explore.startsWith("#") ? <a className="home-hero-explore" href={explore}>{slide.explore.label}</a> : <Link className="home-hero-explore" href={explore}>{slide.explore.label}</Link>)}
       </div>
     </div>
-    {dialog}
   </section>;
+}
+
+/** Home page hero. Several slides swipe on phones, and also move with arrows, dots and an optional timer. */
+export function HomeHero() {
+  const { hero } = useSiteContent().home;
+  const { start, dialog } = useQuickBuy();
+  const track = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const slides = hero.slides;
+  const total = slides.length;
+  const go = useCallback((index: number) => {
+    const element = track.current;
+    if (!element || !total) return;
+    const next = (index + total) % total;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    element.scrollTo({ left: next * element.clientWidth, behavior: reduce ? "auto" : "smooth" });
+  }, [total]);
+  useEffect(() => {
+    const element = track.current;
+    if (!element) return;
+    const onScroll = () => setActive(Math.min(total - 1, Math.round(element.scrollLeft / Math.max(1, element.clientWidth))));
+    element.addEventListener("scroll", onScroll, { passive: true });
+    return () => element.removeEventListener("scroll", onScroll);
+  }, [total]);
+  useEffect(() => {
+    if (!hero.show || !hero.autoplay || total < 2 || paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => { if (!document.hidden) go(active + 1); }, hero.interval * 1000);
+    return () => window.clearInterval(timer);
+  }, [hero.show, hero.autoplay, hero.interval, total, paused, active, go]);
+  if (!hero.show || !total) return null;
+  const dark = slides.some(slide => slide.backgroundImage);
+  if (total === 1) return <><HeroSlideView slide={slides[0]} index={0} total={1} active dark={dark} onBuy={start} />{dialog}</>;
+  return <div className="hero-carousel" role="region" aria-roledescription="carousel" aria-label="Featured murtis"
+    onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} onTouchStart={() => setPaused(true)}>
+    <div className="hero-track" ref={track}>
+      {slides.map((slide, index) => <HeroSlideView key={index} slide={slide} index={index} total={total} active={index === active} dark={dark} onBuy={start} />)}
+    </div>
+    <button className="hero-arrow prev" type="button" aria-label="Previous slide" onClick={() => go(active - 1)}><ArrowLeft /></button>
+    <button className="hero-arrow next" type="button" aria-label="Next slide" onClick={() => go(active + 1)}><ArrowRight /></button>
+    <div className="hero-dots">{slides.map((_, index) => <button key={index} type="button" className={index === active ? "active" : ""} aria-label={`Show slide ${index + 1}`} aria-current={index === active ? "true" : undefined} onClick={() => go(index)} />)}</div>
+    {dialog}
+  </div>;
 }
 
 function SectionHead({ id, showTitle, title, showDescription, description }: { id: string; showTitle: boolean; title: string; showDescription?: boolean; description?: string }) {
