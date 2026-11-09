@@ -1308,8 +1308,7 @@ button { color: inherit; }
 .greviews-head .eyebrow { margin: 0; }
 .greviews-head h2 { margin: 0; font: 400 clamp(30px, 3.4vw, 46px)/1.1 var(--font-display); color: var(--ink); text-wrap: balance; }
 .greviews-head > p:not(.eyebrow) { margin: 0; max-width: 52ch; color: var(--muted); font-size: clamp(14px, 1.2vw, 16px); }
-.greviews-badge { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--page); color: var(--ink); font-size: 14px; text-decoration: none; }
-.greviews-badge:hover { border-color: var(--accent); }
+.greviews-badge { display: inline-flex; align-items: center; gap: 8px; margin: 6px 0 0; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--page); color: var(--ink); font-size: 14px; text-decoration: none; }
 .greviews-badge b { font-size: 16px; }
 .greviews-badge span:last-child { color: var(--muted); }
 .greview-stars { color: #f4b400; letter-spacing: 2px; font-size: 15px; line-height: 1; }
@@ -1328,8 +1327,6 @@ button { color: inherit; }
 .greview-photo { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; background: var(--surface-soft); }
 .greview-photos:not(.count-1) .greview-photo { aspect-ratio: 3 / 4; }
 .greview-photo img { object-fit: cover; }
-.greviews-all { justify-self: center; display: inline-flex; align-items: center; min-height: 46px; padding: 0 24px; border: 1px solid var(--ink); border-radius: 30px; color: var(--ink); font-weight: 600; text-decoration: none; }
-.greviews-all:hover { background: var(--ink); color: var(--page); }
 @media (max-width: 980px) { .greviews-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) {
   /* Phones: swipe through the cards instead of a very long stack. */

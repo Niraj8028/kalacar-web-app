@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectFits, mockShop, watchErrors } from "./mock-shop";
 import { GOOGLE_REVIEWS, SISTER_STUDIO } from "../../src/data/google-reviews";
 
-test("Google reviews of the sister studio show, clearly labelled, with photos and a link to Google", async ({ page }) => {
+test("Google reviews of the sister studio show, clearly labelled, with photos and no links to another site", async ({ page }) => {
   const errors = watchErrors(page);
   await mockShop(page);
   await page.goto("/");
@@ -11,7 +11,8 @@ test("Google reviews of the sister studio show, clearly labelled, with photos an
   await expect(section.getByText(/Real Google reviews of\s*Murtiverse, our sister studio/)).toBeVisible();
   await expect(section.locator(".greview")).toHaveCount(GOOGLE_REVIEWS.length);
   await expect(section.locator(".greview-photo img")).toHaveCount(GOOGLE_REVIEWS.reduce((n, review) => n + review.photos.length, 0));
-  for (const link of await section.getByRole("link").all()) await expect(link).toHaveAttribute("href", SISTER_STUDIO.mapsUrl);
+  await expect(section.getByRole("link")).toHaveCount(0);
+  await expect(section.getByText(`${SISTER_STUDIO.reviewCount} reviews on Google`)).toBeVisible();
   const oshmi = section.locator(".greview", { hasText: "Oshmi Pandey" });
   await expect(oshmi.locator(".greview-text")).toHaveClass(/clamped/);
   await oshmi.getByRole("button", { name: "Read more" }).click();

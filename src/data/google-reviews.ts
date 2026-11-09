@@ -1,6 +1,6 @@
 // Real Google reviews of Murtiverse, Kalacar's sister studio, copied from murtiverse.com on 9 Nov 2026.
 // Shown as Murtiverse's reviews, never as Kalacar's own. Photos are stored here with their metadata removed.
-export const SISTER_STUDIO = { name: "Murtiverse", rating: 5.0, reviewCount: 157, mapsUrl: "https://maps.app.goo.gl/k3M8PzkfpNeH2s1cA" };
+export const SISTER_STUDIO = { name: "Murtiverse", rating: 5.0, reviewCount: 157 };
 
 export type GoogleReview = { name: string; initials: string; when: string; rating: number; title?: string; text: string; photos: string[] };
 

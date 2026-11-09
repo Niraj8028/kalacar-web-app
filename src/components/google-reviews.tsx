@@ -35,10 +35,9 @@ export function GoogleReviews() {
         <p className="eyebrow">Google reviews</p>
         <h2 id="greviews-title">Loved by devotees</h2>
         <p>Real Google reviews of <b>{SISTER_STUDIO.name}</b>, our sister studio. Same hands, same care.</p>
-        <a className="greviews-badge" href={SISTER_STUDIO.mapsUrl} target="_blank" rel="noopener noreferrer"><GoogleG /> <b>{SISTER_STUDIO.rating.toFixed(1)}</b> <Stars rating={5} /> <span>{SISTER_STUDIO.reviewCount} reviews on Google</span></a>
+        <p className="greviews-badge"><GoogleG /> <b>{SISTER_STUDIO.rating.toFixed(1)}</b> <Stars rating={5} /> <span>{SISTER_STUDIO.reviewCount} reviews on Google</span></p>
       </div>
       <ul className="greviews-grid">{GOOGLE_REVIEWS.map(review => <ReviewCard key={review.name} review={review} />)}</ul>
-      <a className="greviews-all" href={SISTER_STUDIO.mapsUrl} target="_blank" rel="noopener noreferrer">See all reviews on Google</a>
     </div>
   </section>;
 }
