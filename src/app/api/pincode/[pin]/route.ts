@@ -4,7 +4,9 @@ import { MINUTE, clientIp, limitOrNull } from "@/lib/rate-limit";
 // PIN code → district/city and state, from India Post's free public data (api.postalpincode.in).
 // Results are cached in memory: a day for found PINs, an hour for unknown ones.
 
-type Lookup = { found: true; pincode: string; city: string; state: string; areas: string[] } | { found: false; pincode: string };
+type Lookup = { found: true; pincode: string; city: string; state: string; areas: string[] } | { found: false; pincode: string } | { unavailable: true };
+const UNAVAILABLE = "We couldn't check this PIN right now. Please type the city and state.";
+const respond = (value: Lookup) => "unavailable" in value ? NextResponse.json({ error: UNAVAILABLE }, { status: 503 }) : NextResponse.json(value, { status: value.found ? 200 : 404 });
 const cache = new Map<string, { value: Lookup; expires: number }>();
 const DAY = 24 * 60 * MINUTE;
 
@@ -21,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ pin:
   if (!/^[1-9]\d{5}$/.test(pin)) return NextResponse.json({ error: "Enter a valid 6-digit PIN code." }, { status: 400 });
 
   const cached = cache.get(pin);
-  if (cached && cached.expires > Date.now()) return NextResponse.json(cached.value, { status: cached.value.found ? 200 : 404 });
+  if (cached && cached.expires > Date.now()) return respond(cached.value);
 
   const limited = limitOrNull([{ key: `pincode:ip:${clientIp(request)}`, limit: 60, windowMs: 10 * MINUTE }], "Too many PIN lookups. Please type the city and state.");
   if (limited) return limited;
@@ -39,12 +41,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ pin:
         state: mostCommon(offices.map(office => office.State?.trim() ?? "")),
         areas: [...new Set(offices.map(office => office.Name?.trim() ?? "").filter(Boolean))].slice(0, 25),
       };
+    } else if (data[0]?.Status === "Error") {
+      // India Post answers "No records found" for every PIN during its outages (seen 2026-11-09),
+      // so a real PIN would look wrong. Say we couldn't check, and try again in 10 minutes.
+      value = { unavailable: true };
     } else value = { found: false, pincode: pin };
-    cache.set(pin, { value, expires: Date.now() + (value.found ? DAY : DAY / 24) });
+    cache.set(pin, { value, expires: Date.now() + ("unavailable" in value ? 10 * MINUTE : value.found ? DAY : DAY / 24) });
     if (cache.size > 5000) cache.delete(cache.keys().next().value as string);
-    return NextResponse.json(value, { status: value.found ? 200 : 404 });
+    return respond(value);
   } catch (error) {
     console.error("PIN lookup failed:", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.json({ error: "We couldn't check this PIN right now. Please type the city and state." }, { status: 503 });
+    return NextResponse.json({ error: UNAVAILABLE }, { status: 503 });
   }
 }
