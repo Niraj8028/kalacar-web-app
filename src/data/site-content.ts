@@ -11,21 +11,28 @@ export type ComingSoonItem = { name: string; image: string };
 export type ComingSoonSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: ComingSoonItem[] };
 export type CollectionsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string };
 export type WhyItem = { title: string; text: string };
-export type WhySection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: WhyItem[] };
+/** Reasons on the right; on the left the shop logo, or an icon/photo the owner uploads in its place. */
+export type WhySection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: WhyItem[]; showLogo: boolean; logo: string };
+/** The product grid. No chosen products means every product; category buttons are optional. */
+export type CatalogueSection = { show: boolean; showEyebrow: boolean; eyebrow: string; showTitle: boolean; title: string; showDescription: boolean; description: string; productIds: string[]; showFilters: boolean };
 export type ReviewsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; showText: boolean; showVideo: boolean };
 export type StorySection = { show: boolean; showTitle: boolean; title: string; showText: boolean; text: string; showImage: boolean; image: string; showFounder: boolean; founder: string };
 /** One featured murti below the hero: owner's heading, one photo (or a collage made as one image), and the product's own name, price and rating. */
 export type SpotlightSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; productId: string; image: string; showLogo: boolean; whatsapp: { show: boolean; label: string } };
-export type HomeContent = { hero: HeroSection; spotlight: SpotlightSection; firstLaunch: ProductGridSection; comingSoon: ComingSoonSection; collections: CollectionsSection; why: WhySection; reviews: ReviewsSection; story: StorySection };
+export type HomeContent = { hero: HeroSection; spotlight: SpotlightSection; firstLaunch: ProductGridSection; comingSoon: ComingSoonSection; collections: CollectionsSection; catalogue: CatalogueSection; why: WhySection; reviews: ReviewsSection; story: StorySection };
 
+export const POPUP_SIZES = ["small", "medium", "large"] as const;
+export type PopupSize = typeof POPUP_SIZES[number];
 export type FaqItem = { question: string; answer: string };
 export type ProductPageContent = {
   offer: { show: boolean; title: string; text: string };
   howMade: { show: boolean; title: string; message: string; showImage: boolean; image: string; founder: string };
   faqs: { show: boolean; title: string; items: FaqItem[] };
   viewers: { show: boolean; minimum: number };
-  recentSales: { show: boolean; showFirstName: boolean };
-  soldThisWeek: { show: boolean; minimum: number };
+  /** Pop-up about a real recent purchase: how often it appears, how long it stays, its size, and where. */
+  recentSales: { show: boolean; showFirstName: boolean; showImage: boolean; everyPage: boolean; delay: number; duration: number; size: PopupSize };
+  /** "N sold in the last X hours" from real paid orders. `hours` is the time window. */
+  soldThisWeek: { show: boolean; minimum: number; hours: number };
   lowStock: { threshold: number; text: string };
   stickyBar: { show: boolean };
   endLink: { show: boolean; label: string; link: string };
@@ -38,7 +45,8 @@ export const DEFAULT_HOME: HomeContent = {
   firstLaunch: { show: false, showTitle: true, title: "Our First Launch", showDescription: false, description: "", productIds: [] },
   comingSoon: { show: false, showTitle: true, title: "Coming Soon", showDescription: false, description: "", items: [] },
   collections: { show: false, showTitle: true, title: "Our Collections", showDescription: false, description: "" },
-  why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: false, description: "", items: [] },
+  catalogue: { show: true, showEyebrow: true, eyebrow: "FEATURED", showTitle: true, title: "Murtis for everyday spaces", showDescription: false, description: "", productIds: [], showFilters: false },
+  why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: false, description: "", items: [], showLogo: true, logo: "" },
   reviews: { show: false, showTitle: true, title: "Customer love", showDescription: false, description: "", showText: true, showVideo: true },
   story: { show: false, showTitle: true, title: "Our Story", showText: true, text: "", showImage: true, image: "", showFounder: true, founder: "" },
   spotlight: { show: false, showTitle: true, title: "Bring home the divine", showDescription: true, description: "", productId: "", image: "", showLogo: true, whatsapp: { show: true, label: "Order on WhatsApp" } },
@@ -49,8 +57,8 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   howMade: { show: false, title: "How it's made", message: "", showImage: true, image: "", founder: "" },
   faqs: { show: false, title: "FAQs", items: [] },
   viewers: { show: false, minimum: 2 },
-  recentSales: { show: false, showFirstName: false },
-  soldThisWeek: { show: false, minimum: 3 },
+  recentSales: { show: false, showFirstName: false, showImage: true, everyPage: false, delay: 8, duration: 8, size: "medium" },
+  soldThisWeek: { show: false, minimum: 3, hours: 168 },
   lowStock: { threshold: 3, text: "Only {count} left. Order soon." },
   stickyBar: { show: true },
   endLink: { show: true, label: "Explore more murtis", link: "/#catalogue" },

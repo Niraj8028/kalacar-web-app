@@ -10,12 +10,13 @@ test.describe("product spotlight", () => {
     await page.goto("/");
     await expect(page.locator(".spotlight")).toHaveCount(0);
   });
-  test("shows the product's own name, price and stock; Buy now goes to the bag", async ({ page }) => {
+  test("shows the product's own name, price and stock, without the old heading; Buy now goes to the bag", async ({ page }) => {
     const errors = watchErrors(page);
     await mockShop(page, { content: content({ show: true, title: "Bring home the divine", description: "Experience the joy", productId: "ganesh" }) });
     await page.goto("/");
     const spot = page.locator(".spotlight");
-    await expect(spot.getByRole("heading", { name: "Bring home the divine" })).toBeVisible();
+    await expect(spot.getByRole("heading", { name: "Bring home the divine" })).toHaveCount(0);
+    await expect(spot.getByText("Experience the joy")).toHaveCount(0);
     await expect(spot.getByRole("heading", { name: "Test Ganesh" })).toBeVisible();
     await expect(spot.getByText("₹999")).toBeVisible();
     await expect(spot.getByText("(Save 23%)")).toBeVisible();

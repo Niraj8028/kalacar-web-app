@@ -131,7 +131,7 @@ export function HomeHero() {
 
 const WhatsAppIcon = () => <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#25d366" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Z" /><path fill="#fff" d="M17.2 14.4c-.3-.1-1.7-.8-1.9-.9s-.5-.1-.7.1-.8 1-.9 1.2-.3.2-.6.1a7.6 7.6 0 0 1-3.8-3.3c-.3-.5.3-.5.8-1.6.1-.2 0-.4 0-.5l-.9-2c-.2-.5-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.4 3.4 0 0 0-1 2.5 5.9 5.9 0 0 0 1.2 3.1 13.4 13.4 0 0 0 5.2 4.6c1.9.8 2.7.9 3.7.7a3.1 3.1 0 0 0 2-1.4 2.5 2.5 0 0 0 .2-1.4c-.1-.1-.3-.2-.6-.3Z" /></svg>;
 
-/** One featured murti under the hero. Heading, photo and switches come from the dashboard; name, price, rating and stock come from the product itself. */
+/** One featured murti under the hero. Photo and switches come from the dashboard; name, price, rating and stock come from the product itself. The whole card opens the murti. */
 export function ProductSpotlight() {
   const { home, reviews } = useSiteContent();
   const spot = home.spotlight;
@@ -149,18 +149,13 @@ export function ProductSpotlight() {
     if (canAdd(item.id, available[0].id)) add(item.id, available[0].id, 1);
     router.push("/cart");
   };
-  const hasHead = (spot.showTitle && spot.title) || (spot.showDescription && spot.description);
   return <section className="spotlight" aria-labelledby="spotlight-name">
-    <div className="spotlight-inner">
-      {hasHead && <div className="spotlight-head">
-        {spot.showTitle && spot.title && <h2>{spot.title}</h2>}
-        {spot.showDescription && spot.description && <p>{spot.description}</p>}
-      </div>}
+    <div className="spotlight-inner card-clickable">
       {spot.showLogo && <div className="spotlight-logo"><Image src={logo.src} alt="Kalacar" width={220} height={94} className={logo.className.replace(" sized", "")} /></div>}
       <div className="spotlight-visual"><Image src={spot.image || item.image} alt={item.imageAlt || item.name} fill sizes="(max-width: 900px) 92vw, 760px" /></div>
       <div className="spotlight-copy">
         {item.badge && <span className="spotlight-badge">{item.badge}</span>}
-        <h3 id="spotlight-name"><Link href={`/products/${item.id}`}>{item.name}</Link></h3>
+        <h3 id="spotlight-name"><Link className="card-link" href={`/products/${item.id}`}>{item.name}</Link></h3>
         {item.tagline && <p className="spotlight-text">{item.tagline}</p>}
         {price ? <p className="spotlight-price"><strong>{money(price.price)}</strong>{save > 0 && <><del>{money(price.originalPrice)}</del><span>(Save {save}%)</span></>}</p> : null}
         <p className="spotlight-meta">
@@ -189,9 +184,9 @@ export function FirstLaunch() {
   if (!section.show || !items.length) return null;
   return <section className="home-section" aria-labelledby="first-launch-title">
     <SectionHead id="first-launch-title" {...section} />
-    <ul className="home-product-grid">{items.map(item => { const price = cheapest(item); return <li key={item.id}>
-      <Link href={`/products/${item.id}`} className="home-product-image"><Image src={item.image} alt={item.imageAlt} fill sizes="(max-width: 620px) 48vw, 300px" /></Link>
-      <Link href={`/products/${item.id}`} className="home-product-name">{item.name}</Link>
+    <ul className="home-product-grid">{items.map(item => { const price = cheapest(item); return <li key={item.id} className="card-clickable">
+      <span className="home-product-image"><Image src={item.image} alt={item.imageAlt} fill sizes="(max-width: 620px) 48vw, 300px" /></span>
+      <Link href={`/products/${item.id}`} className="home-product-name card-link">{item.name}</Link>
       {price ? <p className="home-product-price">{money(price.price)}{price.originalPrice > price.price && <del>{money(price.originalPrice)}</del>}</p> : <p className="home-product-price">Out of stock</p>}
       <button className="home-quick-add" type="button" disabled={!price} onClick={() => start(item)}>{price ? "Add to bag" : "Out of stock"}</button>
     </li>; })}</ul>
@@ -227,15 +222,23 @@ export function Collections({ onChoose }: { onChoose: (name: string) => void }) 
   </section>;
 }
 
+/** Shop logo (or the owner's own icon) on the left, the reasons on the right. Phones stack them. */
 export function WhyChooseUs() {
   const section = useSiteContent().home.why;
+  const logo = useLogo();
   if (!section.show || !section.items.length) return null;
-  return <section className="home-section home-why" aria-labelledby="why-title">
-    <SectionHead id="why-title" {...section} />
-    <ol className="home-why-list">{section.items.map((item, index) => <li key={`${item.title}-${index}`}>
-      <span className="home-why-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-      <div>{item.title && <h3>{item.title}</h3>}{item.text && <p>{item.text}</p>}</div>
-    </li>)}</ol>
+  const mark = section.showLogo && (section.logo
+    ? <Image src={section.logo} alt="" width={260} height={260} className="home-why-own-logo" />
+    : <Image src={logo.src} alt="Kalacar" width={260} height={111} className={logo.className.replace(" sized", "")} />);
+  return <section className={mark ? "home-section home-why with-logo" : "home-section home-why"} aria-labelledby="why-title">
+    {mark && <div className="home-why-logo">{mark}</div>}
+    <div className="home-why-body">
+      <SectionHead id="why-title" {...section} />
+      <ol className="home-why-list">{section.items.map((item, index) => <li key={`${item.title}-${index}`}>
+        <span className="home-why-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+        <div>{item.title && <h3>{item.title}</h3>}{item.text && <p>{item.text}</p>}</div>
+      </li>)}</ol>
+    </div>
   </section>;
 }
 
@@ -247,11 +250,11 @@ export function HomeReviews() {
   const videos = section.showVideo ? chosen.filter(review => videoEmbed(review.videoUrl)) : [];
   const { instagram } = useSiteContent();
   if (!section.show || (!written.length && !videos.length)) return null;
+  const follow = instagram.show && instagram.username && <a className="reviews-follow" href={instagramLink(instagram.username)} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.6" /><circle cx="16.6" cy="7.4" r=".8" fill="currentColor" stroke="none" /></svg>Follow on Instagram</a>;
   return <section className="home-section" aria-labelledby="home-reviews-title">
-    <SectionHead id="home-reviews-title" {...section} />
+    <div className={follow ? "home-reviews-top with-follow" : "home-reviews-top"}><SectionHead id="home-reviews-title" {...section} />{follow}</div>
     <VideoRow reviews={videos} />
     {written.length > 0 && <ul className="review-list">{written.map(review => <li className="review-card" key={review.id}><Stars rating={review.rating} /><p>{review.text}</p><small>{review.author}{review.city && `, ${review.city}`}</small></li>)}</ul>}
-    {instagram.show && instagram.username && <div className="video-follow"><a href={instagramLink(instagram.username)} target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.6" /><circle cx="16.6" cy="7.4" r=".8" fill="currentColor" stroke="none" /></svg>Follow @{instagram.username}</a></div>}
   </section>;
 }
 
@@ -269,7 +272,7 @@ export function OurStory() {
   </section>;
 }
 
-/** Follow band above the footer. Hidden until the owner sets the account in dashboard Settings. */
+/** Follow band. Not on the home page for now; the owner will choose where it goes. Hidden until the account is set in dashboard Settings. */
 export function InstagramBand() {
   const { instagram } = useSiteContent();
   if (!instagram.show || !instagram.username) return null;

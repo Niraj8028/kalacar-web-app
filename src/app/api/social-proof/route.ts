@@ -6,7 +6,8 @@ import { readSocialProof } from "@/lib/social-proof";
 export async function GET() {
   await connection();
   try {
-    const [settings, proof] = await Promise.all([getProductPage(), readSocialProof()]);
+    const settings = await getProductPage();
+    const proof = await readSocialProof(settings.soldThisWeek.hours);
     return NextResponse.json({
       recent: settings.recentSales.show ? proof.recent.map(sale => ({ ...sale, firstName: settings.recentSales.showFirstName ? sale.firstName : "" })) : [],
       soldThisWeek: settings.soldThisWeek.show ? proof.soldThisWeek : {},

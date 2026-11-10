@@ -23,7 +23,10 @@ export type StoreColour = {
 export type StoreItem = {
   id: string;
   name: string;
+  /** Main category. */
   deity: string;
+  /** Every category the murti appears under, main one first. */
+  categories?: string[];
   badge?: string;
   tagline?: string;
   specs?: Array<{ label: string; value: string }>;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
 import { addressDb, listProducts } from "@/lib/catalogue-db";
 import { saveColours } from "@/lib/colours";
-import { findCategoryName } from "@/lib/categories";
+import { findCategoryName, findCategoryNames } from "@/lib/categories";
 import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
 import { signalled } from "@/lib/realtime";
 
@@ -32,6 +32,9 @@ async function handlePOST(request: Request) {
     const category = await findCategoryName(form.deity);
     if (!category) return NextResponse.json({ error: "Choose a category from the list. You can add categories in Settings." }, { status: 400 });
     form.deity = category;
+    const extras = await findCategoryNames(form.extraCategories);
+    if (!extras) return NextResponse.json({ error: "One of the extra categories no longer exists. Reload and choose again." }, { status: 400 });
+    form.extraCategories = extras.filter(name => name !== category);
     const photos = await savePhotos(id, form.files); saved = photos;
     const first = form.colours.find(colour => colour.active) ?? form.colours[0];
     const firstGallery = first.gallery.map(photo => photo.kind === "upload" ? photos.urls[photo.uploadIndex] : photo.src);
@@ -42,7 +45,7 @@ async function handlePOST(request: Request) {
       await connection.execute(
         "INSERT INTO kalacar_products (id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,specs,highlights,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [id, form.name, form.deity, form.badge || null, form.tagline || null, firstGallery[0], JSON.stringify(firstGallery), `${form.name} product photo`, form.placement, JSON.stringify(form.accordions), JSON.stringify(form.specs), JSON.stringify(form.highlights), first.price, first.originalPrice, 0]);
-      await connection.execute("UPDATE kalacar_products SET description=?,bundle_ids=? WHERE id=?", [form.description || null, JSON.stringify(form.bundleIds.filter(other => other !== id)), id]);
+      await connection.execute("UPDATE kalacar_products SET description=?,bundle_ids=?,extra_categories=? WHERE id=?", [form.description || null, JSON.stringify(form.bundleIds.filter(other => other !== id)), JSON.stringify(form.extraCategories), id]);
       const result = await saveColours(connection, id, form.colours, photos.urls, new Set());
       if (result.status !== "ok") { await connection.rollback(); await removeFiles(photos.paths); return NextResponse.json({ error: result.status === "invalid" ? result.error : "Could not save the colours." }, { status: 400 }); }
       await connection.commit();

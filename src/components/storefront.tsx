@@ -1,7 +1,7 @@
 "use client";
 
 import { PolicyLinks } from "@/components/policy-links";
-import { Collections, ComingSoon, FirstLaunch, HomeHero, ProductSpotlight, HomeReviews, OurStory, WhyChooseUs, InstagramBand } from "@/components/home-sections";
+import { Collections, ComingSoon, FirstLaunch, HomeHero, ProductSpotlight, HomeReviews, OurStory, WhyChooseUs } from "@/components/home-sections";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
@@ -9,10 +9,14 @@ import ThemeToggle from "@/components/theme-toggle";
 import { MobileMenu } from "@/components/mobile-menu";
 import { listenForShopFilter } from "@/lib/shop-filter";
 import { GoogleReviews } from "@/components/google-reviews";
+import { HomeRecentSales } from "@/components/product-extras";
 import { useLogo } from "@/components/shop-logo";
 import { useSiteContent } from "@/components/site-content-provider";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import { ArrowRight, Search, UserCircle } from "@/components/icons";
+import type { StoreItem } from "@/data/catalogue";
+
+const categoriesOf = (item: StoreItem) => item.categories?.length ? item.categories : [item.deity];
 
 export default function Storefront() {
   const { home } = useSiteContent();
@@ -27,18 +31,27 @@ export default function Storefront() {
     window.setTimeout(() => document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }), []);
 
-  const deityFilters = useMemo(() => ["All murtis", ...new Set(products.map(item => item.deity))], [products]);
-  const categories = useMemo(() => [...new Set(products.map(item => item.deity))], [products]);
+  const section = home.catalogue;
+  const categories = useMemo(() => [...new Set(products.flatMap(categoriesOf))], [products]);
+  const deityFilters = useMemo(() => ["All murtis", ...categories], [categories]);
   const selectedFilter = deityFilters.includes(activeFilter) ? activeFilter : "All murtis";
+  // The owner's chosen murtis, in their order; none chosen shows every murti.
+  const featured = useMemo(() => {
+    const chosen = section.productIds.map(id => products.find(item => item.id === id)).filter((item): item is StoreItem => Boolean(item));
+    return chosen.length ? chosen : products;
+  }, [products, section.productIds]);
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLowerCase();
+    // A category or a search looks through every murti, not only the featured ones.
+    if (selectedFilter === "All murtis" && !query) return featured;
     return products.filter((item) => {
-      const matchesFilter = selectedFilter === "All murtis" || item.deity === selectedFilter;
-      const matchesSearch = !query || `${item.name} ${item.deity}`.toLowerCase().includes(query);
+      const matchesFilter = selectedFilter === "All murtis" || categoriesOf(item).includes(selectedFilter);
+      const matchesSearch = !query || `${item.name} ${categoriesOf(item).join(" ")}`.toLowerCase().includes(query);
       return matchesFilter && matchesSearch;
     });
-  }, [products, selectedFilter, search]);
+  }, [products, featured, selectedFilter, search]);
+  const filtered = selectedFilter !== "All murtis" || Boolean(search.trim());
 
   return (
     <main className="storefront" id="top">
@@ -87,16 +100,17 @@ export default function Storefront() {
       <ComingSoon />
       <Collections onChoose={setActiveFilter} />
 
-      <section className="catalogue-section" id="catalogue" aria-labelledby="catalogue-title">
+      {(section.show || filtered) && <section className="catalogue-section" id="catalogue" aria-labelledby="catalogue-title">
         <div className="catalogue-heading">
           <div>
-            <p className="eyebrow">SHOP BY CATEGORY</p>
-            <h2 id="catalogue-title">Murtis for everyday spaces</h2>
+            {section.showEyebrow && section.eyebrow && <p className="eyebrow">{section.eyebrow}</p>}
+            <h2 id="catalogue-title">{section.showTitle && section.title ? section.title : <span className="sr-only">Murtis</span>}</h2>
+            {section.showDescription && section.description && <p className="catalogue-description">{section.description}</p>}
           </div>
           <p className="result-count">{catalogueLoading ? "Loading…" : catalogueError ? "Unavailable" : `${visibleItems.length} ${visibleItems.length === 1 ? "item" : "items"}`}</p>
         </div>
 
-        <div className="catalogue-controls">
+        {(section.showFilters || filtered) && <div className="catalogue-controls">
           <div className="filter-list" role="group" aria-label="Filter by category">
             {deityFilters.map((filter) => (
               <button
@@ -111,19 +125,19 @@ export default function Storefront() {
             ))}
           </div>
           <p className="reference-note">Prices and stock from the current catalogue.</p>
-        </div>
+        </div>}
 
         {catalogueError ? <div className="empty-results" role="alert"><p>{catalogueError}</p></div> : catalogueLoading ? <div className="empty-results" role="status"><p>Loading the current catalogue…</p></div> : visibleItems.length > 0 ? (
           <div className="product-grid">
             {visibleItems.map((item, index) => (
               <article className="product-card" key={item.id}>
                 <div className="product-image-wrap">
-                  <Link href={`/products/${item.id}`} className="product-image-link" aria-label={`View ${item.name}`}>
+                  <Link href={`/products/${item.id}`} className="product-image-link" tabIndex={-1} aria-hidden="true">
                     <Image
                       src={item.image}
                       alt={item.imageAlt}
                       fill
-                      sizes="(max-width: 620px) 48vw, (max-width: 960px) 31vw, 360px"
+                      sizes="(max-width: 620px) 92vw, (max-width: 960px) 31vw, 360px"
                       className="product-image"
                       priority={index < 3}
                     />
@@ -133,10 +147,11 @@ export default function Storefront() {
                 </div>
                 <div className="product-info">
                   <p className="product-deity">{item.deity}</p>
-                  <h3>{item.name}</h3>
+                  {/* The name's link covers the whole card, so a tap anywhere opens the murti. */}
+                  <h3><Link className="card-link" href={`/products/${item.id}`}>{item.name}</Link></h3>
                   {item.tagline ? <p className="product-placement">{item.tagline}</p> : item.placement && <p className="product-placement">{item.placement}</p>}
                   {item.variants.length > 1 && <p className="card-swatches" aria-label={`${item.variants.length} colours: ${item.variants.map(v => v.name).join(", ")}`}>{item.variants.map(v => <span key={v.id} className="colour-dot" style={{ background: v.swatch }} title={v.name} aria-hidden="true" />)}<small>{item.variants.length} colours</small></p>}
-                  <Link className="details-link" href={`/products/${item.id}`}>View details <ArrowRight /></Link>
+                  <span className="details-link" aria-hidden="true">View details <ArrowRight /></span>
                   <div className="product-buy-row">
                     <span className="product-price-block"><strong>{new Set(item.variants.map(v => v.price)).size > 1 ? "from " : ""}₹{item.price}</strong>{item.originalPrice > item.price && <del>₹{item.originalPrice}</del>}<small>{item.stock < 1 ? "out of stock" : item.stock <= 3 ? `only ${item.stock} left` : "in stock"}</small></span>
                     {item.variants.length > 1 ? <Link className="add-button choose-colour" href={`/products/${item.id}`}>Choose colour</Link> : <AddToBagButton id={item.id} variantId={item.variants[0]?.id} disabled={item.stock < 1} />}
@@ -153,21 +168,12 @@ export default function Storefront() {
             </button>
           </div>
         )}
-      </section>
-
-      <section className="placement-note" aria-label="Where to keep a murti">
-        <span className="placement-mark" aria-hidden="true">श्री</span>
-        <div>
-          <p className="eyebrow">MADE FOR YOUR SPACE</p>
-          <h2>A little presence, wherever you place it.</h2>
-          <p>Browse the current Kalacar catalogue.</p>
-        </div>
-      </section>
+      </section>}
 
       <WhyChooseUs />
       <HomeReviews />
       <OurStory />
-      <InstagramBand />
+      <HomeRecentSales />
 
       <footer className="shop-footer">
         <Link className="wordmark footer-wordmark" href="/" aria-label="Kalacar home">

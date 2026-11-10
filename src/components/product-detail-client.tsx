@@ -5,6 +5,7 @@ import { MobileMenu } from "@/components/mobile-menu";
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { requestShopFilter } from "@/lib/shop-filter";
 import { useRouter } from "next/navigation";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
@@ -56,7 +57,8 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
   return <main className="product-page">
     {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Confirm this database product’s details, price, and stock before launch. Payments remain in test mode.</p>}
     <header className="detail-header"><MobileMenu /><ShopLogo /><div className="detail-header-links"><Link className="account-link" href="/account" aria-label="Your account" title="Your account"><UserCircle size={20} /><span>Account</span></Link><CartLink /><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></div></header>
-    <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span>/</span><Link href="/#catalogue">Murtis</Link><span>/</span><span>{item.name}</span></nav>
+    {/* "Murtis" opens the home catalogue on All murtis; the category opens it on that category. */}
+    <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span>/</span><Link href="/#catalogue" onClick={event => { event.preventDefault(); requestShopFilter({ category: "All murtis", search: "" }, href => router.push(href)); }}>Murtis</Link><span>/</span><Link href="/#catalogue" onClick={event => { event.preventDefault(); requestShopFilter({ category: item.deity, search: "" }, href => router.push(href)); }}>{item.deity}</Link><span>/</span><span>{item.name}</span></nav>
     <section className="detail-layout">
       <div className="detail-gallery">
         <div className="detail-main-image">
@@ -68,12 +70,12 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
       <div className="detail-copy">
         <p className="eyebrow">{item.deity} · SMALL DEVOTIONAL MURTI</p>
         <h1>{item.name}</h1>
-        <RatingLine reviews={itemReviews} />
+        <div className="detail-proof-row"><RatingLine reviews={itemReviews} /><SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} /></div>
         {item.tagline && <p className="detail-tagline">{item.tagline}</p>}
-        <LiveViewers productId={item.id} />
         {item.placement && <p className="detail-placement">{item.placement}</p>}
         <p className="detail-price">{money(colour?.price ?? item.price)}{save > 0 && <><del>{money(colour.originalPrice)}</del><span className="save-chip">Save {save}%</span></>}</p>
         <p className="detail-tax-note">Prices include all taxes.</p>
+        <LiveViewers productId={item.id} />
 
         {item.description && <p className="detail-description">{item.description}</p>}
         {colours.length > 1 && <fieldset className="colour-picker">
@@ -94,22 +96,25 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
               <span aria-live="polite">{qty}</span>
               <button type="button" aria-label="Increase quantity" disabled={qty >= canBuy} onClick={() => setQuantity(qty + 1)}>+</button>
             </div>
-            {inCart > 0 && <Link className="in-cart-note" href="/cart">{inCart} in your bag · View bag</Link>}
+            {inCart > 0 && <span className="in-cart-note">{inCart} in your bag</span>}
           </div>
           <p className={`stock-message ${stockMessage.tone}`} role="status">{stockMessage.text}</p>
-          <SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} />
           <div className="buy-buttons" ref={buyButtons}>
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" label="Add to bag" />
             <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}>Buy now</button>
           </div>
           <OfferBox />
           <DeliveryLine />
+          <ProductHighlights items={item.highlights ?? []} />
         </div>
-        <ProductHighlights items={item.highlights ?? []} />
-        <SpecCards specs={item.specs ?? []} />
-
-        <div className="detail-rule" /><h2>Product details</h2>
-        <dl className="product-facts"><div><dt>Category</dt><dd>{item.deity}</dd></div>{colours.length > 1 && <div><dt>Colours</dt><dd>{colours.map(c => c.name).join(", ")}</dd></div>}<div><dt>Availability</dt><dd>{colour && colour.stock > 0 ? `${colour.stock} in stock${colours.length > 1 ? ` in ${colour.name}` : ""}` : "Out of stock"}</dd></div></dl>
+      </div>
+    </section>
+    {/* Computers: specifications left, product details right. Phones: one after the other. */}
+    <section className="detail-lower" aria-label="Specifications and product details">
+      <SpecCards specs={item.specs ?? []} />
+      <div className="detail-facts">
+        <h2>Product details</h2>
+        <dl className="product-facts"><div><dt>Category</dt><dd>{(item.categories?.length ? item.categories : [item.deity]).join(", ")}</dd></div>{colours.length > 1 && <div><dt>Colours</dt><dd>{colours.map(c => c.name).join(", ")}</dd></div>}<div><dt>Availability</dt><dd>{colour && colour.stock > 0 ? `${colour.stock} in stock${colours.length > 1 ? ` in ${colour.name}` : ""}` : "Out of stock"}</dd></div></dl>
       </div>
     </section>
     <ProductDetailAccordions sections={item.accordions ?? []} />
@@ -122,7 +127,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
     </div>
     <RecommendedProducts current={item} products={products} />
     <EndOfPageLink />
-    <RecentSaleNotice proof={proof} />
     {colour && <StickyBuyBar item={item} price={colour.price} watch={buyButtons} disabled={canBuy < 1} inBag={inCart > 0} onAdd={() => { if (canBuy >= 1 && canAdd(item.id, colour.id)) add(item.id, colour.id, qty); openDrawer(); }} onBuy={buyNow} />}
+    <RecentSaleNotice proof={proof} products={products} />
   </main>;
 }
