@@ -11,14 +11,19 @@ import type { StoreItem } from "@/data/catalogue";
 import { useViewerCount } from "@/lib/realtime-client";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
-type Proof = { recent: { productId: string; productName: string; hoursAgo: number; firstName: string }[]; soldThisWeek: Record<string, number> };
+type Proof = { recent: { productId: string; productName: string; minutesAgo: number; firstName: string }[]; soldThisWeek: Record<string, number> };
+const EyeIcon = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>;
+const FlameIcon = () => <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2s1 3.2-1.4 6C8.4 10.6 6 12.6 6 16a6 6 0 0 0 12 0c0-2.7-1.4-4.6-2.6-5.9.1 1.9-.6 3.3-1.8 3.9.5-3.6-.8-8.6-1.6-12Z" /></svg>;
+/** "12 hours", "3 days": the owner's window for the sold count. */
+const windowText = (hours: number) => hours % 24 === 0 && hours >= 48 ? `${hours / 24} days` : `${hours} ${hours === 1 ? "hour" : "hours"}`;
+const agoText = (minutes: number) => minutes < 1 ? "just now" : minutes < 60 ? `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago` : minutes < 1440 ? `${Math.floor(minutes / 60)} ${minutes < 120 ? "hour" : "hours"} ago` : `${Math.floor(minutes / 1440)} ${minutes < 2880 ? "day" : "days"} ago`;
 
 /** Real people on this page right now. Hidden below the owner's minimum, and when live updates are off. */
 export function LiveViewers({ productId }: { productId: string }) {
   const { viewers } = useSiteContent().productPage;
   const count = useViewerCount(productId, viewers.show);
   if (!viewers.show || count < Math.max(2, viewers.minimum)) return null;
-  return <p className="live-viewers"><span aria-hidden="true" />{count} people are viewing this right now</p>;
+  return <p className="live-viewers"><span className="live-viewers-icon"><EyeIcon /></span>{count} people are viewing this right now</p>;
 }
 
 export function useSocialProof(enabled: boolean) {
@@ -32,32 +37,51 @@ export function useSocialProof(enabled: boolean) {
   return proof;
 }
 
-/** From real paid orders in the last 7 days. */
+/** From real paid orders within the owner's window (e.g. the last 12 hours). */
 export function SoldThisWeek({ count }: { count: number }) {
   const { soldThisWeek } = useSiteContent().productPage;
   if (!soldThisWeek.show || count < soldThisWeek.minimum) return null;
-  return <p className="sold-this-week">{count} sold this week</p>;
+  return <p className="sold-this-week"><FlameIcon />{count} sold in last {windowText(soldThisWeek.hours)}</p>;
 }
 
-/** A real recent order. Shows a first name only if the owner has chosen to. */
-export function RecentSaleNotice({ proof }: { proof: Proof }) {
+/**
+ * A real recent order, with the murti's photo. Shows a first name only if the owner has chosen to.
+ * The owner sets the wait before each pop-up, how long it stays, and its size. Up to 5 are shown per visit.
+ */
+export function RecentSaleNotice({ proof, products }: { proof: Proof; products: StoreItem[] }) {
+  const { recentSales: settings } = useSiteContent().productPage;
   const [index, setIndex] = useState(-1);
   const [closed, setClosed] = useState(false);
   const sales = proof.recent;
   useEffect(() => {
-    if (!sales.length || closed) return;
-    let step = 0;
-    const show = window.setTimeout(() => setIndex(0), 8000);
-    const next = window.setInterval(() => { step += 1; if (step >= Math.min(sales.length, 3) * 2) { setIndex(-1); window.clearInterval(next); return; } setIndex(step % 2 ? -1 : step / 2); }, 8000);
-    return () => { window.clearTimeout(show); window.clearInterval(next); };
-  }, [sales, closed]);
+    if (!settings.show || !sales.length || closed) return;
+    const timers: number[] = [];
+    const count = Math.min(sales.length, 5);
+    for (let step = 0; step < count; step += 1) {
+      const start = (step + 1) * settings.delay * 1000 + step * settings.duration * 1000;
+      timers.push(window.setTimeout(() => setIndex(step), start), window.setTimeout(() => setIndex(-1), start + settings.duration * 1000));
+    }
+    return () => timers.forEach(timer => window.clearTimeout(timer));
+  }, [sales, closed, settings.show, settings.delay, settings.duration]);
   const sale = index >= 0 ? sales[index] : undefined;
-  if (!sale || closed) return null;
-  const when = sale.hoursAgo < 1 ? "within the last hour" : sale.hoursAgo < 24 ? `${sale.hoursAgo} ${sale.hoursAgo === 1 ? "hour" : "hours"} ago` : `${Math.floor(sale.hoursAgo / 24)} ${sale.hoursAgo < 48 ? "day" : "days"} ago`;
-  return <div className="recent-sale" role="status">
-    <Link href={`/products/${sale.productId}`}><b>{sale.firstName || "Someone"}</b> bought {sale.productName} <small>{when}</small></Link>
+  if (!settings.show || !sale || closed) return null;
+  const product = products.find(item => item.id === sale.productId);
+  return <div className={`recent-sale size-${settings.size}`} role="status">
+    <Link href={`/products/${sale.productId}`}>
+      {settings.showImage && product && <span className="recent-sale-image"><Image src={product.image} alt="" fill sizes="64px" /></span>}
+      <span className="recent-sale-copy"><span><b>{sale.firstName || "Someone"}</b> has bought {sale.productName}</span><small>{agoText(sale.minutesAgo)}</small></span>
+    </Link>
     <button type="button" aria-label="Close" onClick={() => setClosed(true)}>×</button>
   </div>;
+}
+
+/** The same pop-up on the home page, when the owner turns on "every page". */
+export function HomeRecentSales() {
+  const { recentSales } = useSiteContent().productPage;
+  const { products } = useCart();
+  const proof = useSocialProof(recentSales.show && recentSales.everyPage);
+  if (!recentSales.everyPage) return null;
+  return <RecentSaleNotice proof={proof} products={products} />;
 }
 
 export function OfferBox() {
@@ -99,7 +123,7 @@ export function BundleBox({ item, products }: { item: StoreItem; products: Store
   const addAll = () => { all.forEach(product => { const colour = firstColour(product); if (colour && canAdd(product.id, colour.id)) add(product.id, colour.id, 1); }); openDrawer(); };
   return <section className="bundle-box" aria-labelledby="bundle-title">
     <h2 id="bundle-title">Frequently bought together</h2>
-    <ul>{all.map(product => <li key={product.id}><span className="bundle-image"><Image src={product.image} alt="" fill sizes="80px" /></span><Link href={`/products/${product.id}`}>{product.name}</Link><small>{money(firstColour(product)?.price ?? 0)}</small></li>)}</ul>
+    <ul>{all.map(product => <li key={product.id} className="card-clickable"><span className="bundle-image"><Image src={product.image} alt="" fill sizes="80px" /></span><Link className="card-link" href={`/products/${product.id}`}>{product.name}</Link><small>{money(firstColour(product)?.price ?? 0)}</small></li>)}</ul>
     <button className="detail-add-button" type="button" onClick={addAll}>Add all to bag · {money(total)}</button>
   </section>;
 }

@@ -7,7 +7,7 @@ import type { ColourInput } from "@/lib/colours";
 import type { ProductAccordion } from "@/data/catalogue";
 
 /** Shared parsing for the dashboard's create/edit product form (product details + colours + photos). */
-export type ProductForm = { name: string; deity: string; badge: string; tagline: string; placement: string; description: string; bundleIds: string[]; accordions: ProductAccordion[]; specs: Array<{ label: string; value: string }>; highlights: string[]; colours: ColourInput[]; files: File[] };
+export type ProductForm = { name: string; deity: string; extraCategories: string[]; badge: string; tagline: string; placement: string; description: string; bundleIds: string[]; accordions: ProductAccordion[]; specs: Array<{ label: string; value: string }>; highlights: string[]; colours: ColourInput[]; files: File[] };
 
 /** Specification cards: up to 8 label/value pairs (owner-entered facts only). */
 function parseSpecs(raw: FormDataEntryValue | null): { error: string } | { value: Array<{ label: string; value: string }> } {
@@ -46,6 +46,11 @@ export function parseProductForm(form: FormData): { error: string } | { value: P
   if (placement.length > 255) return { error: "Description must be 255 characters or fewer." };
   const description = text("description");
   if (description.length > 4000) return { error: "Keep the description to 4,000 characters." };
+  let extraCategories: string[] = [];
+  try {
+    const list = JSON.parse(String(form.get("extraCategories") ?? "[]")) as unknown;
+    if (Array.isArray(list)) extraCategories = [...new Set(list.filter((name): name is string => typeof name === "string").map(name => name.trim()).filter(name => name.length >= 2 && name.length <= 80 && name !== deity))].slice(0, 10);
+  } catch { return { error: "Choose valid extra categories." }; }
   let bundleIds: string[] = [];
   try {
     const list = JSON.parse(String(form.get("bundleIds") ?? "[]")) as unknown;
@@ -62,7 +67,7 @@ export function parseProductForm(form: FormData): { error: string } | { value: P
   if (files.some(file => file.size > 5 * 1024 * 1024)) return { error: "Each photo can be up to 5 MB." };
   const colours = parseColours(form.get("colours"), files.length);
   if ("error" in colours) return { error: colours.error };
-  return { value: { name, deity, badge, tagline, placement, description, bundleIds, accordions, specs: specs.value, highlights: highlights.value, colours: colours.value, files } };
+  return { value: { name, deity, extraCategories, badge, tagline, placement, description, bundleIds, accordions, specs: specs.value, highlights: highlights.value, colours: colours.value, files } };
 }
 
 const PHOTO_TYPES: Record<string, string> = { ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".avif": "image/avif" };

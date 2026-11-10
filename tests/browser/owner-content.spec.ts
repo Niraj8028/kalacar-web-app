@@ -135,12 +135,33 @@ test.describe("product page follows the dashboard", () => {
     await expect(page.getByText("Hurry! Only 8 left")).toBeVisible();
   });
   test("real figures appear only when turned on and above the minimum", async ({ page }) => {
-    const proof = { recent: [{ productId: "ganesh", productName: "Test Ganesh", hoursAgo: 3, firstName: "" }], soldThisWeek: { ganesh: 5, krushna: 1 } };
-    await mockShop(page, { proof, content: content({}, { soldThisWeek: { show: true, minimum: 3 } }) });
+    const proof = { recent: [{ productId: "ganesh", productName: "Test Ganesh", minutesAgo: 25, firstName: "" }], soldThisWeek: { ganesh: 5, krushna: 1 } };
+    await mockShop(page, { proof, content: content({}, { soldThisWeek: { show: true, minimum: 3, hours: 12 } }) });
     await page.goto("/products/ganesh");
-    await expect(page.getByText("5 sold this week")).toBeVisible();
+    await expect(page.locator(".detail-proof-row").getByText("5 sold in last 12 hours")).toBeVisible();
     await page.goto("/products/krushna");
-    await expect(page.getByText(/sold this week/)).toHaveCount(0);
+    await expect(page.getByText(/sold in last/)).toHaveCount(0);
+  });
+  test("purchase pop-up: real sale with the murti's photo, after the owner's wait", async ({ page }) => {
+    const proof = { recent: [{ productId: "krushna", productName: "Test Krushna", minutesAgo: 25, firstName: "" }], soldThisWeek: {} };
+    await mockShop(page, { proof, content: content({}, { recentSales: { show: true, showFirstName: false, showImage: true, everyPage: false, delay: 3, duration: 8, size: "large" } }) });
+    await page.goto("/products/ganesh");
+    const popup = page.locator(".recent-sale");
+    await expect(popup).toHaveCount(0);
+    await expect(popup).toBeVisible({ timeout: 6000 });
+    await expect(popup).toHaveClass(/size-large/);
+    await expect(popup).toContainText("Someone has bought Test Krushna");
+    await expect(popup).toContainText("25 minutes ago");
+    await expect(popup.locator(".recent-sale-image img")).toHaveCount(1);
+    await expectFits(page);
+  });
+  test("in-bag note has no View bag link", async ({ page }) => {
+    await mockShop(page, { content: content() });
+    await page.goto("/products/ganesh");
+    await page.getByRole("button", { name: /add to bag/i }).first().click();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".in-cart-note")).toHaveText("1 in your bag");
+    await expect(page.getByRole("link", { name: /View bag/ })).toHaveCount(0);
   });
   test("no made-up viewer count without live data", async ({ page }) => {
     await mockShop(page, { content: content({}, { viewers: { show: true, minimum: 2 } }) });
@@ -202,21 +223,20 @@ test("video reviews are matching cards that load the player only on press", asyn
   await expectFits(page);
 });
 
-test("the Instagram band opens the saved account and stays hidden until turned on", async ({ page }) => {
+test("Customer love has a Follow on Instagram button beside its title; no band on the home page", async ({ page }) => {
   const videos = [review({ id: 1, videoUrl: "https://www.youtube.com/watch?v=abc123DEF_-" })];
   await page.route("https://i.ytimg.com/**", route => route.fulfill({ status: 200, contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='9' height='16'/>" }));
   await mockShop(page, { content: { ...content({ hero, reviews: { ...DEFAULT_HOME.reviews, show: true } }), instagram: { show: false, username: "kalacar.in" } }, reviews: videos });
   await page.goto("/");
   await expect(page.locator(".video-card")).toHaveCount(1);
   await expect(page.locator(".instagram-band")).toHaveCount(0);
-  await expect(page.locator(".video-follow")).toHaveCount(0);
+  await expect(page.locator(".reviews-follow")).toHaveCount(0);
   await mockShop(page, { content: { ...content({ hero, reviews: { ...DEFAULT_HOME.reviews, show: true } }), instagram: { show: true, username: "kalacar.in" } }, reviews: videos });
   await page.goto("/");
-  const follow = page.locator(".instagram-band a");
+  const follow = page.locator(".home-reviews-top .reviews-follow");
   await expect(follow).toHaveAttribute("href", "https://www.instagram.com/kalacar.in/");
   await expect(follow).toHaveAttribute("target", "_blank");
-  await expect(page.locator(".instagram-band")).toContainText("@kalacar.in");
-  await expect(page.locator(".video-follow a")).toHaveAttribute("href", "https://www.instagram.com/kalacar.in/");
+  await expect(page.locator(".instagram-band")).toHaveCount(0);
   await expectFits(page);
 });
 

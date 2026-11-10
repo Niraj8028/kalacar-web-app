@@ -1,5 +1,6 @@
+import { DEFAULT_HOME, DEFAULT_PRODUCT_PAGE } from "../../src/data/site-content";
 import { expect, test } from "@playwright/test";
-import { expectFits, mockShop, watchErrors } from "./mock-shop";
+import { expectFits, mockShop, PRODUCTS, watchErrors } from "./mock-shop";
 
 test.describe("every customer page opens and fits", () => {
   for (const [path, heading] of [["/shipping", "Shipping"], ["/returns", "Returns and refunds"], ["/safe-transit", "Safe Transit Guarantee"], ["/privacy", "Privacy"], ["/terms", "Terms"], ["/cart", "Your bag"], ["/account", "Your orders, in one place."]] as const) {
@@ -14,9 +15,54 @@ test.describe("every customer page opens and fits", () => {
   }
 });
 
+const withCatalogue = (catalogue: object) => ({ home: { ...DEFAULT_HOME, catalogue: { ...DEFAULT_HOME.catalogue, ...catalogue } }, productPage: DEFAULT_PRODUCT_PAGE, collections: [] });
+
+test("home lists every murti with no category buttons until the owner turns them on", async ({ page }) => {
+  await mockShop(page);
+  await page.goto("/");
+  await expect(page.locator(".result-count")).toHaveText("3 items");
+  await expect(page.getByRole("group", { name: "Filter by category" })).toHaveCount(0);
+});
+
+test("featured murtis: only the owner's picks, in order; a category still finds every murti in it", async ({ page }) => {
+  await mockShop(page, { content: withCatalogue({ productIds: ["ganesh"], showFilters: true }) });
+  await page.goto("/");
+  await expect(page.locator(".result-count")).toHaveText("1 item");
+  await expect(page.locator(".product-card h3")).toHaveText(["Test Ganesh"]);
+  await page.getByRole("button", { name: "Krishna", exact: true }).click();
+  await expect(page.locator(".product-card h3")).toHaveText(["Test Krushna"]);
+});
+
+test("a product in two categories appears under both", async ({ page }) => {
+  const products = PRODUCTS.map(item => item.id === "ganesh" ? { ...item, categories: ["Ganesh", "Krishna"] } : item);
+  await mockShop(page, { products, content: withCatalogue({ showFilters: true }) });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Krishna", exact: true }).click();
+  await expect(page.locator(".product-card h3")).toHaveText(["Test Krushna", "Test Ganesh"]);
+});
+
+test("the whole product card opens the murti; Add to bag stays a button", async ({ page }) => {
+  await mockShop(page);
+  await page.goto("/");
+  const card = page.locator(".product-card", { hasText: "Test Ganesh" });
+  // Near the top-left corner: the photo, not a button.
+  await card.click({ position: { x: 24, y: 24 } });
+  await expect(page).toHaveURL(/\/products\/ganesh/);
+});
+
+test("phones show one featured murti per row", async ({ page }, info) => {
+  test.skip(info.project.name !== "phone");
+  await mockShop(page);
+  await page.goto("/");
+  await expect(page.locator(".product-card")).toHaveCount(3);
+  const boxes = await page.locator(".product-card").evaluateAll(cards => cards.slice(0, 2).map(card => card.getBoundingClientRect()));
+  expect(boxes[1].top).toBeGreaterThan(boxes[0].bottom - 1);
+  await expectFits(page);
+});
+
 test("home lists products, and the category filter works", async ({ page }) => {
   const errors = watchErrors(page);
-  await mockShop(page);
+  await mockShop(page, { content: withCatalogue({ showFilters: true }) });
   await page.goto("/");
   await expect(page.locator(".result-count")).toHaveText("3 items");
   await expect(page.getByText("Test Krushna").first()).toBeVisible();
@@ -178,4 +224,31 @@ test("header icons all match", async ({ page }, info) => {
     const icon = await circle.locator("svg").first().boundingBox();
     expect(Math.round(icon?.width ?? 0), tool).toBe(18);
   }
+});
+
+test("breadcrumb: Murtis opens All murtis even after a category was chosen; the category opens that category", async ({ page }) => {
+  await mockShop(page, { content: withCatalogue({ showFilters: true }) });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Ganesh", exact: true }).click();
+  await expect(page.locator(".result-count")).toHaveText("1 item");
+  await page.locator(".product-card", { hasText: "Test Ganesh" }).click({ position: { x: 24, y: 24 } });
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+  await crumbs.getByRole("link", { name: "Murtis" }).click();
+  await expect(page).toHaveURL(/\/#catalogue$/);
+  await expect(page.getByRole("button", { name: "All murtis" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".result-count")).toHaveText("3 items");
+  await page.goto("/products/krushna");
+  await crumbs.getByRole("link", { name: "Krishna" }).click();
+  await expect(page.getByRole("button", { name: "Krishna", exact: true })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("product page: specifications and product details side by side on computers, stacked on phones", async ({ page }, info) => {
+  const products = PRODUCTS.map(item => item.id === "ganesh" ? { ...item, specs: [{ label: "Height", value: "4 in" }], highlights: ["Easy to clean"] } : item);
+  await mockShop(page, { products });
+  await page.goto("/products/ganesh");
+  await expect(page.locator(".buy-box .product-highlights")).toContainText("Easy to clean");
+  const [spec, facts] = await Promise.all([page.locator(".detail-lower .spec-cards").boundingBox(), page.locator(".detail-facts").boundingBox()]);
+  if (info.project.name === "desktop") expect(Math.abs(spec!.y - facts!.y)).toBeLessThan(2);
+  else expect(facts!.y).toBeGreaterThan(spec!.y + spec!.height - 1);
+  await expectFits(page);
 });

@@ -4,7 +4,7 @@ import { getFestive } from "@/lib/festive";
 import { getInstagram } from "@/lib/instagram";
 import { getBrand } from "@/lib/brand";
 import { listCategories } from "@/lib/categories";
-import { DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, MAX_HERO_SLIDES, videoEmbed } from "@/data/site-content";
+import { DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
 import type { HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
 
 const text = (value: unknown, max: number, fallback = "") => typeof value === "string" ? value.trim().slice(0, max) : fallback;
@@ -36,13 +36,14 @@ function parseHero(hero: Record<string, unknown>): HomeContent["hero"] {
 
 export function parseHome(body: unknown): HomeContent {
   const input = obj(body), d = DEFAULT_HOME;
-  const hero = obj(input.hero), spot = obj(input.spotlight), spotWhatsapp = obj(obj(input.spotlight).whatsapp), grid = obj(input.firstLaunch), soon = obj(input.comingSoon), collections = obj(input.collections), why = obj(input.why), reviews = obj(input.reviews), story = obj(input.story);
+  const hero = obj(input.hero), spot = obj(input.spotlight), spotWhatsapp = obj(obj(input.spotlight).whatsapp), grid = obj(input.firstLaunch), soon = obj(input.comingSoon), collections = obj(input.collections), catalogue = obj(input.catalogue), why = obj(input.why), reviews = obj(input.reviews), story = obj(input.story);
   return {
     hero: parseHero(hero),
     firstLaunch: { ...described(grid, d.firstLaunch), productIds: ids(grid.productIds, 12) },
     comingSoon: { ...described(soon, d.comingSoon), items: (Array.isArray(soon.items) ? soon.items : []).slice(0, 12).map(item => ({ name: text(obj(item).name, 80), image: safeImage(obj(item).image) })).filter(item => item.name || item.image) },
     collections: described(collections, d.collections),
-    why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : []).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240) })).filter(item => item.title || item.text) },
+    catalogue: { ...described(catalogue, d.catalogue), showEyebrow: bool(catalogue.showEyebrow, d.catalogue.showEyebrow), eyebrow: text(catalogue.eyebrow, 60, d.catalogue.eyebrow), productIds: ids(catalogue.productIds, 60), showFilters: bool(catalogue.showFilters, d.catalogue.showFilters) },
+    why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : []).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240) })).filter(item => item.title || item.text), showLogo: bool(why.showLogo, d.why.showLogo), logo: safeImage(why.logo) },
     reviews: { ...described(reviews, d.reviews), showText: bool(reviews.showText, d.reviews.showText), showVideo: bool(reviews.showVideo, d.reviews.showVideo) },
     story: { ...header(story, d.story), showText: bool(story.showText, d.story.showText), text: text(story.text, 2000), showImage: bool(story.showImage, d.story.showImage), image: safeImage(story.image), showFounder: bool(story.showFounder, d.story.showFounder), founder: text(story.founder, 80) },
     spotlight: { ...header(spot, d.spotlight), showDescription: bool(spot.showDescription, d.spotlight.showDescription), description: text(spot.description, 200), productId: ids([spot.productId], 1)[0] ?? "", image: safeImage(spot.image), showLogo: bool(spot.showLogo, d.spotlight.showLogo), whatsapp: { show: bool(spotWhatsapp.show, d.spotlight.whatsapp.show), label: text(spotWhatsapp.label, 40, d.spotlight.whatsapp.label) || d.spotlight.whatsapp.label } },
@@ -57,8 +58,8 @@ export function parseProductPage(body: unknown): ProductPageContent {
     howMade: { show: bool(how.show, d.howMade.show), title: text(how.title, 80, d.howMade.title), message: text(how.message, 1200), showImage: bool(how.showImage, d.howMade.showImage), image: safeImage(how.image), founder: text(how.founder, 80) },
     faqs: { show: bool(faqs.show, d.faqs.show), title: text(faqs.title, 80, d.faqs.title), items: (Array.isArray(faqs.items) ? faqs.items : []).slice(0, 20).map(item => ({ question: text(obj(item).question, 160), answer: text(obj(item).answer, 800) })).filter(item => item.question && item.answer) },
     viewers: { show: bool(viewers.show, d.viewers.show), minimum: whole(viewers.minimum, 1, 100, d.viewers.minimum) },
-    recentSales: { show: bool(sales.show, d.recentSales.show), showFirstName: bool(sales.showFirstName, d.recentSales.showFirstName) },
-    soldThisWeek: { show: bool(sold.show, d.soldThisWeek.show), minimum: whole(sold.minimum, 1, 1000, d.soldThisWeek.minimum) },
+    recentSales: { show: bool(sales.show, d.recentSales.show), showFirstName: bool(sales.showFirstName, d.recentSales.showFirstName), showImage: bool(sales.showImage, d.recentSales.showImage), everyPage: bool(sales.everyPage, d.recentSales.everyPage), delay: whole(sales.delay, 3, 120, d.recentSales.delay), duration: whole(sales.duration, 3, 30, d.recentSales.duration), size: POPUP_SIZES.find(size => size === sales.size) ?? d.recentSales.size },
+    soldThisWeek: { show: bool(sold.show, d.soldThisWeek.show), minimum: whole(sold.minimum, 1, 1000, d.soldThisWeek.minimum), hours: whole(sold.hours, 1, 720, d.soldThisWeek.hours) },
     lowStock: { threshold: whole(low.threshold, 0, 100, d.lowStock.threshold), text: text(low.text, 80, d.lowStock.text) || d.lowStock.text },
     stickyBar: { show: bool(sticky.show, d.stickyBar.show) },
     endLink: { show: bool(end.show, d.endLink.show), label: text(end.label, 60, d.endLink.label) || d.endLink.label, link: safeLink(end.link, d.endLink.link) },

@@ -13,6 +13,12 @@ function withSlides(content: SiteContent | null): SiteContent | null {
   if (!content || !hero || Array.isArray(hero.slides)) return content;
   return { ...content, home: { ...content.home, hero: { show: hero.show !== false, autoplay: DEFAULT_HOME.hero.autoplay, interval: DEFAULT_HOME.hero.interval, slides: [{ ...DEFAULT_HOME.hero.slides[0], ...hero } as SiteContent["home"]["hero"]["slides"][number]] } } };
 }
+/** Sections the server doesn't send yet (an older server, or a new setting) use their defaults. */
+function withDefaults(content: SiteContent | null): SiteContent | null {
+  if (!content) return content;
+  const fill = <T extends object>(defaults: T, saved: Partial<T> | undefined) => Object.fromEntries(Object.entries(defaults).map(([key, value]) => [key, { ...value, ...(saved as Record<string, object> | undefined)?.[key] }])) as T;
+  return { ...content, home: fill(DEFAULT_HOME, content.home), productPage: fill(DEFAULT_PRODUCT_PAGE, content.productPage) };
+}
 const DEFAULTS: Value = { home: DEFAULT_HOME, productPage: DEFAULT_PRODUCT_PAGE, collections: [], instagram: DEFAULT_INSTAGRAM, festive: DEFAULT_FESTIVE, brand: DEFAULT_BRAND, reviews: [], ready: false };
 const Context = createContext<Value>(DEFAULTS);
 
@@ -24,7 +30,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
       fetch("/api/site-content", { cache: "no-store" }).then(response => response.ok ? response.json() as Promise<SiteContent> : null).catch(() => null),
       fetch("/api/reviews", { cache: "no-store" }).then(response => response.ok ? response.json() as Promise<{ reviews: Review[] }> : null).catch(() => null),
     ]);
-    setValue(current => ({ ...current, ...(withSlides(content) ?? {}), reviews: reviews?.reviews ?? current.reviews, ready: true }));
+    setValue(current => ({ ...current, ...(withDefaults(withSlides(content)) ?? {}), reviews: reviews?.reviews ?? current.reviews, ready: true }));
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- first load of the owner's settings
   useEffect(() => { void load(); }, [load]);
