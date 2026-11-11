@@ -59,6 +59,8 @@ export async function POST(request: Request) {
     console.error("Order reservation failed:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Could not reserve your items. Please try again." }, { status: 503 });
   }
+  // The browser sent an earlier checkout's key, but that order was paid or cancelled meanwhile: it starts afresh instead.
+  if (order.reused && !["payment_pending", "payment_failed"].includes(order.status)) return NextResponse.json({ error: order.status === "paid" ? "This order is already paid." : "Your earlier unpaid order was cancelled.", stale: order.status === "paid" ? "paid" : "cancelled", orderId: order.id }, { status: 409 });
   if (order.razorpayOrderId) return NextResponse.json({ orderId: order.id, razorpayOrderId: order.razorpayOrderId, amount: order.amount * 100, currency: "INR", keyId });
   if (order.reused) return NextResponse.json({ error: "Your payment setup is still processing. Please wait and retry." }, { status: 409 });
   try {
@@ -75,6 +77,6 @@ export async function POST(request: Request) {
   } catch (error) {
     await releaseOrderAfterPaymentSetupFailure(order.id).catch(() => undefined);
     console.error("Razorpay order setup failed:", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.json({ error: "Razorpay could not start a test payment. Your reserved stock has been released." }, { status: 502 });
+    return NextResponse.json({ error: "We couldn't start the payment. Nothing was charged; please try again." }, { status: 502 });
   }
 }

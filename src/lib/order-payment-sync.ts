@@ -1,4 +1,4 @@
-import { findOrder, markOrderPaid, markOrderPaymentFailed } from "@/lib/catalogue-db";
+import { cancelUnpaidOrder, findOrder, markOrderPaid, markOrderPaymentFailed } from "@/lib/catalogue-db";
 import { decidePayment } from "@/lib/razorpay-payments";
 import { razorpayKeys } from "@/lib/payment-status";
 import type { PaymentDecision, RazorpayPayment } from "@/lib/razorpay-payments";
@@ -24,4 +24,14 @@ export async function syncOrderPayment(order: SyncableOrder & { razorpayOrderId:
     return { decision, status: "payment_failed" };
   }
   return { decision, status: "payment_pending" };
+}
+
+/** Cancels an unpaid order and frees its stock, but asks Razorpay first so a paid order is never cancelled. Throws if Razorpay can't be reached. */
+export async function cancelIfUnpaid(order: SyncableOrder, customerId: string, reason: string): Promise<"cancelled" | "paid" | "in_progress" | "not_unpaid"> {
+  if (order.razorpayOrderId) {
+    const { decision } = await syncOrderPayment({ ...order, razorpayOrderId: order.razorpayOrderId }, customerId);
+    if (decision.kind === "paid") return "paid";
+    if (decision.kind === "in_progress" || decision.kind === "mismatch") return "in_progress";
+  }
+  return (await cancelUnpaidOrder(order.id, reason)).ok ? "cancelled" : "not_unpaid";
 }

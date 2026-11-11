@@ -1,4 +1,5 @@
 import type { RowDataPacket } from "mysql2/promise";
+import { getPaymentStatus } from "@/lib/payment-status";
 import { addressDb } from "@/lib/catalogue-db";
 import { getFestive } from "@/lib/festive";
 import { getInstagram } from "@/lib/instagram";
@@ -84,7 +85,7 @@ export const saveProductPage = (value: ProductPageContent) => writeRow("product_
 
 export async function getSiteContent(): Promise<SiteContent> {
   const [home, productPage, categories, instagram, festive, brand] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram(), getFestive(), getBrand()]);
-  return { home, productPage, instagram, festive, brand, collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
+  return { home, productPage, instagram, festive, brand, testPayments: getPaymentStatus().mode === "test", collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
 }
 
 // Reviews are entered by the owner from real customers. Ratings shown on the shop are worked out from these.

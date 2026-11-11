@@ -609,6 +609,13 @@ export async function listOrdersToRecheck() {
   return rows.map(row => ({ id: row.id, razorpayOrderId: row.razorpay_order_id, amount: Number(row.amount), userId: row.user_id }));
 }
 
+/** Unpaid orders placed more than `minutes` ago, oldest first. */
+export async function listExpiredUnpaidOrders(minutes: number) {
+  await ensureCatalogue();
+  const [rows] = await database().query<(RowDataPacket & { id: string; razorpay_order_id: string | null; amount: number; user_id: string | null })[]>("SELECT id,razorpay_order_id,amount,user_id FROM kalacar_orders WHERE status IN ('payment_pending','payment_failed') AND created_at < NOW() - INTERVAL ? MINUTE ORDER BY created_at LIMIT 20", [minutes]);
+  return rows.map(row => ({ id: row.id, razorpayOrderId: row.razorpay_order_id, amount: Number(row.amount), userId: row.user_id ?? "" }));
+}
+
 export async function listOrders(filter: OrderStatusFilter = "all") {
   await ensureCatalogue();
   const condition = filter === "all" ? "" : `WHERE ${orderStatusConditions[filter]}`;

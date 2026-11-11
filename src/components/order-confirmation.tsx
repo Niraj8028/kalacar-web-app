@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { money } from "@/components/bag-lines";
 import { CheckMark } from "@/components/icons";
+import { useSiteContent } from "@/components/site-content-provider";
 import { DELIVERY_ESTIMATE } from "@/lib/store-info";
 
 type ConfirmedOrder = { id: string; createdAt: string; amount: number; address: string; pincode: string; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number; items: { name: string; variant?: string; price: number; quantity: number }[] };
 
 /** Shown after payment. Details come from the saved order, so they always match what was paid for. */
 export function OrderConfirmation({ orderId, email }: { orderId: string; email?: string }) {
+  const { testPayments } = useSiteContent();
   const [order, setOrder] = useState<ConfirmedOrder | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
@@ -25,7 +27,7 @@ export function OrderConfirmation({ orderId, email }: { orderId: string; email?:
       <span className="order-confirmed-mark" aria-hidden="true"><CheckMark size={24} /></span>
       <h1 ref={heading} tabIndex={-1}>Thank you, your order is confirmed</h1>
       <p>Order <strong>{orderId.slice(0, 8).toUpperCase()}</strong> is paid.{email ? ` Order details are saved to your account, ${email}.` : ""}</p>
-      <p className="order-confirmed-test">This was a test payment. No real money was taken.</p>
+      {testPayments && <p className="order-confirmed-test">This was a test payment. No real money was taken.</p>}
     </div>
     <div className="order-confirmed-grid">
       <div className="order-confirmed-card">

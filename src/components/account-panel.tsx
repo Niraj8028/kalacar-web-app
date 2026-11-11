@@ -10,6 +10,7 @@ import AddressBook from "@/components/address-book";
 import { COURIERS, isCourier } from "@/lib/couriers";
 import type { CourierKey } from "@/lib/couriers";
 import { useCart } from "@/components/cart-provider";
+import { useSiteContent } from "@/components/site-content-provider";
 import { ArrowLeft, BagIcon, CheckMark, External } from "@/components/icons";
 
 type User = { id: string; name: string; email: string; phone: string };
@@ -44,6 +45,7 @@ function TrackingCard({ courier, trackingId }: { courier: CourierKey; trackingId
 }
 
 export default function AccountPanel() {
+  const { testPayments } = useSiteContent();
   const { count } = useCart();
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -136,12 +138,26 @@ export default function AccountPanel() {
     finally { setSyncing(""); }
   }
 
+  async function cancel(order: Order) {
+    if (!window.confirm(`Cancel unpaid order ${order.id.slice(0, 8).toUpperCase()}?`)) return;
+    setSyncing(order.id); setError(""); setNotice("");
+    try {
+      const response = await fetch(`/api/account/orders/${order.id}/cancel`, { method: "POST" });
+      const data = await response.json().catch(() => ({})) as { status?: string; error?: string };
+      if (!response.ok) throw new Error(data.error || "Could not cancel the order.");
+      setNotice(data.status === "paid" ? `Order ${order.id.slice(0, 8).toUpperCase()} is already paid, so it wasn't cancelled.` : `Order ${order.id.slice(0, 8).toUpperCase()} is cancelled. Nothing was charged.`);
+      await refresh();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not cancel the order."); }
+    finally { setSyncing(""); }
+  }
+
   async function retry(order: Order) {
     setSyncing(order.id); setError(""); setNotice("");
     try {
       const response = await fetch(`/api/account/orders/${order.id}/retry`, { method: "POST" });
       const checkout = await response.json() as CheckoutOrder & { status?: string; error?: string };
       if (!response.ok) throw new Error(checkout.error || "Could not reopen payment.");
+      if (checkout.status === "cancelled") { setNotice(`Order ${order.id.slice(0, 8).toUpperCase()} was cancelled because it wasn't paid within 1 hour. Nothing was charged.`); await refresh(); return; }
       if (checkout.status === "paid") { setNotice(`This order is already paid. Payment confirmed for order ${order.id.slice(0, 8)}.`); await refresh(); return; }
       if (!window.Razorpay) {
         const script = document.createElement("script"); script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -156,7 +172,7 @@ export default function AccountPanel() {
           else setNotice(`Payment confirmed for order ${order.id.slice(0, 8)}.`);
         } catch { setError("We could not confirm payment just now. Your order remains saved; use Check payment status before retrying."); }
         await refresh();
-      }, modal: { backdropclose: false, escape: false, handleback: false, confirm_close: true, ondismiss: () => { setNotice("Checkout closed. We’re checking the saved order; avoid creating another order while it is pending."); void sync(order); } } });
+      }, modal: { backdropclose: false, escape: false, handleback: false, confirm_close: true, ondismiss: () => { setNotice("Payment window closed. Your order is kept for 1 hour: use Retry payment to pay, or Cancel order."); void sync(order); } } });
       instance.on("payment.failed", response => setError(response.error?.description || "Payment did not complete. Your order remains saved and can be retried."));
       instance.open();
     } catch (e) { setError(e instanceof Error ? e.message : "Could not reopen payment."); }
@@ -173,7 +189,7 @@ export default function AccountPanel() {
       <p className="eyebrow">KALACAR CUSTOMER ACCOUNT</p>
       <h1>{user ? `Namaste, ${user.name.split(" ")[0]}` : "Your orders, in one place."}</h1>
       <p className="account-lede">{user ? "Track your orders and manage your delivery addresses." : "Sign in to track your orders and save delivery addresses."}</p>
-      <p className="account-demo-banner">Test mode: no real payment is taken.</p>
+      {testPayments && <p className="account-demo-banner">Test mode: no real payment is taken.</p>}
       {error && <p className="account-message error" role="alert">{error}</p>}{notice && <p className="account-message" role="status">{notice}</p>}
       {!user ? <div className="account-card">
         <a className="google-signin primary" href={`/api/auth/google/start?next=${encodeURIComponent(nextPath)}`}><svg aria-hidden="true" viewBox="0 0 18 18" width="18" height="18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>Continue with Google</a>
@@ -213,7 +229,7 @@ export default function AccountPanel() {
             {order.status === "refunded" && <p className="customer-order-note">Refunded {order.refundAmount ? money(order.refundAmount) : ""}{order.refundAmount && order.refundAmount < order.amount ? ` of ${money(order.amount)}` : ""}. Refunds usually reach your account in 5–7 working days.</p>}
             {(order.status === "cancelled" || order.status === "paid_after_cancel") && <p className="customer-order-note">{order.status === "cancelled" ? "This order was cancelled. No payment was taken." : "This order was cancelled, but a payment arrived afterwards. We’ll refund it; message us on WhatsApp if you have questions."}</p>}
             <details className="order-delivery"><summary>Delivery address</summary><p>{order.address} · PIN {order.pincode}</p></details>
-            <div className="order-status-row">{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="retry-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help <External /></a></div>
+            <div className="order-status-row">{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="retry-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void cancel(order)}>Cancel order</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help <External /></a></div>
           </article>;
         })}</div>}
         </div>

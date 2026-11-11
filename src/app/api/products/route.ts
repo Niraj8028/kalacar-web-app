@@ -1,9 +1,11 @@
 import { NextResponse, connection } from "next/server";
 import { listShopProducts } from "@/lib/shop-products";
 import { SHOP_CLOSED_MESSAGE, visitorStoreAccess } from "@/lib/store-status";
+import { expireUnpaidOrders } from "@/lib/order-reconcile";
 
 export async function GET() {
   await connection(); // always read live data, never a copy saved at build time
+  expireUnpaidOrders();
   try {
     if ((await visitorStoreAccess()).closed) return NextResponse.json({ error: SHOP_CLOSED_MESSAGE, comingSoon: true }, { status: 403, headers: { "Cache-Control": "no-store" } });
     return NextResponse.json({ products: await listShopProducts() }, { headers: { "Cache-Control": "no-store" } });

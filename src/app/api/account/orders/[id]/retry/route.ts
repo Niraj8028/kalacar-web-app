@@ -12,6 +12,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   const order = await findCustomerOrder(id, customer.id);
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
   if (order.status === "paid") return NextResponse.json({ status: "paid" });
+  if (order.status === "cancelled") return NextResponse.json({ status: "cancelled" });
   if (!["payment_pending", "payment_failed"].includes(order.status)) return NextResponse.json({ error: "This order can no longer be paid. Contact us on WhatsApp if you need help." }, { status: 409 });
   if (!order.razorpayOrderId) return NextResponse.json({ error: "This order has no payment session to retry. Contact support so we can check it." }, { status: 409 });
   const keyId = razorpayKeys()?.keyId;
