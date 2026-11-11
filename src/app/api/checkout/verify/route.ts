@@ -2,13 +2,14 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { findOrder, markOrderPaid } from "@/lib/catalogue-db";
 import { currentCustomer } from "@/lib/customer-auth";
+import { razorpayKeys } from "@/lib/payment-status";
 
 export async function POST(request: Request) {
   const account = await currentCustomer();
   if (!account) return NextResponse.json({ error: "Sign in to verify this order." }, { status: 401 });
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const secret = process.env.RAZORPAY_KEY_SECRET;
-  if (!keyId?.startsWith("rzp_test_") || !secret) return NextResponse.json({ error: "Test payment verification is not configured." }, { status: 503 });
+  const keys = razorpayKeys();
+  if (!keys) return NextResponse.json({ error: "Payment verification is not configured." }, { status: 503 });
+  const { keyId, secret } = keys;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid payment response." }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid payment response." }, { status: 400 });
