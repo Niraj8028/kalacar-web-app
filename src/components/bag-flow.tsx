@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORT_WHATSAPP, whatsappLink } from "@/data/support";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -276,7 +277,7 @@ export default function BagFlow() {
       <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>
     </div>}
   </div>;
-  const help = <a className="bag-help" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20need%20help%20with%20my%20order%20or%20payment." target="_blank" rel="noreferrer">Need help? WhatsApp +91 88306 46308 <External /></a>;
+  const help = <a className="bag-help" href={whatsappLink("Hi Kalacar, I need help with my order or payment.")} target="_blank" rel="noreferrer">Need help? WhatsApp {SUPPORT_WHATSAPP.display} <External /></a>;
 
   if (showSuccess && paidOrderId) return <div className="bag-page"><OrderConfirmation orderId={paidOrderId} email={account?.email} /></div>;
 

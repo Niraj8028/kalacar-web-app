@@ -21,7 +21,7 @@ test.describe("product spotlight", () => {
     await expect(spot.getByText("₹999")).toBeVisible();
     await expect(spot.getByText("(Save 23%)")).toBeVisible();
     await expect(spot.getByText("In stock")).toBeVisible();
-    await expect(spot.getByRole("link", { name: /Order on WhatsApp/ })).toHaveAttribute("href", /wa\.me\/918830646308\?text=.*Test%20Ganesh/);
+    await expect(spot.getByRole("link", { name: /Order on WhatsApp/ })).toHaveAttribute("href", /wa\.me\/919561579131\?text=.*Test%20Ganesh/);
     await expect(spot.getByRole("button", { name: /Add to bag/ })).toHaveCount(0);
     await expect(page.locator(".hero-arrow, .spotlight .hero-dots")).toHaveCount(0);
     await expectFits(page);

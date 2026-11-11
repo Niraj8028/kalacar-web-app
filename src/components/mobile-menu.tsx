@@ -9,6 +9,7 @@ import { CloseMark, MenuIcon, Search, UserCircle } from "@/components/icons";
 import { PolicyLinks, WHATSAPP_URL } from "@/components/policy-links";
 import ThemeToggle from "@/components/theme-toggle";
 import { requestShopFilter } from "@/lib/shop-filter";
+import { SUPPORT_WHATSAPP } from "@/data/support";
 import type { ShopFilter } from "@/lib/shop-filter";
 
 /** Phones only: search, categories, account, theme and information pages live behind this button; the bag stays in the header. */
@@ -59,7 +60,7 @@ export function MobileMenu() {
         <div className="mobile-menu-section mobile-menu-info">
           <p>Information</p>
           <PolicyLinks className="mobile-menu-links" />
-          <a href={`${WHATSAPP_URL}?text=${encodeURIComponent("Hi Kalacar, I have a question.")}`} target="_blank" rel="noopener noreferrer">WhatsApp us · +91 88306 46308</a>
+          <a href={`${WHATSAPP_URL}?text=${encodeURIComponent("Hi Kalacar, I have a question.")}`} target="_blank" rel="noopener noreferrer">WhatsApp us · {SUPPORT_WHATSAPP.display}</a>
         </div>
       </div>
     </div>, document.body)}

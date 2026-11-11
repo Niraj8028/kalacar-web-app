@@ -1,9 +1,10 @@
+import { SUPPORT_WHATSAPP, whatsappLink } from "@/data/support";
 import { DELIVERY_ESTIMATE } from "@/lib/store-info";
 
 // Starting text for each page. The owner's edits are saved in the database and replace these.
 // Anything marked policy-confirm is undecided: the page stays a draft and out of search until it's gone.
 const confirm = (text: string) => `<mark class="policy-confirm">To confirm: ${text}</mark>`;
-const WHATSAPP = `<a href="https://wa.me/918830646308" target="_blank" rel="noopener noreferrer">WhatsApp at +91 88306 46308</a>`;
+const WHATSAPP = `<a href="${whatsappLink()}" target="_blank" rel="noopener noreferrer">WhatsApp at ${SUPPORT_WHATSAPP.display}</a>`;
 const QUESTIONS = `<h2>Questions</h2><p>Message us on ${WHATSAPP}. Please include your order number if you have one.</p>`;
 
 export type PageDefault = { slug: string; title: string; intro: string; content: string; seoDescription: string; form?: "contact" };
