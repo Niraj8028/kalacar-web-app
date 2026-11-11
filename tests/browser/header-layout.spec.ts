@@ -11,8 +11,9 @@ test("phones: white header stays at the top; the hero fills 95% of the screen be
   const header = page.locator(".shop-header");
   await expect(header).toHaveCSS("position", "sticky");
   await expect(header).toHaveCSS("background-color", "rgb(255, 253, 250)");
-  const sizes = await page.evaluate(() => { const hero = document.querySelector(".home-hero")!.getBoundingClientRect(); return { hero: hero.height, expected: (innerHeight - hero.top) * 0.95 }; });
-  expect(Math.abs(sizes.hero - sizes.expected)).toBeLessThan(3);
+  // Wait for the owner's photo hero; before the settings load the page shows the plain default hero.
+  await expect(page.locator(".home-hero.with-image")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => { const hero = document.querySelector(".home-hero")!.getBoundingClientRect(); return Math.round(Math.abs(hero.height - (innerHeight - hero.top) * 0.95)); })).toBeLessThan(3);
   await page.mouse.wheel(0, 1500);
   await expect.poll(() => header.evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(0);
   await page.goto("/products/ganesh");
