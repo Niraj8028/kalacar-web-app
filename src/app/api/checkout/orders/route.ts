@@ -7,6 +7,7 @@ import { currentCustomer } from "@/lib/customer-auth";
 import { parseCartItems } from "@/lib/cart-items";
 import { CouponError, normalizeCode } from "@/lib/coupons";
 import { SHOP_CLOSED_MESSAGE, visitorStoreAccess } from "@/lib/store-status";
+import { razorpayKeys } from "@/lib/payment-status";
 
 export async function POST(request: Request) {
   const account = await currentCustomer();
@@ -17,9 +18,9 @@ export async function POST(request: Request) {
   if (access.closed) return NextResponse.json({ error: SHOP_CLOSED_MESSAGE }, { status: 403 });
   const limited = limitOrNull([{ key: `checkout:user:${account.id}`, limit: 10, windowMs: 10 * MINUTE }], "Too many checkout attempts. Please wait a few minutes, or check your existing order in Account & orders.");
   if (limited) return limited;
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const secret = process.env.RAZORPAY_KEY_SECRET;
-  if (!keyId?.startsWith("rzp_test_") || !secret) return NextResponse.json({ error: "Razorpay test credentials are not configured." }, { status: 503 });
+  const keys = razorpayKeys();
+  if (!keys) return NextResponse.json({ error: "Payments are not set up yet. Please try again later." }, { status: 503 });
+  const { keyId, secret } = keys;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 });

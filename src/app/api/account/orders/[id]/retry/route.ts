@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentCustomer } from "@/lib/customer-auth";
 import { findCustomerOrder } from "@/lib/catalogue-db";
 import { syncOrderPayment } from "@/lib/order-payment-sync";
+import { razorpayKeys } from "@/lib/payment-status";
 
 /** Asks Razorpay first, and reopens payment only if nothing has been paid or is being processed. */
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -13,8 +14,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   if (order.status === "paid") return NextResponse.json({ status: "paid" });
   if (!["payment_pending", "payment_failed"].includes(order.status)) return NextResponse.json({ error: "This order can no longer be paid. Contact us on WhatsApp if you need help." }, { status: 409 });
   if (!order.razorpayOrderId) return NextResponse.json({ error: "This order has no payment session to retry. Contact support so we can check it." }, { status: 409 });
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  if (!keyId?.startsWith("rzp_test_")) return NextResponse.json({ error: "Razorpay test mode is not configured." }, { status: 503 });
+  const keyId = razorpayKeys()?.keyId;
+  if (!keyId) return NextResponse.json({ error: "Payments are not set up yet. Please try again later." }, { status: 503 });
   try {
     const { decision, status } = await syncOrderPayment({ ...order, razorpayOrderId: order.razorpayOrderId }, customer.id);
     if (decision.kind === "paid") return NextResponse.json({ status });

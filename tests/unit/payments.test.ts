@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decidePayment } from "@/lib/razorpay-payments";
-import { getPaymentStatus } from "@/lib/payment-status";
+import { getPaymentStatus, razorpayKeys } from "@/lib/payment-status";
 
 const ORDER = "order_1";
 const pay = (over: object) => ({ id: "pay_1", order_id: ORDER, amount: 99900, currency: "INR", status: "captured", ...over });
@@ -19,11 +19,18 @@ describe("deciding what Razorpay's answer means", () => {
 });
 
 describe("Razorpay status for Settings", () => {
-  it("opens checkout only with a test key and a secret", () => {
+  it("opens checkout with a test or live key and its secret", () => {
     expect(getPaymentStatus({ RAZORPAY_KEY_ID: "rzp_test_x", RAZORPAY_KEY_SECRET: "s" })).toMatchObject({ mode: "test", checkoutOpen: true });
     expect(getPaymentStatus({ RAZORPAY_KEY_ID: "rzp_test_x" })).toMatchObject({ mode: "test", checkoutOpen: false });
-    expect(getPaymentStatus({ RAZORPAY_KEY_ID: "rzp_live_x", RAZORPAY_KEY_SECRET: "s" })).toMatchObject({ mode: "live", checkoutOpen: false });
+    expect(getPaymentStatus({ RAZORPAY_KEY_ID: "rzp_live_x", RAZORPAY_KEY_SECRET: "s" })).toMatchObject({ mode: "live", checkoutOpen: true });
+    expect(getPaymentStatus({ RAZORPAY_KEY_ID: "rzp_live_x" })).toMatchObject({ mode: "live", checkoutOpen: false });
     expect(getPaymentStatus({})).toMatchObject({ mode: "unconfigured", checkoutOpen: false });
+  });
+  it("gives checkout the keys only when both are set and the key is a Razorpay one", () => {
+    expect(razorpayKeys({ RAZORPAY_KEY_ID: "rzp_live_x", RAZORPAY_KEY_SECRET: "s" })).toEqual({ keyId: "rzp_live_x", secret: "s" });
+    expect(razorpayKeys({ RAZORPAY_KEY_ID: "rzp_test_x", RAZORPAY_KEY_SECRET: "s" })).toEqual({ keyId: "rzp_test_x", secret: "s" });
+    expect(razorpayKeys({ RAZORPAY_KEY_ID: "rzp_live_x" })).toBeNull();
+    expect(razorpayKeys({ RAZORPAY_KEY_ID: "something_else", RAZORPAY_KEY_SECRET: "s" })).toBeNull();
   });
   it("never includes key or secret values", () => {
     const text = JSON.stringify(getPaymentStatus({ RAZORPAY_KEY_ID: "rzp_test_KEYVALUE", RAZORPAY_KEY_SECRET: "SECRETVALUE", RAZORPAY_WEBHOOK_SECRET: "HOOKVALUE" }));
