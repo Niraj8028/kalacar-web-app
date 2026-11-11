@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { whatsappLink } from "@/data/support";
 
-export const WHATSAPP_URL = "https://wa.me/918830646308";
+export const WHATSAPP_URL = whatsappLink();
 const FALLBACK = [
   { slug: "about", title: "About Kalacar" }, { slug: "contact", title: "Contact us" }, { slug: "faq", title: "FAQs" },
   { slug: "shipping", title: "Shipping" }, { slug: "returns", title: "Returns and refunds" }, { slug: "safe-transit", title: "Safe Transit Guarantee" },

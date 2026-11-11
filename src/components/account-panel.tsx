@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORT_WHATSAPP, whatsappLink } from "@/data/support";
 import { ShopLogo } from "@/components/shop-logo";
 import { useLiveLoad } from "@/lib/realtime-client";
 import Link from "next/link";
@@ -19,7 +20,7 @@ const noSubscribe = () => () => {};
 const orderDate = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 const DELIVERY_STEPS = ["Order placed", "Preparing", "Dispatched", "Delivered"];
 const deliveryStep = (status: string) => ({ dispatched: 2, completed: 3 } as Record<string, number>)[status] ?? 1;
-const waLink = (orderId?: string) => `https://wa.me/918830646308?text=${encodeURIComponent(orderId ? `Hi Kalacar, I need help with order ${orderId}. Please check its payment or delivery status.` : "Hi Kalacar, I have a question about an order.")}`;
+const waLink = (orderId?: string) => whatsappLink(orderId ? `Hi Kalacar, I need help with order ${orderId}. Please check its payment or delivery status.` : "Hi Kalacar, I have a question about an order.");
 
 /** Shows the courier and ID. Trackon opens with the result; India Post needs a captcha, so the ID is copied for pasting. */
 function TrackingCard({ courier, trackingId }: { courier: CourierKey; trackingId: string }) {
@@ -217,7 +218,7 @@ export default function AccountPanel() {
         })}</div>}
         </div>
       </>}
-      <a className="account-contact" href={waLink()} target="_blank" rel="noreferrer">Questions about an order? WhatsApp Kalacar · +91 88306 46308</a>
+      <a className="account-contact" href={waLink()} target="_blank" rel="noreferrer">Questions about an order? WhatsApp Kalacar · {SUPPORT_WHATSAPP.display}</a>
     </section>
   </main>;
 }

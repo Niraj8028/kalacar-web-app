@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORT_WHATSAPP, whatsappLink } from "@/data/support";
 import { PolicyLinks } from "@/components/policy-links";
 import { Collections, ComingSoon, FirstLaunch, HomeHero, ProductSpotlight, HomeReviews, OurStory, WhyChooseUs } from "@/components/home-sections";
 import Image from "next/image";
@@ -186,7 +187,7 @@ export default function Storefront() {
           />
         </Link>
         <p>Prices and availability reflect the current catalogue.</p>
-        <a className="footer-whatsapp" href="https://wa.me/918830646308?text=Hi%20Kalacar%2C%20I%20have%20a%20question%20about%20an%20order." target="_blank" rel="noreferrer">WhatsApp · +91 88306 46308</a>
+        <a className="footer-whatsapp" href={whatsappLink("Hi Kalacar, I have a question about an order.")} target="_blank" rel="noreferrer">WhatsApp · {SUPPORT_WHATSAPP.display}</a>
         <PolicyLinks />
       </footer>
     </main>
