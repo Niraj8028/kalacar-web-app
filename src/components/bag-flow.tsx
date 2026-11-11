@@ -8,6 +8,7 @@ import type { FormEvent } from "react";
 import { CouponBox, type AppliedCoupon } from "@/components/coupon-box";
 import { BagLines, GiftChoice, money } from "@/components/bag-lines";
 import { useCart } from "@/components/cart-provider";
+import { useSiteContent } from "@/components/site-content-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
 import { AddressFields, addressSummary, emptyAddress, toDraft } from "@/components/address-fields";
 import type { AddressDraft, SavedAddress } from "@/components/address-fields";
@@ -61,6 +62,7 @@ function loadRazorpay() {
 
 /** The full bag page: items on the left, summary and checkout on the right. All prices and stock are decided again by the server at payment. */
 export default function BagFlow() {
+  const { testPayments } = useSiteContent();
   const { lines, resolved, subtotal, count, clear, catalogueLoading, catalogueError, giftOffer, wantGift, setWantGift } = useCart();
   const router = useRouter();
   const [notice, setNotice] = useState("");
@@ -146,6 +148,32 @@ export default function BagFlow() {
     if (bagCleared) { setPaidOrderId(orderId); setSuccess(message); } else setNotice(message);
   }
 
+  /** Drops the saved checkout, so the next Pay places a fresh order. */
+  function forgetSavedCheckout() {
+    localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); setPaymentStatus(""); checkoutKey.current = { fingerprint: "", value: "" };
+  }
+  const CANCELLED = ["cancelled", "payment_cancelled", "payment_setup_failed"];
+  const cancelledNotice = (orderId: string) => `Order ${orderId.slice(0, 8).toUpperCase()} was cancelled and nothing was charged. Your bag is still here.`;
+
+  /** Cancels the saved unpaid order (the server asks Razorpay first). Returns false if it turned out to be paid or is still being paid. */
+  async function cancelSavedOrder(saved: SavedCheckout): Promise<boolean> {
+    const response = await fetch(`/api/account/orders/${saved.orderId}/cancel`, { method: "POST", cache: "no-store" });
+    const result = await response.json().catch(() => ({})) as { status?: string; error?: string };
+    if (!response.ok) throw new Error(result.error || "Could not cancel the earlier order. Please try again.");
+    if (result.status === "paid") { await syncSavedCheckout(saved, true, sameBag(saved.fingerprint, lines)); return false; }
+    forgetSavedCheckout();
+    return true;
+  }
+
+  async function cancelUnpaid() {
+    if (!savedCheckout?.orderId || !window.confirm(`Cancel unpaid order ${savedCheckout.orderId.slice(0, 8).toUpperCase()}? Your bag stays as it is.`)) return;
+    const saved = savedCheckout;
+    setBusy(true); setError(""); setNotice("");
+    try { if (await cancelSavedOrder(saved)) setNotice(cancelledNotice(saved.orderId)); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not cancel the order."); }
+    finally { setBusy(false); }
+  }
+
   async function syncSavedCheckout(saved = savedCheckout, quiet = false, clearCurrentCart = true) {
     if (!saved?.orderId) return;
     if (quiet) lastAutoSyncAt.current = Date.now();
@@ -154,6 +182,7 @@ export default function BagFlow() {
       const response = await fetch(`/api/account/orders/${saved.orderId}/sync`, { method: "POST", cache: "no-store" });
       const result = await response.json() as { status?: string; error?: string };
       if (!response.ok) throw new Error(result.error || "Could not check payment status.");
+      if (CANCELLED.includes(result.status ?? "")) { forgetSavedCheckout(); setError(""); setNotice(cancelledNotice(saved.orderId)); return; }
       setPaymentStatus(result.status || "payment_pending");
       if (result.status === "paid") {
         localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (clearCurrentCart) { clear(); setWantGift(false); }
@@ -178,6 +207,7 @@ export default function BagFlow() {
       const response = await fetch(`/api/account/orders/${saved.orderId}/retry`, { method: "POST" });
       const retry = await response.json() as { status?: string; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
       if (!response.ok) throw new Error(retry.error || "Could not reopen payment.");
+      if (retry.status === "cancelled") { forgetSavedCheckout(); setNotice(`${cancelledNotice(saved.orderId)} Tap Pay to place it again.`); return; }
       if (retry.status === "paid") {
         localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft(); if (sameItems) { clear(); setWantGift(false); }
         setPaymentStatus("paid"); confirmPaid(`This order is already paid. Order ${saved.orderId.slice(0, 8)} is recorded.`, sameItems, saved.orderId);
@@ -192,7 +222,7 @@ export default function BagFlow() {
         handler: (payment) => void verifyPayment(retry.orderId, payment, sameItems),
         modal: {
           backdropclose: false, escape: false, handleback: false, confirm_close: true,
-          ondismiss: () => { setError("Checkout closed. We’re checking the saved order status; don’t place another order while it is being confirmed."); void syncSavedCheckout(saved, true, sameItems); },
+          ondismiss: () => { setError("Payment window closed. Your order is kept for 1 hour: use Retry payment to pay, or Cancel order."); void syncSavedCheckout(saved, true, sameItems); },
         },
       });
       checkout.on("payment.failed", result => { setPaymentStatus("payment_failed"); setError(result.error?.description || "Payment failed. You can retry this order."); });
@@ -207,7 +237,7 @@ export default function BagFlow() {
       const result = await fetch("/api/checkout/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, ...payment }) });
       const verification = await result.json() as { error?: string; status?: string };
       if (!result.ok || verification.status !== "paid") throw new Error(verification.error || "Payment is still being verified.");
-      const confirmation = `Payment confirmed in test mode. Order ${orderId.slice(0, 8)} is recorded.`;
+      const confirmation = `Payment confirmed${testPayments ? " in test mode" : ""}. Order ${orderId.slice(0, 8).toUpperCase()} is recorded.`;
       localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); clearAddressDraft();
       setVerificationData(null); if (clearBag) { clear(); setWantGift(false); } checkoutKey.current = { fingerprint: "", value: "" };
       confirmPaid(confirmation, clearBag, orderId);
@@ -219,44 +249,51 @@ export default function BagFlow() {
 
   async function startCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setSuccess(""); setNotice("");
-    try {
-      if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
-      const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)), customer, gift: Boolean(giftOffer && wantGift), coupon: coupon?.code ?? "" });
-      const existing = readSavedCheckout();
-      if (existing && existing.fingerprint !== fingerprint) {
-        if (existing.orderId) await syncSavedCheckout(existing, true, false);
-        const status = readSavedCheckout();
-        if (status) throw new Error("You already have an unpaid order. Use Retry payment to pay it, or check its status, before starting a different checkout.");
-      }
-      if (!checkoutKey.current.value || checkoutKey.current.fingerprint !== fingerprint) {
-        checkoutKey.current = { fingerprint, value: existing?.fingerprint === fingerprint ? existing.idempotencyKey : crypto.randomUUID() };
-      }
-      const persisted: SavedCheckout = { fingerprint, idempotencyKey: checkoutKey.current.value, orderId: existing?.fingerprint === fingerprint ? existing.orderId : "", razorpayOrderId: existing?.fingerprint === fingerprint ? existing.razorpayOrderId : "", amount: existing?.fingerprint === fingerprint ? existing.amount : 0 };
-      localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(persisted));
-      const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })), customer, saveAddress: selectedAddress === "new" && saveAddress, giftWrap: Boolean(giftOffer && wantGift), couponCode: coupon?.code ?? null }) });
-      const order = await response.json() as { coupon?: boolean; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string };
-      if (!response.ok) {
-        if (response.status === 502) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); }
-        // The coupon stopped applying (expired, used up…): nothing was charged; drop it so the total is honest.
-        if (order.coupon) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); setCoupon(null); throw new Error(`${order.error} The coupon was removed — check the new total and try again.`); }
-        throw new Error(order.error || "Could not start checkout.");
-      }
-      const activeOrder: SavedCheckout = { ...persisted, orderId: order.orderId, razorpayOrderId: order.razorpayOrderId, amount: order.amount };
-      localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(activeOrder)); setSavedCheckout(activeOrder);
-      const checkout = new window.Razorpay({
-        key: order.keyId, amount: order.amount, currency: order.currency, name: "Kalacar",
-        description: "Small devotional murti order", order_id: order.razorpayOrderId,
-        prefill: { name: customer.fullName, email: account?.email ?? "", contact: customer.phone.replace(/\D/g, "").length === 10 ? `+91${customer.phone.replace(/\D/g, "")}` : customer.phone },
-        handler: (payment) => void verifyPayment(order.orderId, payment),
-        modal: {
-          backdropclose: false, escape: false, handleback: false, confirm_close: true,
-          ondismiss: () => { setError("Checkout closed. We’re checking the saved order status; don’t place another order while it is being confirmed."); void syncSavedCheckout(activeOrder, true); },
-        },
-      });
-      checkout.on("payment.failed", result => setError(result.error?.description || "Payment failed. You can retry this test order."));
-      checkout.open();
-    } catch (checkoutError) { setError(checkoutError instanceof Error ? checkoutError.message : "Could not start checkout."); }
+    try { await placeOrder(); }
+    catch (checkoutError) { setError(checkoutError instanceof Error ? checkoutError.message : "Could not start checkout."); }
     finally { setBusy(false); }
+  }
+
+  async function placeOrder(startedAfresh = false): Promise<void> {
+    if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
+    const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)), customer, gift: Boolean(giftOffer && wantGift), coupon: coupon?.code ?? "" });
+    let existing = readSavedCheckout();
+    // The bag or address changed since an earlier unpaid order: that order is cancelled (after checking Razorpay) so its stock is freed.
+    if (existing && existing.fingerprint !== fingerprint) {
+      if (existing.orderId && !await cancelSavedOrder(existing)) return;
+      forgetSavedCheckout(); existing = null;
+    }
+    if (!checkoutKey.current.value || checkoutKey.current.fingerprint !== fingerprint) {
+      checkoutKey.current = { fingerprint, value: existing?.fingerprint === fingerprint ? existing.idempotencyKey : crypto.randomUUID() };
+    }
+    const persisted: SavedCheckout = { fingerprint, idempotencyKey: checkoutKey.current.value, orderId: existing?.fingerprint === fingerprint ? existing.orderId : "", razorpayOrderId: existing?.fingerprint === fingerprint ? existing.razorpayOrderId : "", amount: existing?.fingerprint === fingerprint ? existing.amount : 0 };
+    localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(persisted));
+    const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })), customer, saveAddress: selectedAddress === "new" && saveAddress, giftWrap: Boolean(giftOffer && wantGift), couponCode: coupon?.code ?? null }) });
+    const order = await response.json() as { coupon?: boolean; stale?: "paid" | "cancelled"; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string };
+    if (!response.ok && order.stale && !startedAfresh) {
+      if (order.stale === "paid") { await syncSavedCheckout({ ...persisted, orderId: order.orderId }, true); return; }
+      forgetSavedCheckout(); return placeOrder(true);
+    }
+    if (!response.ok) {
+      if (response.status === 502) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); }
+      // The coupon stopped applying (expired, used up…): nothing was charged; drop it so the total is honest.
+      if (order.coupon) { checkoutKey.current = { fingerprint: "", value: "" }; localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); setCoupon(null); throw new Error(`${order.error} The coupon was removed — check the new total and try again.`); }
+      throw new Error(order.error || "Could not start checkout.");
+    }
+    const activeOrder: SavedCheckout = { ...persisted, orderId: order.orderId, razorpayOrderId: order.razorpayOrderId, amount: order.amount };
+    localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(activeOrder)); setSavedCheckout(activeOrder);
+    const checkout = new window.Razorpay({
+      key: order.keyId, amount: order.amount, currency: order.currency, name: "Kalacar",
+      description: "Small devotional murti order", order_id: order.razorpayOrderId,
+      prefill: { name: customer.fullName, email: account?.email ?? "", contact: customer.phone.replace(/\D/g, "").length === 10 ? `+91${customer.phone.replace(/\D/g, "")}` : customer.phone },
+      handler: (payment) => void verifyPayment(order.orderId, payment),
+      modal: {
+        backdropclose: false, escape: false, handleback: false, confirm_close: true,
+        ondismiss: () => { setError("Payment window closed. Your order is kept for 1 hour: use Retry payment to pay, or Cancel order."); void syncSavedCheckout(activeOrder, true); },
+      },
+    });
+    checkout.on("payment.failed", result => setError(result.error?.description || "Payment failed. You can try again."));
+    checkout.open();
   }
 
   const total = subtotal - discount + giftTotal;
@@ -271,10 +308,11 @@ export default function BagFlow() {
   </div>;
   const unpaid = savedCheckout && !showSuccess && <div className="bag-unpaid" role="status">
     <strong>{savedCheckout.orderId ? `Unpaid order ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout started"}</strong>
-    <p>{paymentStatus === "payment_failed" ? "The last payment didn't go through. You can try again." : savedCheckout.orderId ? "This order is saved and hasn't been paid." : "Continue with the same bag to resume it."}</p>
+    <p>{paymentStatus === "payment_failed" ? "The last payment didn't go through. You can try again." : savedCheckout.orderId ? "This order is saved for 1 hour and hasn't been paid. Changing your bag and paying again cancels it." : "Continue with the same bag to resume it."}</p>
     {savedCheckout.orderId && <div className="bag-unpaid-actions">
       {account && <button type="button" className="retry-order-button" disabled={busy} onClick={() => void retrySavedCheckout()}>Retry payment</button>}
       <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>
+      {account && <button type="button" className="sync-order-button" disabled={busy} onClick={() => void cancelUnpaid()}>Cancel order</button>}
     </div>}
   </div>;
   const help = <a className="bag-help" href={whatsappLink("Hi Kalacar, I need help with my order or payment.")} target="_blank" rel="noreferrer">Need help? WhatsApp {SUPPORT_WHATSAPP.display} <External /></a>;
@@ -284,7 +322,7 @@ export default function BagFlow() {
   return <div className="bag-page">
     <p className="eyebrow">YOUR SELECTION</p>
     <h1>Your bag</h1>
-    <p className="bag-test-note">Test mode: no real payment is taken.</p>
+    {testPayments && <p className="bag-test-note">Test mode: no real payment is taken.</p>}
     {notice && <p className="account-message" role="status">{notice}</p>}
     {unpaid}
     {showSuccess ? <div className="bag-done" role="status">

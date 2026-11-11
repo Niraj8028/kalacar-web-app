@@ -78,7 +78,7 @@ export const instagramLink = (username: string) => `https://www.instagram.com/${
 export const FESTIVE_OVERLAYS = ["off", "diwali", "ganpati", "janmashtami"] as const;
 export type FestiveSettings = { overlay: typeof FESTIVE_OVERLAYS[number] };
 export const DEFAULT_FESTIVE: FestiveSettings = { overlay: "off" };
-export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings; brand: BrandSettings };
+export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings; brand: BrandSettings; testPayments?: boolean };
 
 /** Average and count from real reviews only. */
 export function reviewSummary(reviews: Pick<Review, "rating">[]) {
