@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { CartProvider } from "@/components/cart-provider";
 import { FestiveOverlay } from "@/components/festive-overlay";
 import { SiteContentProvider } from "@/components/site-content-provider";
+import { TrackingTags } from "@/components/tracking-tags";
 import CartDrawer from "@/components/cart-drawer";
 import StoreGate from "@/components/store-gate";
 import "./globals.css";
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-theme="light" data-scroll-behavior="smooth" className={`${display.variable} ${body.variable}`}>
-      <body><CartProvider><SiteContentProvider><FestiveOverlay /><StoreGate>{children}</StoreGate><CartDrawer /></SiteContentProvider></CartProvider></body>
+      <body><CartProvider><SiteContentProvider><TrackingTags /><FestiveOverlay /><StoreGate>{children}</StoreGate><CartDrawer /></SiteContentProvider></CartProvider></body>
     </html>
   );
 }

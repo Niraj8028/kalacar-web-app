@@ -73,12 +73,16 @@ export type BrandSettings = { logo: string; width: number; white: boolean };
 export const LOGO_WIDTH = { min: 60, max: 320 };
 export const DEFAULT_LOGO = "/images/kalakar-logo.png";
 export const DEFAULT_BRAND: BrandSettings = { logo: "", width: 0, white: false };
+/** Ad and analytics tags on every shop page. Empty means none are loaded. */
+export type TrackingSettings = { metaPixelId: string; googleTagIds: string[] };
+export const DEFAULT_TRACKING: TrackingSettings = { metaPixelId: "", googleTagIds: [] };
+export const MAX_GOOGLE_TAGS = 5;
 export const DEFAULT_INSTAGRAM: InstagramSettings = { show: false, username: "" };
 export const instagramLink = (username: string) => `https://www.instagram.com/${encodeURIComponent(username)}/`;
 export const FESTIVE_OVERLAYS = ["off", "diwali", "ganpati", "janmashtami"] as const;
 export type FestiveSettings = { overlay: typeof FESTIVE_OVERLAYS[number] };
 export const DEFAULT_FESTIVE: FestiveSettings = { overlay: "off" };
-export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings; brand: BrandSettings; testPayments?: boolean };
+export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings; brand: BrandSettings; tracking?: TrackingSettings; testPayments?: boolean };
 
 /** Average and count from real reviews only. */
 export function reviewSummary(reviews: Pick<Review, "rating">[]) {
