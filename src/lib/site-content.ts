@@ -4,8 +4,9 @@ import { addressDb } from "@/lib/catalogue-db";
 import { getFestive } from "@/lib/festive";
 import { getInstagram } from "@/lib/instagram";
 import { getBrand } from "@/lib/brand";
+import { getTracking } from "@/lib/tracking";
 import { listCategories } from "@/lib/categories";
-import { DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
+import { DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
 import type { HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
 
 const text = (value: unknown, max: number, fallback = "") => typeof value === "string" ? value.trim().slice(0, max) : fallback;
@@ -84,8 +85,8 @@ export const saveHome = (value: HomeContent) => writeRow("home_page", value);
 export const saveProductPage = (value: ProductPageContent) => writeRow("product_page", value);
 
 export async function getSiteContent(): Promise<SiteContent> {
-  const [home, productPage, categories, instagram, festive, brand] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram(), getFestive(), getBrand()]);
-  return { home, productPage, instagram, festive, brand, testPayments: getPaymentStatus().mode === "test", collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
+  const [home, productPage, categories, instagram, festive, brand, tracking] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram(), getFestive(), getBrand(), getTracking().catch(() => DEFAULT_TRACKING)]);
+  return { home, productPage, instagram, festive, brand, tracking, testPayments: getPaymentStatus().mode === "test", collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
 }
 
 // Reviews are entered by the owner from real customers. Ratings shown on the shop are worked out from these.
