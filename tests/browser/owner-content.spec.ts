@@ -329,3 +329,28 @@ test.describe("hero slides", () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe("footer, why choose and product line follow the dashboard", () => {
+  test("footer text, WhatsApp and links come from Settings, in the phone menu too", async ({ page }) => {
+    await mockShop(page, { content: { ...content(), footer: { text: "Made with devotion in Pune", showWhatsapp: false, links: [{ label: "Our story", link: "/about" }, { label: "Instagram", link: "https://instagram.com/kalacar" }] } } });
+    await page.goto("/products/ganesh");
+    const footer = page.locator("footer.shop-footer");
+    await expect(footer.getByText("Made with devotion in Pune")).toBeVisible();
+    await expect(footer.getByRole("link", { name: /WhatsApp/ })).toHaveCount(0);
+    await expect(footer.getByRole("navigation").getByRole("link")).toHaveText(["Our story", "Instagram"]);
+    await expect(footer.getByRole("link", { name: "Instagram" })).toHaveAttribute("target", "_blank");
+    await expect(footer.getByRole("link", { name: "Contact us" })).toHaveCount(0);
+  });
+  test("why choose shows reasons with icons and no numbers, and the product line is the owner's", async ({ page }) => {
+    const why = { ...DEFAULT_HOME.why, show: true, items: [{ title: "Safe packing", text: "Bubble wrapped", icon: "/uploads/box.png" }, { title: "Real photos", text: "What you see", icon: "" }] };
+    await mockShop(page, { content: content({ why }, { eyebrow: { show: true, text: "{category} · HANDPICKED" } }) });
+    await page.route("**/uploads/box.png", route => route.fulfill({ contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'/>" }));
+    await page.goto("/");
+    const list = page.locator(".home-why-list");
+    await expect(list.getByRole("heading", { name: "Safe packing" })).toBeVisible();
+    await expect(list.locator(".home-why-icon")).toHaveCount(1);
+    await expect(list).not.toContainText("01");
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".eyebrow").first()).toHaveText("Ganesh · HANDPICKED");
+  });
+});

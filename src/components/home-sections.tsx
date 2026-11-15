@@ -234,10 +234,10 @@ export function WhyChooseUs() {
     {mark && <div className="home-why-logo">{mark}</div>}
     <div className="home-why-body">
       <SectionHead id="why-title" {...section} />
-      <ol className="home-why-list">{section.items.map((item, index) => <li key={`${item.title}-${index}`}>
-        <span className="home-why-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+      <ul className="home-why-list">{section.items.map((item, index) => <li key={`${item.title}-${index}`}>
+        {item.icon && <Image src={item.icon} alt="" width={48} height={48} className="home-why-icon" />}
         <div>{item.title && <h3>{item.title}</h3>}{item.text && <p>{item.text}</p>}</div>
-      </li>)}</ol>
+      </li>)}</ul>
     </div>
   </section>;
 }

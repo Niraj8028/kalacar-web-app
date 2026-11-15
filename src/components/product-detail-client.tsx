@@ -78,7 +78,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
         {gallery.length > 1 && <div className="detail-thumbnails" role="group" aria-label={`${item.name} photos`}>{gallery.map((image, index) => <button type="button" className={`detail-thumbnail${image === shownImage ? " selected" : ""}`} key={image} aria-label={`Show photo ${index + 1}`} aria-pressed={image === shownImage} onClick={() => setImageIndex(index)}><Image src={image} alt="" fill sizes="120px" /></button>)}</div>}
       </div>
       <div className="detail-copy">
-        <p className="eyebrow">{item.deity} · SMALL DEVOTIONAL MURTI</p>
+        {productPage.eyebrow.show && productPage.eyebrow.text && <p className="eyebrow">{productPage.eyebrow.text.replaceAll("{category}", item.deity)}</p>}
         <h1>{item.name}</h1>
         <div className="detail-proof-row"><RatingLine reviews={itemReviews} /><SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} /></div>
         {item.tagline && <p className="detail-tagline">{item.tagline}</p>}
