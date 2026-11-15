@@ -10,7 +10,8 @@ export type ProductGridSection = { show: boolean; showTitle: boolean; title: str
 export type ComingSoonItem = { name: string; image: string };
 export type ComingSoonSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: ComingSoonItem[] };
 export type CollectionsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string };
-export type WhyItem = { title: string; text: string };
+/** One reason: an optional small icon on the left, title and text on the right. */
+export type WhyItem = { title: string; text: string; icon: string };
 /** Reasons on the right; on the left the shop logo, or an icon/photo the owner uploads in its place. */
 export type WhySection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: WhyItem[]; showLogo: boolean; logo: string };
 /** The product grid. No chosen products means every product; category buttons are optional. */
@@ -37,6 +38,8 @@ export type ProductPageContent = {
   stickyBar: { show: boolean };
   endLink: { show: boolean; label: string; link: string };
   whatsappHelp: { show: boolean; label: string };
+  /** The small line above the product name. {category} becomes the product's category. */
+  eyebrow: { show: boolean; text: string };
 };
 
 export const DEFAULT_HERO_SLIDE: HeroSlide = { productId: "", backgroundImage: "", desktopImage: "", showEyebrow: true, eyebrow: "THE KALACAR SHOP", showTitle: true, title: "Small murtis, close to home.", showDescription: true, description: "A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.", buy: { show: true, label: "Buy now", showPrice: true }, explore: { show: true, label: "Explore collections", link: "#catalogue" } };
@@ -63,6 +66,7 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   stickyBar: { show: true },
   endLink: { show: true, label: "Explore more murtis", link: "/#catalogue" },
   whatsappHelp: { show: true, label: "Have questions? Chat on WhatsApp" },
+  eyebrow: { show: true, text: "{category} · SMALL DEVOTIONAL MURTI" },
 };
 
 export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; published: boolean };
@@ -77,12 +81,18 @@ export const DEFAULT_BRAND: BrandSettings = { logo: "", width: 0, white: false }
 export type TrackingSettings = { metaPixelId: string; googleTagIds: string[] };
 export const DEFAULT_TRACKING: TrackingSettings = { metaPixelId: "", googleTagIds: [] };
 export const MAX_GOOGLE_TAGS = 5;
+/** A link in the footer and the phone menu: a page on this site or an https address. */
+export type FooterLink = { label: string; link: string };
+/** The footer on every page. links null means automatic: published pages with "Show in the footer" on. */
+export type FooterSettings = { text: string; showWhatsapp: boolean; links: FooterLink[] | null };
+export const DEFAULT_FOOTER: FooterSettings = { text: "Prices and availability reflect the current catalogue.", showWhatsapp: true, links: null };
+export const MAX_FOOTER_LINKS = 16;
 export const DEFAULT_INSTAGRAM: InstagramSettings = { show: false, username: "" };
 export const instagramLink = (username: string) => `https://www.instagram.com/${encodeURIComponent(username)}/`;
 export const FESTIVE_OVERLAYS = ["off", "diwali", "ganpati", "janmashtami"] as const;
 export type FestiveSettings = { overlay: typeof FESTIVE_OVERLAYS[number] };
 export const DEFAULT_FESTIVE: FestiveSettings = { overlay: "off" };
-export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings; brand: BrandSettings; tracking?: TrackingSettings; testPayments?: boolean };
+export type SiteContent = { home: HomeContent; productPage: ProductPageContent; collections: ShopCategory[]; instagram: InstagramSettings; festive: FestiveSettings; brand: BrandSettings; tracking?: TrackingSettings; footer?: FooterSettings; testPayments?: boolean };
 
 /** Average and count from real reviews only. */
 export function reviewSummary(reviews: Pick<Review, "rating">[]) {

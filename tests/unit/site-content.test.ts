@@ -125,3 +125,27 @@ describe("reviews", () => {
     for (const bad of ["http://youtube.com/watch?v=abc123DEF", "https://evil.com/watch?v=abc123DEF", "https://youtube.com.evil.com/watch?v=abc123DEF", "https://youtube.com/watch?v=<script>", "nope", ""]) expect(videoEmbed(bad)).toBeNull();
   });
 });
+
+describe("footer, why-choose icons and product eyebrow", () => {
+  it("keeps the footer automatic until a list is saved, and drops unsafe or empty links", async () => {
+    const { parseFooter } = await import("@/lib/site-content");
+    expect(parseFooter(undefined)).toEqual({ text: "Prices and availability reflect the current catalogue.", showWhatsapp: true, links: null });
+    const saved = parseFooter({ text: "  Made with devotion  ", showWhatsapp: false, links: [
+      { label: "About", link: "/about" }, { label: "Insta", link: "https://instagram.com/kalacar" },
+      { label: "Bad", link: "javascript:alert(1)" }, { label: "Bad 2", link: "//evil.com" }, { label: "", link: "/faq" },
+    ] });
+    expect(saved).toEqual({ text: "Made with devotion", showWhatsapp: false, links: [{ label: "About", link: "/about" }, { label: "Insta", link: "https://instagram.com/kalacar" }] });
+    expect(parseFooter({ links: [] }).links).toEqual([]);
+    expect(parseFooter({ text: "" }).text).toBe("");
+  });
+  it("keeps a reason's icon only if it is a photo stored by the shop", async () => {
+    const { parseHome } = await import("@/lib/site-content");
+    const why = parseHome({ why: { items: [{ title: "A", text: "x", icon: "/uploads/icon.png" }, { title: "B", text: "y", icon: "https://evil.com/x.png" }] } }).why;
+    expect(why.items.map(item => item.icon)).toEqual(["/uploads/icon.png", ""]);
+  });
+  it("lets the owner change or hide the line above the product name", async () => {
+    const { parseProductPage } = await import("@/lib/site-content");
+    expect(parseProductPage({}).eyebrow).toEqual({ show: true, text: "{category} · SMALL DEVOTIONAL MURTI" });
+    expect(parseProductPage({ eyebrow: { show: false, text: "Handpicked" } }).eyebrow).toEqual({ show: false, text: "Handpicked" });
+  });
+});

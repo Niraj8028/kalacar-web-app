@@ -1545,3 +1545,11 @@ body { overflow-x: clip; }
 .product-page .end-of-page { padding-bottom: 16px; }
 .product-page .shop-footer { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .account-checkout-note { overflow-wrap: anywhere; }
+
+/* Why choose: the logo sits straight on the page background, and the reasons are cards, two per row,
+   each with an optional icon on the left and its title and text on the right. */
+.home-why-logo { padding: 0; border-radius: 0; background: none; }
+.home-why-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; border-top: 0; }
+.home-why-list li { align-items: flex-start; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.home-why-icon { flex: none; width: 48px; height: 48px; object-fit: contain; }
+@media (max-width: 620px) { .home-why-list { grid-template-columns: minmax(0, 1fr); } .home-why-logo { padding: 0; } }

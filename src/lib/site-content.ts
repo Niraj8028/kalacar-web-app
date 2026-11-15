@@ -6,8 +6,8 @@ import { getInstagram } from "@/lib/instagram";
 import { getBrand } from "@/lib/brand";
 import { getTracking } from "@/lib/tracking";
 import { listCategories } from "@/lib/categories";
-import { DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
-import type { HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
+import { DEFAULT_FOOTER, DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_FOOTER_LINKS, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
+import type { FooterSettings, HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
 
 const text = (value: unknown, max: number, fallback = "") => typeof value === "string" ? value.trim().slice(0, max) : fallback;
 const bool = (value: unknown, fallback: boolean) => typeof value === "boolean" ? value : fallback;
@@ -45,7 +45,7 @@ export function parseHome(body: unknown): HomeContent {
     comingSoon: { ...described(soon, d.comingSoon), items: (Array.isArray(soon.items) ? soon.items : []).slice(0, 12).map(item => ({ name: text(obj(item).name, 80), image: safeImage(obj(item).image) })).filter(item => item.name || item.image) },
     collections: described(collections, d.collections),
     catalogue: { ...described(catalogue, d.catalogue), showEyebrow: bool(catalogue.showEyebrow, d.catalogue.showEyebrow), eyebrow: text(catalogue.eyebrow, 60, d.catalogue.eyebrow), productIds: ids(catalogue.productIds, 60), showFilters: bool(catalogue.showFilters, d.catalogue.showFilters) },
-    why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : []).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240) })).filter(item => item.title || item.text), showLogo: bool(why.showLogo, d.why.showLogo), logo: safeImage(why.logo) },
+    why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : []).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240), icon: safeImage(obj(item).icon) })).filter(item => item.title || item.text), showLogo: bool(why.showLogo, d.why.showLogo), logo: safeImage(why.logo) },
     reviews: { ...described(reviews, d.reviews), showText: bool(reviews.showText, d.reviews.showText), showVideo: bool(reviews.showVideo, d.reviews.showVideo) },
     story: { ...header(story, d.story), showText: bool(story.showText, d.story.showText), text: text(story.text, 2000), showImage: bool(story.showImage, d.story.showImage), image: safeImage(story.image), showFounder: bool(story.showFounder, d.story.showFounder), founder: text(story.founder, 80) },
     spotlight: { ...header(spot, d.spotlight), showDescription: bool(spot.showDescription, d.spotlight.showDescription), description: text(spot.description, 200), productId: ids([spot.productId], 1)[0] ?? "", image: safeImage(spot.image), showLogo: bool(spot.showLogo, d.spotlight.showLogo), whatsapp: { show: bool(spotWhatsapp.show, d.spotlight.whatsapp.show), label: text(spotWhatsapp.label, 40, d.spotlight.whatsapp.label) || d.spotlight.whatsapp.label } },
@@ -54,7 +54,7 @@ export function parseHome(body: unknown): HomeContent {
 
 export function parseProductPage(body: unknown): ProductPageContent {
   const input = obj(body), d = DEFAULT_PRODUCT_PAGE;
-  const offer = obj(input.offer), how = obj(input.howMade), faqs = obj(input.faqs), viewers = obj(input.viewers), sales = obj(input.recentSales), sold = obj(input.soldThisWeek), low = obj(input.lowStock), sticky = obj(input.stickyBar), end = obj(input.endLink), help = obj(input.whatsappHelp);
+  const eyebrow = obj(input.eyebrow), offer = obj(input.offer), how = obj(input.howMade), faqs = obj(input.faqs), viewers = obj(input.viewers), sales = obj(input.recentSales), sold = obj(input.soldThisWeek), low = obj(input.lowStock), sticky = obj(input.stickyBar), end = obj(input.endLink), help = obj(input.whatsappHelp);
   return {
     offer: { show: bool(offer.show, d.offer.show), title: text(offer.title, 60, d.offer.title), text: text(offer.text, 240) },
     howMade: { show: bool(how.show, d.howMade.show), title: text(how.title, 80, d.howMade.title), message: text(how.message, 1200), showImage: bool(how.showImage, d.howMade.showImage), image: safeImage(how.image), founder: text(how.founder, 80) },
@@ -66,6 +66,7 @@ export function parseProductPage(body: unknown): ProductPageContent {
     stickyBar: { show: bool(sticky.show, d.stickyBar.show) },
     endLink: { show: bool(end.show, d.endLink.show), label: text(end.label, 60, d.endLink.label) || d.endLink.label, link: safeLink(end.link, d.endLink.link) },
     whatsappHelp: { show: bool(help.show, d.whatsappHelp.show), label: text(help.label, 80, d.whatsappHelp.label) || d.whatsappHelp.label },
+    eyebrow: { show: bool(eyebrow.show, d.eyebrow.show), text: text(eyebrow.text, 80, d.eyebrow.text) },
   };
 }
 
@@ -79,14 +80,22 @@ async function writeRow(name: string, value: unknown) {
   const db = await addressDb();
   await db.execute("INSERT INTO kalacar_settings (name,value) VALUES (?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)", [name, JSON.stringify(value)]);
 }
+/** Footer text and links. Links without a label or a safe address are dropped; null keeps the automatic list. */
+export function parseFooter(body: unknown): FooterSettings {
+  const input = obj(body), d = DEFAULT_FOOTER;
+  const links = Array.isArray(input.links) ? input.links.slice(0, MAX_FOOTER_LINKS).map(item => ({ label: text(obj(item).label, 60), link: safeLink(obj(item).link, "") })).filter(item => item.label && item.link) : null;
+  return { text: text(input.text, 300, d.text), showWhatsapp: bool(input.showWhatsapp, d.showWhatsapp), links };
+}
+export const getFooter = async () => parseFooter(await readRow("footer"));
+export const saveFooter = (value: FooterSettings) => writeRow("footer", value);
 export const getHome = async () => parseHome(await readRow("home_page"));
 export const getProductPage = async () => parseProductPage(await readRow("product_page"));
 export const saveHome = (value: HomeContent) => writeRow("home_page", value);
 export const saveProductPage = (value: ProductPageContent) => writeRow("product_page", value);
 
 export async function getSiteContent(): Promise<SiteContent> {
-  const [home, productPage, categories, instagram, festive, brand, tracking] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram(), getFestive(), getBrand(), getTracking().catch(() => DEFAULT_TRACKING)]);
-  return { home, productPage, instagram, festive, brand, tracking, testPayments: getPaymentStatus().mode === "test", collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
+  const [home, productPage, categories, instagram, festive, brand, tracking, footer] = await Promise.all([getHome(), getProductPage(), listCategories(), getInstagram(), getFestive(), getBrand(), getTracking().catch(() => DEFAULT_TRACKING), getFooter().catch(() => DEFAULT_FOOTER)]);
+  return { home, productPage, instagram, festive, brand, tracking, footer, testPayments: getPaymentStatus().mode === "test", collections: categories.filter(category => category.productCount > 0).map(({ name, productCount, image }) => ({ name, productCount, image })) };
 }
 
 // Reviews are entered by the owner from real customers. Ratings shown on the shop are worked out from these.
