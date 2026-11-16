@@ -40,6 +40,10 @@ export type ProductPageContent = {
   whatsappHelp: { show: boolean; label: string };
   /** The small line above the product name. {category} becomes the product's category. */
   eyebrow: { show: boolean; text: string };
+  /** Off hides the number in stock ("Only 2 left", "5 in stock"); shoppers still see in stock or sold out. */
+  stockCount: { show: boolean };
+  /** The same Google reviews section as the home page, near the end of the product page. */
+  googleReviews: { show: boolean };
 };
 
 export const DEFAULT_HERO_SLIDE: HeroSlide = { productId: "", backgroundImage: "", desktopImage: "", showEyebrow: true, eyebrow: "THE KALACAR SHOP", showTitle: true, title: "Small murtis, close to home.", showDescription: true, description: "A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.", buy: { show: true, label: "Buy now", showPrice: true }, explore: { show: true, label: "Explore collections", link: "#catalogue" } };
@@ -49,7 +53,7 @@ export const DEFAULT_HOME: HomeContent = {
   comingSoon: { show: false, showTitle: true, title: "Coming Soon", showDescription: false, description: "", items: [] },
   collections: { show: false, showTitle: true, title: "Our Collections", showDescription: false, description: "" },
   catalogue: { show: true, showEyebrow: true, eyebrow: "FEATURED", showTitle: true, title: "Murtis for everyday spaces", showDescription: false, description: "", productIds: [], showFilters: false },
-  why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: false, description: "", items: [], showLogo: true, logo: "" },
+  why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: true, description: "Small murtis made with devotion, checked and packed by us, and sent safely to your home.", items: [{ title: "Made for small spaces", text: "Sized for car dashboards, Devghars and work desks, so Bhagwan stays with you wherever you go.", icon: "" }, { title: "Crafted with care", text: "Made by the same hands as our sister studio Murtiverse, with fine detail on every face and ornament.", icon: "" }, { title: "Checked before it ships", text: "We look over every murti ourselves before it leaves us, so it reaches you just as it should.", icon: "" }, { title: "Packed for a safe journey", text: "Wrapped and boxed with care so your murti arrives safely at your door.", icon: "" }], showLogo: true, logo: "" },
   reviews: { show: false, showTitle: true, title: "Customer love", showDescription: false, description: "", showText: true, showVideo: true },
   story: { show: false, showTitle: true, title: "Our Story", showText: true, text: "", showImage: true, image: "", showFounder: true, founder: "" },
   spotlight: { show: false, showTitle: true, title: "Bring home the divine", showDescription: true, description: "", productId: "", image: "", showLogo: true, whatsapp: { show: true, label: "Order on WhatsApp" } },
@@ -67,9 +71,11 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   endLink: { show: true, label: "Explore more murtis", link: "/#catalogue" },
   whatsappHelp: { show: true, label: "Have questions? Chat on WhatsApp" },
   eyebrow: { show: true, text: "{category} · SMALL DEVOTIONAL MURTI" },
+  stockCount: { show: false },
+  googleReviews: { show: true },
 };
 
-export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; published: boolean };
+export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; showOnProduct: boolean; published: boolean };
 export type ShopCategory = { name: string; image: string; productCount: number };
 export type InstagramSettings = { show: boolean; username: string };
 /** The shop logo. Empty logo means the built-in one; width 0 means the default size; white turns an uploaded logo white on dark backgrounds. */

@@ -170,6 +170,9 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [couponColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'coupon_id'");
   if (!couponColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN coupon_id INT UNSIGNED NULL AFTER gift_wrap_price, ADD COLUMN coupon_code VARCHAR(32) NULL AFTER coupon_id, ADD COLUMN discount INT UNSIGNED NOT NULL DEFAULT 0 AFTER coupon_code, ADD KEY orders_coupon_id (coupon_id)");
+  // Each review can be left out of the product page list while still counting towards its stars.
+  const [reviewProductColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_reviews LIKE 'show_on_product'");
+  if (!reviewProductColumns.length) await db.execute("ALTER TABLE kalacar_reviews ADD COLUMN show_on_product TINYINT(1) NOT NULL DEFAULT 1 AFTER show_on_home");
   // Product web addresses follow the name (or the owner's own permalink); old addresses redirect to the new one.
   const [slugColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'slug'");
   if (!slugColumns.length) await db.execute("ALTER TABLE kalacar_products ADD COLUMN slug VARCHAR(80) NULL AFTER id, ADD COLUMN slug_custom TINYINT(1) NOT NULL DEFAULT 0 AFTER slug, ADD UNIQUE KEY products_slug (slug)");

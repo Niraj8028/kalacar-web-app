@@ -20,7 +20,7 @@ import { productPath } from "@/lib/permalinks";
 const categoriesOf = (item: StoreItem) => item.categories?.length ? item.categories : [item.deity];
 
 export default function Storefront() {
-  const { home } = useSiteContent();
+  const { home, productPage } = useSiteContent();
   const logo = useLogo();
   const { products, catalogueLoading, catalogueError } = useCart();
   const [activeFilter, setActiveFilter] = useState("All murtis");
@@ -154,7 +154,7 @@ export default function Storefront() {
                   {item.variants.length > 1 && <p className="card-swatches" aria-label={`${item.variants.length} colours: ${item.variants.map(v => v.name).join(", ")}`}>{item.variants.map(v => <span key={v.id} className="colour-dot" style={{ background: v.swatch }} title={v.name} aria-hidden="true" />)}<small>{item.variants.length} colours</small></p>}
                   <span className="details-link" aria-hidden="true">View details <ArrowRight /></span>
                   <div className="product-buy-row">
-                    <span className="product-price-block"><strong>{new Set(item.variants.map(v => v.price)).size > 1 ? "from " : ""}₹{item.price}</strong>{item.originalPrice > item.price && <del>₹{item.originalPrice}</del>}<small>{item.stock < 1 ? "out of stock" : item.stock <= 3 ? `only ${item.stock} left` : "in stock"}</small></span>
+                    <span className="product-price-block"><strong>{new Set(item.variants.map(v => v.price)).size > 1 ? "from " : ""}₹{item.price}</strong>{item.originalPrice > item.price && <del>₹{item.originalPrice}</del>}<small>{item.stock < 1 ? "out of stock" : item.stock <= 3 && productPage.stockCount.show ? `only ${item.stock} left` : "in stock"}</small></span>
                     {item.variants.length > 1 ? <Link className="add-button choose-colour" href={productPath(item)}>Choose colour</Link> : <AddToBagButton id={item.id} variantId={item.variants[0]?.id} disabled={item.stock < 1} />}
                   </div>
                 </div>

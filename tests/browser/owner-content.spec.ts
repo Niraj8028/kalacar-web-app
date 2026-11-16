@@ -129,10 +129,35 @@ test.describe("product page follows the dashboard", () => {
     await page.goto("/products/soldout");
     await expect(page.locator(".rating-line")).toHaveCount(0);
   });
-  test("low stock message uses the real number", async ({ page }) => {
-    await mockShop(page, { content: content({}, { lowStock: { threshold: 10, text: "Hurry! Only {count} left" } }) });
+  test("low stock message uses the real number when the stock count is shown", async ({ page }) => {
+    await mockShop(page, { content: content({}, { stockCount: { show: true }, lowStock: { threshold: 10, text: "Hurry! Only {count} left" } }) });
     await page.goto("/products/ganesh");
     await expect(page.getByText("Hurry! Only 8 left")).toBeVisible();
+    await expect(page.locator(".product-facts")).toContainText("8 in stock");
+  });
+  test("the number in stock stays hidden unless turned on", async ({ page }) => {
+    await mockShop(page, { content: content({}, { lowStock: { threshold: 10, text: "Hurry! Only {count} left" } }) });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".stock-message")).toHaveText("In stock");
+    await expect(page.locator(".product-facts")).toContainText("In stock");
+    await expect(page.getByText(/\b8\b.*(left|in stock)/)).toHaveCount(0);
+  });
+  test("every review counts in the stars, but only the chosen ones are listed", async ({ page }) => {
+    await mockShop(page, { content: content(), reviews: [review({ id: 1, productId: "ganesh", rating: 5, text: "Listed review" }), review({ id: 2, productId: "ganesh", rating: 4, text: "Hidden review", showOnProduct: false })] });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".detail-copy .rating-line")).toContainText("4.5 (2 reviews)");
+    await expect(page.locator("#customer-reviews .rating-line")).toContainText("(2 reviews)");
+    await expect(page.getByText("Listed review")).toBeVisible();
+    await expect(page.getByText("Hidden review")).toHaveCount(0);
+  });
+  test("Google reviews section shows on the product page and can be turned off", async ({ page }) => {
+    await mockShop(page, { content: content() });
+    await page.goto("/products/ganesh");
+    await expect(page.locator("section.greviews")).toBeVisible();
+    await mockShop(page, { content: content({}, { googleReviews: { show: false } }) });
+    await page.goto("/products/krushna");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator("section.greviews")).toHaveCount(0);
   });
   test("real figures appear only when turned on and above the minimum", async ({ page }) => {
     const proof = { recent: [{ productId: "ganesh", productName: "Test Ganesh", minutesAgo: 25, firstName: "" }], soldThisWeek: { ganesh: 5, krushna: 1 } };
