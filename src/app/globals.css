@@ -1564,3 +1564,10 @@ body { overflow-x: clip; }
   .home-why .home-section-head p { margin-inline: auto; }
 }
 @media (max-width: 620px) { .home-why-list { grid-template-columns: minmax(0, 1fr); } .home-why-list li { padding: 16px; } .home-why-mark { width: 46px; height: 46px; } }
+
+/* Big monitors: the hero was capped at 860px tall, so a very wide screen cropped the photo from the middle
+   and cut off the murti's head. It now grows up to the screen's height, and any crop comes off the bottom. */
+@media (min-width: 901px) {
+  .home-hero.with-image { min-height: min(60vw, max(860px, calc(100svh - 40px))); }
+  .home-hero-wide { object-position: 50% 18%; }
+}
