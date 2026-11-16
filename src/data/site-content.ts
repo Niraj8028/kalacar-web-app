@@ -16,11 +16,13 @@ export type WhyItem = { title: string; text: string; icon: string };
 export type WhySection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; items: WhyItem[]; showLogo: boolean; logo: string };
 /** The product grid. No chosen products means every product; category buttons are optional. */
 export type CatalogueSection = { show: boolean; showEyebrow: boolean; eyebrow: string; showTitle: boolean; title: string; showDescription: boolean; description: string; productIds: string[]; showFilters: boolean };
+/** Heading above the Google reviews (home page, and product pages when turned on). The reviews themselves stay fixed. */
+export type GoogleReviewsSection = { show: boolean; showEyebrow: boolean; eyebrow: string; showTitle: boolean; title: string; showDescription: boolean; description: string };
 export type ReviewsSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; showText: boolean; showVideo: boolean };
 export type StorySection = { show: boolean; showTitle: boolean; title: string; showText: boolean; text: string; showImage: boolean; image: string; showFounder: boolean; founder: string };
 /** One featured murti below the hero: owner's heading, one photo (or a collage made as one image), and the product's own name, price and rating. */
 export type SpotlightSection = { show: boolean; showTitle: boolean; title: string; showDescription: boolean; description: string; productId: string; image: string; showLogo: boolean; whatsapp: { show: boolean; label: string } };
-export type HomeContent = { hero: HeroSection; spotlight: SpotlightSection; firstLaunch: ProductGridSection; comingSoon: ComingSoonSection; collections: CollectionsSection; catalogue: CatalogueSection; why: WhySection; reviews: ReviewsSection; story: StorySection };
+export type HomeContent = { hero: HeroSection; spotlight: SpotlightSection; firstLaunch: ProductGridSection; comingSoon: ComingSoonSection; collections: CollectionsSection; catalogue: CatalogueSection; why: WhySection; googleReviews: GoogleReviewsSection; reviews: ReviewsSection; story: StorySection };
 
 export const POPUP_SIZES = ["small", "medium", "large"] as const;
 export type PopupSize = typeof POPUP_SIZES[number];
@@ -54,6 +56,7 @@ export const DEFAULT_HOME: HomeContent = {
   collections: { show: false, showTitle: true, title: "Our Collections", showDescription: false, description: "" },
   catalogue: { show: true, showEyebrow: true, eyebrow: "FEATURED", showTitle: true, title: "Murtis for everyday spaces", showDescription: false, description: "", productIds: [], showFilters: false },
   why: { show: false, showTitle: true, title: "Why choose Kalacar", showDescription: true, description: "Small murtis made with devotion, checked and packed by us, and sent safely to your home.", items: [{ title: "Made for small spaces", text: "Sized for car dashboards, Devghars and work desks, so Bhagwan stays with you wherever you go.", icon: "" }, { title: "Crafted with care", text: "Made by the same hands as our sister studio Murtiverse, with fine detail on every face and ornament.", icon: "" }, { title: "Checked before it ships", text: "We look over every murti ourselves before it leaves us, so it reaches you just as it should.", icon: "" }, { title: "Packed for a safe journey", text: "Wrapped and boxed with care so your murti arrives safely at your door.", icon: "" }], showLogo: true, logo: "" },
+  googleReviews: { show: true, showEyebrow: true, eyebrow: "Google reviews", showTitle: true, title: "Loved by devotees", showDescription: true, description: "Real Google reviews of Murtiverse, our sister studio. Same hands, same care." },
   reviews: { show: false, showTitle: true, title: "Customer love", showDescription: false, description: "", showText: true, showVideo: true },
   story: { show: false, showTitle: true, title: "Our Story", showText: true, text: "", showImage: true, image: "", showFounder: true, founder: "" },
   spotlight: { show: false, showTitle: true, title: "Bring home the divine", showDescription: true, description: "", productId: "", image: "", showLogo: true, whatsapp: { show: true, label: "Order on WhatsApp" } },

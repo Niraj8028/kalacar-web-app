@@ -24,8 +24,10 @@ type Row = RowDataPacket & { slug: string; title: string; intro: string; content
 function merge(slug: string, row?: Row): SitePage | null {
   const base = PAGE_DEFAULTS.find(page => page.slug === slug);
   if (!base) return null;
-  const content = cleanPageHtml(row?.content ?? base.content);
-  return { slug, title: row?.title ?? base.title, intro: row?.intro ?? base.intro, content, seoTitle: row?.seo_title ?? "", seoDescription: row?.seo_description ?? base.seoDescription, published: row ? Boolean(row.published) : true, inFooter: row ? Boolean(row.in_footer) : true, hasForm: base.form === "contact", draft: isDraft(content) };
+  // A saved page still holding the old "To confirm" placeholders gets the finished starting text; its title and settings stay.
+  const text = row && !(isDraft(row.content) && !isDraft(base.content)) ? row : undefined;
+  const content = cleanPageHtml(text?.content ?? base.content);
+  return { slug, title: row?.title ?? base.title, intro: text?.intro ?? base.intro, content, seoTitle: row?.seo_title ?? "", seoDescription: text?.seo_description ?? base.seoDescription, published: row ? Boolean(row.published) : true, inFooter: row ? Boolean(row.in_footer) : true, hasForm: base.form === "contact", draft: isDraft(content) };
 }
 export const defaultPage = (slug: string) => merge(slug);
 export async function listPages() {

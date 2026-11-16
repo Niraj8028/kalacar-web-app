@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { expectFits, mockShop, PRODUCTS, watchErrors } from "./mock-shop";
 
 test.describe("every customer page opens and fits", () => {
-  for (const [path, heading] of [["/shipping", "Shipping"], ["/returns", "Returns and refunds"], ["/safe-transit", "Safe Transit Guarantee"], ["/privacy", "Privacy"], ["/terms", "Terms"], ["/cart", "Your bag"], ["/account", "Your orders, in one place."]] as const) {
+  for (const [path, heading] of [["/shipping", "Shipping"], ["/returns", "Returns and refunds"], ["/safe-transit", "Safe Transit & Instruction"], ["/privacy", "Privacy"], ["/terms", "Terms"], ["/cart", "Your bag"], ["/account", "Your orders, in one place."]] as const) {
     test(path, async ({ page }) => {
       const errors = watchErrors(page);
       await mockShop(page);

@@ -96,7 +96,7 @@ export default function Storefront() {
       <HomeHero />
       </div>
       <ProductSpotlight />
-      <GoogleReviews />
+      <GoogleReviews onHome />
       <FirstLaunch />
       <ComingSoon />
       <Collections onChoose={setActiveFilter} />
@@ -142,7 +142,6 @@ export default function Storefront() {
                       className="product-image"
                       priority={index < 3}
                     />
-                    <span className="image-tag">VIEW MURTI</span>
                     {(() => { const save = item.originalPrice > item.price ? Math.round((1 - item.price / item.originalPrice) * 100) : 0; return (item.badge || save > 0) ? <span className="card-badges">{item.badge && <span className="badge-chip">{item.badge}</span>}{save > 0 && <span className="badge-chip save">Save {save}%</span>}</span> : null; })()}
                   </Link>
                 </div>

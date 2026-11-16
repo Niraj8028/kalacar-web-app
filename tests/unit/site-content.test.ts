@@ -28,9 +28,25 @@ describe("page content is cleaned", () => {
     }
     expect(defaultPage("not-a-page")).toBeNull();
   });
-  it("marks pages with undecided items as drafts", async () => {
+  it("starts every page finished, with no undecided items", async () => {
     const { defaultPage } = await import("@/lib/pages");
-    expect(defaultPage("privacy")?.draft).toBe(true);
+    for (const page of PAGE_DEFAULTS) {
+      expect(defaultPage(page.slug)?.draft).toBe(false);
+      expect(page.content).not.toContain("To confirm");
+    }
+  });
+  it("gives saved pages still holding placeholders the finished text, and keeps real edits", async () => {
+    const { addressDb } = await import("@/lib/catalogue-db");
+    const { getPage } = await import("@/lib/pages");
+    const row = (content: string) => ({ slug: "about", title: "Our Story", intro: "Old intro", content, seo_title: "", seo_description: "Old", published: 1, in_footer: 1 });
+    const serve = (content: string) => vi.mocked(addressDb).mockResolvedValue({ execute: vi.fn().mockResolvedValue([[row(content)]]) } as never);
+    serve('<h2>Our story</h2><p><mark class="policy-confirm">To confirm: the brand story.</mark></p>');
+    const upgraded = await getPage("about");
+    expect(upgraded).toMatchObject({ title: "Our Story", draft: false });
+    expect(upgraded?.content).toContain("sister studio");
+    expect(upgraded?.intro).not.toBe("Old intro");
+    serve("<p>Our own words.</p>");
+    expect(await getPage("about")).toMatchObject({ title: "Our Story", intro: "Old intro", content: "<p>Our own words.</p>" });
   });
 });
 
