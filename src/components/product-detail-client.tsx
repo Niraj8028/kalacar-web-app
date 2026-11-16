@@ -16,6 +16,7 @@ import { RecommendedProducts } from "@/components/recommended-products";
 import { ArrowLeft, UserCircle } from "@/components/icons";
 import { BundleBox, CommonFaqs, EndOfPageLink, HowItsMade, LiveViewers, OfferBox, RecentSaleNotice, SoldThisWeek, StickyBuyBar, WhatsappHelp, useSocialProof } from "@/components/product-extras";
 import { ProductReviews, RatingLine } from "@/components/reviews";
+import { GoogleReviews } from "@/components/google-reviews";
 import { useSiteContent } from "@/components/site-content-provider";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -44,7 +45,10 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
 
   if (!item) return <main className="product-page"><header className="detail-header"><ShopLogo /></header><section className="cart-content"><h1>{catalogueError || (catalogueLoading ? "Loading product…" : "Product not found in the current catalogue.")}</h1><Link href="/#catalogue"><ArrowLeft /> Back to all murtis</Link></section><SiteFooter /></main>;
 
+  // Every review of this murti counts towards its stars; the list shows only the ones the owner picked.
   const itemReviews = reviews.filter(review => review.productId === item.id);
+  const listedReviews = itemReviews.filter(review => review.showOnProduct !== false);
+  const showCount = productPage.stockCount.show;
   const colours = item.variants;
   const colour = colours.find(c => c.id === chosenId) ?? colours.find(c => c.stock > 0) ?? colours[0];
   const gallery = colour?.gallery.length ? colour.gallery : item.gallery?.length ? item.gallery : [item.image];
@@ -59,7 +63,8 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
     try { const url = new URL(window.location.href); url.searchParams.set("colour", id); window.history.replaceState(null, "", url); } catch { /* address bar unchanged */ }
   };
   const stockMessage = !colour || colour.stock < 1 ? { tone: "out", text: colours.some(option => option.stock > 0) ? `${colour?.name ?? "This colour"} is out of stock. Try another colour.` : "This murti is currently out of stock." }
-    : canBuy < 1 ? { tone: "low", text: `All ${colour.stock} available ${colour.stock === 1 ? "is" : "are"} in your bag.` }
+    : canBuy < 1 ? { tone: "low", text: showCount ? `All ${colour.stock} available ${colour.stock === 1 ? "is" : "are"} in your bag.` : "All available pieces are in your bag." }
+    : !showCount ? { tone: "ok", text: "In stock" }
     : colour.stock - inCart <= productPage.lowStock.threshold ? { tone: "low", text: inCart > 0 ? `Only ${colour.stock - inCart} more available` : productPage.lowStock.text.replaceAll("{count}", String(colour.stock)) } : { tone: "ok", text: "In stock" };
   // Add and Buy now only work for pieces not already in the bag; what's in the bag is reachable from the note below.
   const buyNow = () => { if (canBuy < 1) return; add(item.id, colour.id, qty); router.push("/cart"); };
@@ -80,7 +85,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
       <div className="detail-copy">
         {productPage.eyebrow.show && productPage.eyebrow.text && <p className="eyebrow">{productPage.eyebrow.text.replaceAll("{category}", item.deity)}</p>}
         <h1>{item.name}</h1>
-        <div className="detail-proof-row"><RatingLine reviews={itemReviews} /><SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} /></div>
+        <div className="detail-proof-row"><RatingLine reviews={itemReviews} link={listedReviews.length > 0} /><SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} /></div>
         {item.tagline && <p className="detail-tagline">{item.tagline}</p>}
         {item.placement && <p className="detail-placement">{item.placement}</p>}
         <p className="detail-price">{money(colour?.price ?? item.price)}{save > 0 && <><del>{money(colour.originalPrice)}</del><span className="save-chip">Save {save}%</span></>}</p>
@@ -124,17 +129,18 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
       <SpecCards specs={item.specs ?? []} />
       <div className="detail-facts">
         <h2>Product details</h2>
-        <dl className="product-facts"><div><dt>Category</dt><dd>{(item.categories?.length ? item.categories : [item.deity]).join(", ")}</dd></div>{colours.length > 1 && <div><dt>Colours</dt><dd>{colours.map(c => c.name).join(", ")}</dd></div>}<div><dt>Availability</dt><dd>{colour && colour.stock > 0 ? `${colour.stock} in stock${colours.length > 1 ? ` in ${colour.name}` : ""}` : "Out of stock"}</dd></div></dl>
+        <dl className="product-facts"><div><dt>Category</dt><dd>{(item.categories?.length ? item.categories : [item.deity]).join(", ")}</dd></div>{colours.length > 1 && <div><dt>Colours</dt><dd>{colours.map(c => c.name).join(", ")}</dd></div>}<div><dt>Availability</dt><dd>{colour && colour.stock > 0 ? `${showCount ? `${colour.stock} in stock` : "In stock"}${colours.length > 1 ? ` in ${colour.name}` : ""}` : "Out of stock"}</dd></div></dl>
       </div>
     </section>
     <ProductDetailAccordions sections={item.accordions ?? []} />
     <div className="detail-more">
       <HowItsMade />
       <BundleBox item={item} products={products} />
-      <ProductReviews reviews={itemReviews} />
+      <ProductReviews reviews={listedReviews} counted={itemReviews} />
       <CommonFaqs />
       <WhatsappHelp />
     </div>
+    {productPage.googleReviews.show && <GoogleReviews />}
     <RecommendedProducts current={item} products={products} />
     <EndOfPageLink />
     {colour && <StickyBuyBar item={item} price={colour.price} watch={buyButtons} disabled={canBuy < 1} inBag={inCart > 0} onAdd={() => { if (canBuy >= 1 && canAdd(item.id, colour.id)) add(item.id, colour.id, qty); openDrawer(); }} onBuy={buyNow} />}

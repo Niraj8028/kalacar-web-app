@@ -45,7 +45,7 @@ export function parseHome(body: unknown): HomeContent {
     comingSoon: { ...described(soon, d.comingSoon), items: (Array.isArray(soon.items) ? soon.items : []).slice(0, 12).map(item => ({ name: text(obj(item).name, 80), image: safeImage(obj(item).image) })).filter(item => item.name || item.image) },
     collections: described(collections, d.collections),
     catalogue: { ...described(catalogue, d.catalogue), showEyebrow: bool(catalogue.showEyebrow, d.catalogue.showEyebrow), eyebrow: text(catalogue.eyebrow, 60, d.catalogue.eyebrow), productIds: ids(catalogue.productIds, 60), showFilters: bool(catalogue.showFilters, d.catalogue.showFilters) },
-    why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : []).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240), icon: safeImage(obj(item).icon) })).filter(item => item.title || item.text), showLogo: bool(why.showLogo, d.why.showLogo), logo: safeImage(why.logo) },
+    why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : d.why.items).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240), icon: safeImage(obj(item).icon) })).filter(item => item.title || item.text), showLogo: bool(why.showLogo, d.why.showLogo), logo: safeImage(why.logo) },
     reviews: { ...described(reviews, d.reviews), showText: bool(reviews.showText, d.reviews.showText), showVideo: bool(reviews.showVideo, d.reviews.showVideo) },
     story: { ...header(story, d.story), showText: bool(story.showText, d.story.showText), text: text(story.text, 2000), showImage: bool(story.showImage, d.story.showImage), image: safeImage(story.image), showFounder: bool(story.showFounder, d.story.showFounder), founder: text(story.founder, 80) },
     spotlight: { ...header(spot, d.spotlight), showDescription: bool(spot.showDescription, d.spotlight.showDescription), description: text(spot.description, 200), productId: ids([spot.productId], 1)[0] ?? "", image: safeImage(spot.image), showLogo: bool(spot.showLogo, d.spotlight.showLogo), whatsapp: { show: bool(spotWhatsapp.show, d.spotlight.whatsapp.show), label: text(spotWhatsapp.label, 40, d.spotlight.whatsapp.label) || d.spotlight.whatsapp.label } },
@@ -54,6 +54,7 @@ export function parseHome(body: unknown): HomeContent {
 
 export function parseProductPage(body: unknown): ProductPageContent {
   const input = obj(body), d = DEFAULT_PRODUCT_PAGE;
+  const stockCount = obj(input.stockCount), googleReviews = obj(input.googleReviews);
   const eyebrow = obj(input.eyebrow), offer = obj(input.offer), how = obj(input.howMade), faqs = obj(input.faqs), viewers = obj(input.viewers), sales = obj(input.recentSales), sold = obj(input.soldThisWeek), low = obj(input.lowStock), sticky = obj(input.stickyBar), end = obj(input.endLink), help = obj(input.whatsappHelp);
   return {
     offer: { show: bool(offer.show, d.offer.show), title: text(offer.title, 60, d.offer.title), text: text(offer.text, 240) },
@@ -67,6 +68,8 @@ export function parseProductPage(body: unknown): ProductPageContent {
     endLink: { show: bool(end.show, d.endLink.show), label: text(end.label, 60, d.endLink.label) || d.endLink.label, link: safeLink(end.link, d.endLink.link) },
     whatsappHelp: { show: bool(help.show, d.whatsappHelp.show), label: text(help.label, 80, d.whatsappHelp.label) || d.whatsappHelp.label },
     eyebrow: { show: bool(eyebrow.show, d.eyebrow.show), text: text(eyebrow.text, 80, d.eyebrow.text) },
+    stockCount: { show: bool(stockCount.show, d.stockCount.show) },
+    googleReviews: { show: bool(googleReviews.show, d.googleReviews.show) },
   };
 }
 
@@ -99,10 +102,10 @@ export async function getSiteContent(): Promise<SiteContent> {
 }
 
 // Reviews are entered by the owner from real customers. Ratings shown on the shop are worked out from these.
-type ReviewRow = RowDataPacket & { id: number; product_id: string | null; author: string; city: string; rating: number; body: string; photos: unknown; video_url: string; show_on_home: number; published: number };
+type ReviewRow = RowDataPacket & { id: number; product_id: string | null; author: string; city: string; rating: number; body: string; photos: unknown; video_url: string; show_on_home: number; show_on_product?: number; published: number };
 const toReview = (row: ReviewRow): Review => {
   const photos = typeof row.photos === "string" ? JSON.parse(row.photos) as unknown : row.photos;
-  return { id: row.id, productId: row.product_id, author: row.author, city: row.city, rating: row.rating, text: row.body, photos: Array.isArray(photos) ? photos.map(safeImage).filter(Boolean) : [], videoUrl: row.video_url, showOnHome: Boolean(row.show_on_home), published: Boolean(row.published) };
+  return { id: row.id, productId: row.product_id, author: row.author, city: row.city, rating: row.rating, text: row.body, photos: Array.isArray(photos) ? photos.map(safeImage).filter(Boolean) : [], videoUrl: row.video_url, showOnHome: Boolean(row.show_on_home), showOnProduct: row.show_on_product === undefined ? true : Boolean(row.show_on_product), published: Boolean(row.published) };
 };
 export async function listReviews({ publishedOnly }: { publishedOnly: boolean }) {
   const db = await addressDb();
@@ -120,16 +123,16 @@ export function parseReview(body: unknown): { error: string } | { value: ReviewI
   if (videoUrl && !videoEmbed(videoUrl)) return { error: "Use a YouTube or Instagram video link." };
   const productId = input.productId === null || input.productId === undefined || input.productId === "" ? null : ids([input.productId], 1)[0];
   if (productId === undefined) return { error: "Choose a valid product." };
-  return { value: { productId, author, city: text(input.city, 80), rating, text: reviewText, photos: (Array.isArray(input.photos) ? input.photos : []).map(safeImage).filter(Boolean).slice(0, 6), videoUrl, showOnHome: bool(input.showOnHome, false), published: bool(input.published, true) } };
+  return { value: { productId, author, city: text(input.city, 80), rating, text: reviewText, photos: (Array.isArray(input.photos) ? input.photos : []).map(safeImage).filter(Boolean).slice(0, 6), videoUrl, showOnHome: bool(input.showOnHome, false), showOnProduct: bool(input.showOnProduct, true), published: bool(input.published, true) } };
 }
-const reviewValues = (r: ReviewInput) => [r.productId, r.author, r.city, r.rating, r.text, JSON.stringify(r.photos), r.videoUrl, r.showOnHome ? 1 : 0, r.published ? 1 : 0];
+const reviewValues = (r: ReviewInput) => [r.productId, r.author, r.city, r.rating, r.text, JSON.stringify(r.photos), r.videoUrl, r.showOnHome ? 1 : 0, r.showOnProduct ? 1 : 0, r.published ? 1 : 0];
 export async function createReview(review: ReviewInput) {
   const db = await addressDb();
-  await db.execute("INSERT INTO kalacar_reviews (product_id,author,city,rating,body,photos,video_url,show_on_home,published) VALUES (?,?,?,?,?,?,?,?,?)", reviewValues(review));
+  await db.execute("INSERT INTO kalacar_reviews (product_id,author,city,rating,body,photos,video_url,show_on_home,show_on_product,published) VALUES (?,?,?,?,?,?,?,?,?,?)", reviewValues(review));
 }
 export async function updateReview(id: number, review: ReviewInput) {
   const db = await addressDb();
-  await db.execute("UPDATE kalacar_reviews SET product_id=?,author=?,city=?,rating=?,body=?,photos=?,video_url=?,show_on_home=?,published=? WHERE id=?", [...reviewValues(review), id]);
+  await db.execute("UPDATE kalacar_reviews SET product_id=?,author=?,city=?,rating=?,body=?,photos=?,video_url=?,show_on_home=?,show_on_product=?,published=? WHERE id=?", [...reviewValues(review), id]);
 }
 export async function deleteReview(id: number) {
   const db = await addressDb();
