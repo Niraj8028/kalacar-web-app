@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { reviewSummary, videoEmbed } from "@/data/site-content";
 import type { Review } from "@/data/site-content";
+import { productPath } from "@/lib/permalinks";
 
 export function Stars({ rating }: { rating: number }) {
   const rounded = Math.round(rating);
@@ -45,7 +46,7 @@ function VideoCard({ review }: { review: Review }) {
         <span className="video-card-text"><b>{title}</b>{caption && <small>{caption}</small>}</span>
       </button>}
     </div>
-    {product && <Link className="video-card-link" href={`/products/${product.id}`}>View product <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></Link>}
+    {product && <Link className="video-card-link" href={productPath(product)}>View product <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></Link>}
   </li>;
 }
 

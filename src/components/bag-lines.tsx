@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/components/cart-provider";
 import { CloseMark, GiftIcon } from "@/components/icons";
+import { productPath } from "@/lib/permalinks";
 
 export const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 
@@ -12,11 +13,11 @@ export function BagLines({ onNavigate }: { onNavigate?: () => void }) {
   const { resolved, setQuantity, remove, changeColour, canAdd } = useCart();
   return <div className="bag-lines">
     {resolved.map(({ key, product: item, colour, line }) => <article className="bag-line" key={key}>
-      <Link className="bag-line-image" href={`/products/${item.id}?colour=${colour.id}`} onClick={onNavigate}>
+      <Link className="bag-line-image" href={`${productPath(item)}?colour=${colour.id}`} onClick={onNavigate}>
         <Image src={colour.gallery[0] ?? item.image} alt={`${item.name}${item.variants.length > 1 ? ` in ${colour.name}` : ""}`} fill sizes="88px" />
       </Link>
       <div className="bag-line-info">
-        <h3><Link href={`/products/${item.id}?colour=${colour.id}`} onClick={onNavigate}>{item.name}</Link></h3>
+        <h3><Link href={`${productPath(item)}?colour=${colour.id}`} onClick={onNavigate}>{item.name}</Link></h3>
         {item.variants.length > 1 && <label className="cart-colour"><span className="colour-dot" style={{ background: colour.swatch }} aria-hidden="true" /><span className="sr-only">Colour</span>
           <select aria-label={`Colour for ${item.name}`} value={colour.id} onChange={e => changeColour(key, e.target.value)}>
             {item.variants.map(option => <option key={option.id} value={option.id} disabled={option.stock < 1 && option.id !== colour.id}>{option.name}{option.stock < 1 ? " — sold out" : option.price !== colour.price ? ` — ${money(option.price)}` : ""}</option>)}

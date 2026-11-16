@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
-import { addressDb } from "@/lib/catalogue-db";
+import { PermalinkTakenError, addressDb, assignSlug } from "@/lib/catalogue-db";
 import { saveColours, updateColourQuick } from "@/lib/colours";
 import { findCategoryName, findCategoryNames } from "@/lib/categories";
 import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
@@ -64,6 +64,7 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
       await connection.execute("UPDATE kalacar_products SET name=?,deity=?,badge=?,tagline=?,placement=?,accordions=?,specs=?,highlights=?,image_alt=? WHERE id=?",
         [form.name, form.deity, form.badge || null, form.tagline || null, form.placement, JSON.stringify(form.accordions), JSON.stringify(form.specs), JSON.stringify(form.highlights), `${form.name} product photo`, id]);
       await connection.execute("UPDATE kalacar_products SET description=?,bundle_ids=?,extra_categories=? WHERE id=?", [form.description || null, JSON.stringify(form.bundleIds.filter(other => other !== id)), JSON.stringify(form.extraCategories), id]);
+      const slug = await assignSlug(connection, id, form.name, form.permalink);
       const result = await saveColours(connection, id, form.colours, photos.urls, allowed);
       if (result.status !== "ok") {
         await connection.rollback(); await removeFiles(photos.paths);
@@ -72,12 +73,13 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: result.error }, { status: 400 });
       }
       await connection.commit();
-      return NextResponse.json({ ok: true, id, colours: result.colours }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ ok: true, id, slug, colours: result.colours }, { headers: { "Cache-Control": "no-store" } });
     } catch (error) { await connection.rollback(); throw error; }
     finally { connection.release(); }
   } catch (error) {
     await removeFiles(saved.paths);
     if (error instanceof InvalidImageError) return NextResponse.json({ error: "One of the files isn't a real JPG, PNG, WebP or AVIF image. Choose a different photo." }, { status: 400 });
+    if (error instanceof PermalinkTakenError) return NextResponse.json({ error: error.message }, { status: 409 });
     console.error("Product update unavailable:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Product update could not be saved." }, { status: 503 });
   }

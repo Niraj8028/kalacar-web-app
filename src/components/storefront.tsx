@@ -15,6 +15,7 @@ import { useSiteContent } from "@/components/site-content-provider";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import { ArrowRight, Search, UserCircle } from "@/components/icons";
 import type { StoreItem } from "@/data/catalogue";
+import { productPath } from "@/lib/permalinks";
 
 const categoriesOf = (item: StoreItem) => item.categories?.length ? item.categories : [item.deity];
 
@@ -132,7 +133,7 @@ export default function Storefront() {
             {visibleItems.map((item, index) => (
               <article className="product-card" key={item.id}>
                 <div className="product-image-wrap">
-                  <Link href={`/products/${item.id}`} className="product-image-link" tabIndex={-1} aria-hidden="true">
+                  <Link href={productPath(item)} className="product-image-link" tabIndex={-1} aria-hidden="true">
                     <Image
                       src={item.image}
                       alt={item.imageAlt}
@@ -148,13 +149,13 @@ export default function Storefront() {
                 <div className="product-info">
                   <p className="product-deity">{item.deity}</p>
                   {/* The name's link covers the whole card, so a tap anywhere opens the murti. */}
-                  <h3><Link className="card-link" href={`/products/${item.id}`}>{item.name}</Link></h3>
+                  <h3><Link className="card-link" href={productPath(item)}>{item.name}</Link></h3>
                   {item.tagline ? <p className="product-placement">{item.tagline}</p> : item.placement && <p className="product-placement">{item.placement}</p>}
                   {item.variants.length > 1 && <p className="card-swatches" aria-label={`${item.variants.length} colours: ${item.variants.map(v => v.name).join(", ")}`}>{item.variants.map(v => <span key={v.id} className="colour-dot" style={{ background: v.swatch }} title={v.name} aria-hidden="true" />)}<small>{item.variants.length} colours</small></p>}
                   <span className="details-link" aria-hidden="true">View details <ArrowRight /></span>
                   <div className="product-buy-row">
                     <span className="product-price-block"><strong>{new Set(item.variants.map(v => v.price)).size > 1 ? "from " : ""}₹{item.price}</strong>{item.originalPrice > item.price && <del>₹{item.originalPrice}</del>}<small>{item.stock < 1 ? "out of stock" : item.stock <= 3 ? `only ${item.stock} left` : "in stock"}</small></span>
-                    {item.variants.length > 1 ? <Link className="add-button choose-colour" href={`/products/${item.id}`}>Choose colour</Link> : <AddToBagButton id={item.id} variantId={item.variants[0]?.id} disabled={item.stock < 1} />}
+                    {item.variants.length > 1 ? <Link className="add-button choose-colour" href={productPath(item)}>Choose colour</Link> : <AddToBagButton id={item.id} variantId={item.variants[0]?.id} disabled={item.stock < 1} />}
                   </div>
                 </div>
               </article>

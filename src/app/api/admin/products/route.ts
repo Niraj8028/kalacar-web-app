@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/customer-auth";
-import { addressDb, listProducts } from "@/lib/catalogue-db";
+import { PermalinkTakenError, addressDb, assignSlug, listProducts } from "@/lib/catalogue-db";
 import { saveColours } from "@/lib/colours";
 import { findCategoryName, findCategoryNames } from "@/lib/categories";
 import { InvalidImageError, parseProductForm, removeFiles, savePhotos } from "@/lib/product-form";
@@ -46,15 +46,17 @@ async function handlePOST(request: Request) {
         "INSERT INTO kalacar_products (id,name,deity,badge,tagline,image,gallery,image_alt,placement,accordions,specs,highlights,price,original_price,stock) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [id, form.name, form.deity, form.badge || null, form.tagline || null, firstGallery[0], JSON.stringify(firstGallery), `${form.name} product photo`, form.placement, JSON.stringify(form.accordions), JSON.stringify(form.specs), JSON.stringify(form.highlights), first.price, first.originalPrice, 0]);
       await connection.execute("UPDATE kalacar_products SET description=?,bundle_ids=?,extra_categories=? WHERE id=?", [form.description || null, JSON.stringify(form.bundleIds.filter(other => other !== id)), JSON.stringify(form.extraCategories), id]);
+      const slug = await assignSlug(connection, id, form.name, form.permalink);
       const result = await saveColours(connection, id, form.colours, photos.urls, new Set());
       if (result.status !== "ok") { await connection.rollback(); await removeFiles(photos.paths); return NextResponse.json({ error: result.status === "invalid" ? result.error : "Could not save the colours." }, { status: 400 }); }
       await connection.commit();
-      return NextResponse.json({ product: { id, name: form.name, colours: result.colours } }, { status: 201 });
+      return NextResponse.json({ product: { id, slug, name: form.name, colours: result.colours } }, { status: 201 });
     } catch (error) { await connection.rollback(); throw error; }
     finally { connection.release(); }
   } catch (error) {
     await removeFiles(saved.paths);
     if (error instanceof InvalidImageError) return NextResponse.json({ error: "One of the files isn't a real JPG, PNG, WebP or AVIF image. Choose a different photo." }, { status: 400 });
+    if (error instanceof PermalinkTakenError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") return NextResponse.json({ error: "A product with that name already exists. Choose a different product name." }, { status: 409 });
     console.error("Product creation failed:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Could not create the product in the Kalacar catalogue." }, { status: 503 });

@@ -29,7 +29,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
   const proof = useSocialProof(productPage.recentSales.show || productPage.soldThisWeek.show);
   const buyButtons = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const item: StoreItem | undefined = products.find(product => product.id === slug);
+  const item: StoreItem | undefined = products.find(product => product.slug === slug) ?? products.find(product => product.id === slug);
   const [chosenId, setChosenId] = useState(initialColour);
   const [imageIndex, setImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);

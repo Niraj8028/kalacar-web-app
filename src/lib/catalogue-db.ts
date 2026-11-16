@@ -3,6 +3,7 @@ import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual, cre
 import { promisify } from "node:util";
 import type { ProductAccordion } from "@/data/catalogue";
 import { CouponError, applyCoupon } from "@/lib/coupons";
+import { slugify } from "@/lib/permalinks";
 
 const scrypt = promisify(scryptCallback);
 
@@ -169,7 +170,55 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [couponColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'coupon_id'");
   if (!couponColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN coupon_id INT UNSIGNED NULL AFTER gift_wrap_price, ADD COLUMN coupon_code VARCHAR(32) NULL AFTER coupon_id, ADD COLUMN discount INT UNSIGNED NOT NULL DEFAULT 0 AFTER coupon_code, ADD KEY orders_coupon_id (coupon_id)");
+  // Product web addresses follow the name (or the owner's own permalink); old addresses redirect to the new one.
+  const [slugColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_products LIKE 'slug'");
+  if (!slugColumns.length) await db.execute("ALTER TABLE kalacar_products ADD COLUMN slug VARCHAR(80) NULL AFTER id, ADD COLUMN slug_custom TINYINT(1) NOT NULL DEFAULT 0 AFTER slug, ADD UNIQUE KEY products_slug (slug)");
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_product_slugs (
+    slug VARCHAR(80) PRIMARY KEY, product_id VARCHAR(64) NOT NULL, KEY product_slugs_product (product_id),
+    CONSTRAINT kalacar_product_slugs_fk FOREIGN KEY (product_id) REFERENCES kalacar_products(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [unslugged] = await db.query<(RowDataPacket & { id: string; name: string })[]>("SELECT id,name FROM kalacar_products WHERE slug IS NULL");
+  for (const product of unslugged) await assignSlug(db, product.id, product.name, "");
 }
+
+type Runner = Pick<mysql.Pool, "execute"> | Pick<mysql.PoolConnection, "execute">;
+export class PermalinkTakenError extends Error {}
+
+/**
+ * Gives a product its web address: the typed permalink, or else the product name. The old address is kept
+ * so links already shared still open the product. Another product's address is never taken: a typed
+ * permalink is refused, a name gets "-2", "-3"… added.
+ */
+export async function assignSlug(db: Runner, productId: string, name: string, permalink: string) {
+  const wanted = slugify(permalink) || slugify(name) || productId;
+  const [current] = await db.execute<(RowDataPacket & { slug: string | null })[]>("SELECT slug FROM kalacar_products WHERE id=?", [productId]);
+  let slug = wanted;
+  for (let n = 2; ; n += 1) {
+    const [taken] = await db.execute<(RowDataPacket & { name: string })[]>("SELECT name FROM kalacar_products WHERE slug=? AND id<>? LIMIT 1", [slug, productId]);
+    if (!taken.length) break;
+    if (permalink) throw new PermalinkTakenError(`“${taken[0].name}” already uses /products/${slug}. Choose a different permalink.`);
+    if (n > 99) { slug = `${wanted.slice(0, 71)}-${productId.slice(0, 8)}`; break; }
+    slug = `${wanted.slice(0, 76)}-${n}`;
+  }
+  const old = current[0]?.slug;
+  if (old && old !== slug) await db.execute("INSERT INTO kalacar_product_slugs (slug,product_id) VALUES (?,?) ON DUPLICATE KEY UPDATE product_id=VALUES(product_id)", [old, productId]);
+  await db.execute("DELETE FROM kalacar_product_slugs WHERE slug=?", [slug]);
+  await db.execute("UPDATE kalacar_products SET slug=?, slug_custom=? WHERE id=?", [slug, permalink ? 1 : 0, productId]);
+  return slug;
+}
+
+/** The product's current address for any address it has had (or its id), or null if no product matches. */
+export async function currentProductSlug(value: string) {
+  await ensureCatalogue();
+  const db = database();
+  const [bySlug] = await db.execute<(RowDataPacket & { slug: string })[]>("SELECT slug FROM kalacar_products WHERE slug=?", [value]);
+  if (bySlug.length) return bySlug[0].slug;
+  const [byOld] = await db.execute<(RowDataPacket & { slug: string | null; id: string })[]>("SELECT p.slug,p.id FROM kalacar_product_slugs s JOIN kalacar_products p ON p.id=s.product_id WHERE s.slug=?", [value]);
+  if (byOld.length) return byOld[0].slug ?? byOld[0].id;
+  const [byId] = await db.execute<(RowDataPacket & { slug: string | null; id: string })[]>("SELECT slug,id FROM kalacar_products WHERE id=?", [value]);
+  return byId.length ? byId[0].slug ?? byId[0].id : null;
+}
+
 
 export async function ensureCatalogue() {
   ready ??= initialize();
@@ -206,7 +255,7 @@ export async function fillMissingCustomerPhone(userId: string, phone: string) {
   await database().execute("UPDATE kalacar_users SET phone=? WHERE id=? AND phone=''", [phone, userId]);
 }
 
-type ProductRow = RowDataPacket & { description?: string | null; bundle_ids?: unknown; id: string; name: string; deity: string; extra_categories: unknown; badge: string | null; tagline: string | null; specs: unknown; highlights: unknown; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
+type ProductRow = RowDataPacket & { slug?: string | null; slug_custom?: number; description?: string | null; bundle_ids?: unknown; id: string; name: string; deity: string; extra_categories: unknown; badge: string | null; tagline: string | null; specs: unknown; highlights: unknown; image: string; gallery: string | null; image_alt: string; placement: string; accordions: string | ProductAccordion[] | null; price: number; original_price: number; stock: number; updated_at: Date };
 
 function parseAccordions(value: ProductRow["accordions"]): ProductAccordion[] {
   if (!value) return [];
@@ -242,12 +291,12 @@ function parseBundleIds(value: unknown) {
 
 export async function listProducts({ includeHidden = false } = {}) {
   await ensureCatalogue();
-  const [rows] = await database().query<ProductRow[]>("SELECT id,name,deity,extra_categories,badge,tagline,image,gallery,image_alt,placement,description,bundle_ids,accordions,specs,highlights,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
+  const [rows] = await database().query<ProductRow[]>("SELECT id,slug,slug_custom,name,deity,extra_categories,badge,tagline,image,gallery,image_alt,placement,description,bundle_ids,accordions,specs,highlights,price,original_price,stock,updated_at FROM kalacar_products ORDER BY updated_at DESC, id");
   const [variantRows] = await database().query<VariantRow[]>(`SELECT * FROM kalacar_product_variants ${includeHidden ? "" : "WHERE active=1"} ORDER BY sort, name`);
   return rows.map(row => {
     const gallery = parseGallery(row.gallery, [row.image]);
     const variants = variantRows.filter(variant => variant.product_id === row.id).map(toVariant);
-    return { id: row.id, name: row.name, deity: row.deity, categories: productCategories(row.deity, row.extra_categories), badge: row.badge ?? "", tagline: row.tagline ?? "", specs: parseSpecs(row.specs), highlights: parseHighlights(row.highlights), image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, description: row.description ?? "", bundleIds: parseBundleIds(row.bundle_ids), accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), variants, updatedAt: row.updated_at };
+    return { id: row.id, slug: row.slug || row.id, slugCustom: Boolean(row.slug_custom), name: row.name, deity: row.deity, categories: productCategories(row.deity, row.extra_categories), badge: row.badge ?? "", tagline: row.tagline ?? "", specs: parseSpecs(row.specs), highlights: parseHighlights(row.highlights), image: row.image, gallery, imageAlt: row.image_alt, placement: row.placement, description: row.description ?? "", bundleIds: parseBundleIds(row.bundle_ids), accordions: parseAccordions(row.accordions), price: Number(row.price), originalPrice: Number(row.original_price), stock: Number(row.stock), variants, updatedAt: row.updated_at };
   }).filter(product => includeHidden || product.variants.length > 0);
 }
 

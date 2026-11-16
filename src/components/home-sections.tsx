@@ -12,6 +12,7 @@ import type { HeroSlide } from "@/data/site-content";
 import type { StoreItem } from "@/data/catalogue";
 import { useLogo } from "@/components/shop-logo";
 import { WHATSAPP_URL } from "@/components/policy-links";
+import { productPath } from "@/lib/permalinks";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 const cheapest = (item: StoreItem) => [...item.variants].filter(v => v.stock > 0).sort((a, b) => a.price - b.price)[0];
@@ -145,7 +146,7 @@ export function ProductSpotlight() {
   const summary = reviewSummary(reviews.filter(review => review.productId === item.id));
   const available = item.variants.filter(colour => colour.stock > 0);
   const buyNow = () => {
-    if (available.length !== 1) { router.push(`/products/${item.id}`); return; }
+    if (available.length !== 1) { router.push(productPath(item)); return; }
     if (canAdd(item.id, available[0].id)) add(item.id, available[0].id, 1);
     router.push("/cart");
   };
@@ -155,7 +156,7 @@ export function ProductSpotlight() {
       <div className="spotlight-visual"><Image src={spot.image || item.image} alt={item.imageAlt || item.name} fill sizes="(max-width: 900px) 92vw, 760px" /></div>
       <div className="spotlight-copy">
         {item.badge && <span className="spotlight-badge">{item.badge}</span>}
-        <h3 id="spotlight-name"><Link className="card-link" href={`/products/${item.id}`}>{item.name}</Link></h3>
+        <h3 id="spotlight-name"><Link className="card-link" href={productPath(item)}>{item.name}</Link></h3>
         {item.tagline && <p className="spotlight-text">{item.tagline}</p>}
         {price ? <p className="spotlight-price"><strong>{money(price.price)}</strong>{save > 0 && <><del>{money(price.originalPrice)}</del><span>(Save {save}%)</span></>}</p> : null}
         <p className="spotlight-meta">
@@ -186,7 +187,7 @@ export function FirstLaunch() {
     <SectionHead id="first-launch-title" {...section} />
     <ul className="home-product-grid">{items.map(item => { const price = cheapest(item); return <li key={item.id} className="card-clickable">
       <span className="home-product-image"><Image src={item.image} alt={item.imageAlt} fill sizes="(max-width: 620px) 48vw, 300px" /></span>
-      <Link href={`/products/${item.id}`} className="home-product-name card-link">{item.name}</Link>
+      <Link href={productPath(item)} className="home-product-name card-link">{item.name}</Link>
       {price ? <p className="home-product-price">{money(price.price)}{price.originalPrice > price.price && <del>{money(price.originalPrice)}</del>}</p> : <p className="home-product-price">Out of stock</p>}
       <button className="home-quick-add" type="button" disabled={!price} onClick={() => start(item)}>{price ? "Add to bag" : "Out of stock"}</button>
     </li>; })}</ul>
