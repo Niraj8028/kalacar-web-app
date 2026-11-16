@@ -95,7 +95,6 @@ button { color: inherit; }
 .product-image-link { position: absolute; inset: 0; display: block; }
 .product-image { object-fit: cover; transition: transform 250ms ease; }
 .product-card:hover .product-image { transform: scale(1.025); }
-.image-tag { position: absolute; top: 12px; left: 12px; padding: 6px 8px; background: rgb(255 253 250 / 88%); color: #51453b; font-size: 11px; letter-spacing: .11em; }
 .discount-tag { position: absolute; right: 12px; top: 12px; padding: 6px 8px; background: var(--accent); color: #fffdfa; font-size: 11px; letter-spacing: .09em; }
 .product-info { padding: 16px 16px 17px; }
 .product-deity { margin: 0 0 6px; color: var(--accent); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
@@ -383,7 +382,6 @@ button { color: inherit; }
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .product-card { border-radius: 4px; }
   .product-image-wrap { aspect-ratio: .88 / 1; }
-  .image-tag { top: 7px; left: 7px; padding: 5px 6px; font-size: 11px; }
   .product-info { padding: 10px 9px 10px; }
   .product-deity { margin-bottom: 4px; font-size: 11px; letter-spacing: .08em; }
   .product-info h3 { font-size: 16px; }
@@ -883,11 +881,7 @@ button { color: inherit; }
 .home-collections a { display: grid; justify-items: center; gap: 8px; color: var(--ink); font-weight: 600; text-align: center; text-decoration: none; }
 .home-collection-image { position: relative; display: block; width: min(100%, 140px); aspect-ratio: 1; overflow: hidden; border: 1px solid var(--line); border-radius: 50%; background: var(--surface-soft); }
 .home-collection-image img { object-fit: cover; }
-.home-why-list { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-.home-why-list li { display: flex; gap: 18px; padding: 18px 0; border-bottom: 1px solid var(--line); }
 .home-why-number { color: var(--gold); font: 400 28px/1 var(--font-display); }
-.home-why-list h3 { margin: 0 0 4px; font-size: 17px; }
-.home-why-list p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .home-story { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 28px; align-items: center; }
 .home-story-image { position: relative; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 12px; background: var(--surface-soft); }
 .home-story-image img { object-fit: cover; }
@@ -1340,8 +1334,6 @@ button { color: inherit; }
 /* Phone polish (2026-11-09 audit at 390px and 360px). */
 /* The video-review row and "How it's made" no longer push the product page wider than the screen. */
 .detail-more > * { min-width: 0; }
-/* "View murti" is a mouse-hover hint; on touch screens it only covered the badges. */
-@media (hover: none) { .image-tag { display: none; } }
 @media (max-width: 620px) {
   /* Product and bag headers: logo and icons on one row, not three. The breadcrumb already links back. */
   .detail-header-links { flex-direction: row; align-items: center; gap: 4px; }
@@ -1356,7 +1348,6 @@ button { color: inherit; }
   .quantity-control button { min-width: 40px; min-height: 40px; }
   .detail-breadcrumb a, .rating-line, .bag-help { display: inline-flex; align-items: center; min-height: 36px; }
   .detail-breadcrumb { align-items: center; padding-top: 8px; padding-bottom: 8px; }
-  .image-tag { display: none; }
   .bag-remove { width: 40px; height: 40px; }
   /* Nothing smaller than 12px. */
   .store-announcement, .reference-note, .product-deity, .product-price-block small, .home-hero .eyebrow { font-size: 12px; }
@@ -1454,15 +1445,7 @@ button { color: inherit; }
 }
 
 /* Why choose us: logo on the left, reasons on the right. */
-.home-why.with-logo { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); align-items: center; gap: clamp(28px, 6vw, 88px); }
-.home-why-logo { display: grid; place-items: center; padding: clamp(24px, 4vw, 48px); border-radius: 16px; background: var(--surface-soft); }
-.home-why-logo img { width: min(100%, 260px); height: auto; }
 .home-why-own-logo { object-fit: contain; }
-@media (max-width: 760px) {
-  .home-why.with-logo { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .home-why-logo { padding: 20px; }
-  .home-why-logo img { width: min(60%, 180px); }
-}
 
 /* Customer love: Instagram button to the right of the heading. */
 .home-reviews-top.with-follow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
@@ -1548,8 +1531,36 @@ body { overflow-x: clip; }
 
 /* Why choose: the logo sits straight on the page background, and the reasons are cards, two per row,
    each with an optional icon on the left and its title and text on the right. */
-.home-why-logo { padding: 0; border-radius: 0; background: none; }
-.home-why-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; border-top: 0; }
-.home-why-list li { align-items: flex-start; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.home-why-icon { flex: none; width: 48px; height: 48px; object-fit: contain; }
-@media (max-width: 620px) { .home-why-list { grid-template-columns: minmax(0, 1fr); } .home-why-logo { padding: 0; } }
+
+/* Why choose Kalacar: a full-width band in the spotlight's colours. Logo on a warm panel, reasons as cards. */
+.home-why { background: linear-gradient(90deg, var(--spot-peach) 0 38%, var(--spot-cream) 38% 100%); color: var(--spot-ink); }
+.home-why:not(.with-logo) { background: var(--spot-cream); }
+.home-why-inner { max-width: calc(var(--content-max) + 2 * clamp(18px, 5vw, 76px)); margin: 0 auto; padding: clamp(44px, 6vw, 84px) clamp(18px, 5vw, 76px); }
+.home-why.with-logo .home-why-inner { display: grid; grid-template-columns: minmax(0, .62fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 6vw, 96px); }
+.home-why-logo { display: grid; place-items: center; }
+.home-why-ring { display: grid; place-items: center; width: min(100%, 340px); aspect-ratio: 1; padding: clamp(28px, 4vw, 52px); border: 1px solid rgb(139 74 54 / 22%); border-radius: 50%; background: radial-gradient(circle, var(--spot-cream) 0 58%, transparent 59%); box-shadow: 0 0 0 14px rgb(252 243 230 / 45%), 0 24px 60px rgb(59 33 22 / 12%); }
+.home-why-ring img { width: 100%; height: auto; object-fit: contain; }
+.home-why .home-section-head { margin: 0 0 clamp(20px, 3vw, 32px); text-align: left; }
+.home-why .home-section-head h2 { margin: 0; color: var(--spot-ink); font: 400 clamp(30px, 3.4vw, 48px)/1.1 var(--font-display); text-wrap: balance; }
+.home-why .home-section-head h2::after { content: ""; display: block; width: 56px; height: 2px; margin-top: 16px; background: var(--gold); }
+.home-why .home-section-head p { max-width: 58ch; margin: 16px 0 0; color: var(--spot-ink); opacity: .78; font-size: clamp(15px, 1.3vw, 18px); line-height: 1.6; }
+.home-why-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(12px, 1.6vw, 18px); margin: 0; padding: 0; list-style: none; }
+.home-why-list li { display: flex; align-items: flex-start; gap: 16px; padding: clamp(18px, 2vw, 24px); border: 1px solid rgb(139 74 54 / 14%); border-radius: 16px; background: var(--surface); box-shadow: 0 10px 30px rgb(59 33 22 / 6%); transition: transform 200ms ease, box-shadow 200ms ease; }
+.home-why-list li:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgb(59 33 22 / 11%); }
+.home-why-mark { display: grid; flex: none; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--spot-peach); }
+.home-why-icon { width: 30px; height: 30px; object-fit: contain; }
+.home-why-dot { width: 12px; height: 12px; border-radius: 3px; background: var(--spot-accent); transform: rotate(45deg); }
+.home-why-list h3 { margin: 2px 0 6px; color: var(--spot-ink); font-size: 18px; font-weight: 600; }
+.home-why-list p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+:root[data-theme="dark"] .home-why-ring { box-shadow: 0 0 0 14px rgb(36 28 22 / 45%), 0 24px 60px rgb(0 0 0 / 30%); }
+@media (prefers-reduced-motion: reduce) { .home-why-list li { transition: none; } .home-why-list li:hover { transform: none; } }
+@media (max-width: 860px) {
+  .home-why, .home-why:not(.with-logo) { background: var(--spot-cream); }
+  .home-why.with-logo .home-why-inner { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .home-why-logo { margin: calc(-1 * clamp(44px, 6vw, 84px)) calc(-1 * clamp(18px, 5vw, 76px)) 0; padding: 36px 18px; background: var(--spot-peach); }
+  .home-why-ring { width: min(62%, 220px); }
+  .home-why .home-section-head { text-align: center; }
+  .home-why .home-section-head h2::after { margin-inline: auto; }
+  .home-why .home-section-head p { margin-inline: auto; }
+}
+@media (max-width: 620px) { .home-why-list { grid-template-columns: minmax(0, 1fr); } .home-why-list li { padding: 16px; } .home-why-mark { width: 46px; height: 46px; } }

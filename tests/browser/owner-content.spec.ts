@@ -285,19 +285,23 @@ test.describe("info pages", () => {
     await expect(page.getByText(/We've received your message/)).toBeVisible();
     expect(state.contactBodies[0]).toMatchObject({ name: "Asha", website: "" });
   });
-  for (const [path, heading] of [["/about", "About Kalacar"], ["/faq", "FAQs"], ["/contact", "Contact us"]] as const) {
+  for (const [path, heading] of [["/about", "About"], ["/faq", "FAQ"], ["/contact", "Contact"]] as const) {
     test(`${path} opens and fits`, async ({ page }) => {
       await mockShop(page);
       await page.goto(path);
-      await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading, level: 1, exact: true })).toBeVisible();
       await expectFits(page);
     });
   }
-  test("undecided pages show a draft notice and stay out of Google", async ({ page }) => {
+  test("pages start finished: no draft notice or placeholders, and open to Google", async ({ page }) => {
     await mockShop(page);
-    await page.goto("/privacy");
-    await expect(page.locator(".policy-draft:visible")).toContainText("Draft, owner review");
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    for (const path of ["/privacy", "/terms", "/returns", "/safe-transit"]) {
+      await page.goto(path);
+      await expect(page.locator(".managed-page-body")).toBeVisible();
+      await expect(page.locator(".policy-draft")).toHaveCount(0);
+      await expect(page.getByText("To confirm")).toHaveCount(0);
+      await expect(page.locator('meta[name="robots"][content*="noindex"]')).toHaveCount(0);
+    }
   });
   test("footer links come from the dashboard", async ({ page }) => {
     await mockShop(page);
@@ -365,6 +369,19 @@ test.describe("footer, why choose and product line follow the dashboard", () => 
     await expect(footer.getByRole("navigation").getByRole("link")).toHaveText(["Our story", "Instagram"]);
     await expect(footer.getByRole("link", { name: "Instagram" })).toHaveAttribute("target", "_blank");
     await expect(footer.getByRole("link", { name: "Contact us" })).toHaveCount(0);
+  });
+  test("the Google reviews heading is the owner's, and can be hidden on the home page", async ({ page }) => {
+    const googleReviews = { show: true, showEyebrow: true, eyebrow: "Real reviews", showTitle: true, title: "Trusted by families", showDescription: true, description: "Reviews of Murtiverse, our sister studio." };
+    await mockShop(page, { content: content({ googleReviews }) });
+    await page.goto("/");
+    const head = page.locator(".greviews-head");
+    await expect(head.locator(".eyebrow")).toHaveText("Real reviews");
+    await expect(head.getByRole("heading", { level: 2 })).toHaveText("Trusted by families");
+    await expect(head.locator("b").first()).toHaveText("Murtiverse");
+    await expect(page.getByText("VIEW MURTI")).toHaveCount(0);
+    await mockShop(page, { content: content({ googleReviews: { ...googleReviews, show: false } }) });
+    await page.goto("/");
+    await expect(page.locator(".greviews")).toHaveCount(0);
   });
   test("why choose shows reasons with icons and no numbers, and the product line is the owner's", async ({ page }) => {
     const why = { ...DEFAULT_HOME.why, show: true, items: [{ title: "Safe packing", text: "Bubble wrapped", icon: "/uploads/box.png" }, { title: "Real photos", text: "What you see", icon: "" }] };

@@ -38,7 +38,7 @@ function parseHero(hero: Record<string, unknown>): HomeContent["hero"] {
 
 export function parseHome(body: unknown): HomeContent {
   const input = obj(body), d = DEFAULT_HOME;
-  const hero = obj(input.hero), spot = obj(input.spotlight), spotWhatsapp = obj(obj(input.spotlight).whatsapp), grid = obj(input.firstLaunch), soon = obj(input.comingSoon), collections = obj(input.collections), catalogue = obj(input.catalogue), why = obj(input.why), reviews = obj(input.reviews), story = obj(input.story);
+  const hero = obj(input.hero), spot = obj(input.spotlight), spotWhatsapp = obj(obj(input.spotlight).whatsapp), grid = obj(input.firstLaunch), soon = obj(input.comingSoon), collections = obj(input.collections), catalogue = obj(input.catalogue), why = obj(input.why), googleReviews = obj(input.googleReviews), reviews = obj(input.reviews), story = obj(input.story);
   return {
     hero: parseHero(hero),
     firstLaunch: { ...described(grid, d.firstLaunch), productIds: ids(grid.productIds, 12) },
@@ -46,6 +46,7 @@ export function parseHome(body: unknown): HomeContent {
     collections: described(collections, d.collections),
     catalogue: { ...described(catalogue, d.catalogue), showEyebrow: bool(catalogue.showEyebrow, d.catalogue.showEyebrow), eyebrow: text(catalogue.eyebrow, 60, d.catalogue.eyebrow), productIds: ids(catalogue.productIds, 60), showFilters: bool(catalogue.showFilters, d.catalogue.showFilters) },
     why: { ...described(why, d.why), items: (Array.isArray(why.items) ? why.items : d.why.items).slice(0, 8).map(item => ({ title: text(obj(item).title, 80), text: text(obj(item).text, 240), icon: safeImage(obj(item).icon) })).filter(item => item.title || item.text), showLogo: bool(why.showLogo, d.why.showLogo), logo: safeImage(why.logo) },
+    googleReviews: { ...described(googleReviews, d.googleReviews), showEyebrow: bool(googleReviews.showEyebrow, d.googleReviews.showEyebrow), eyebrow: text(googleReviews.eyebrow, 60, d.googleReviews.eyebrow) },
     reviews: { ...described(reviews, d.reviews), showText: bool(reviews.showText, d.reviews.showText), showVideo: bool(reviews.showVideo, d.reviews.showVideo) },
     story: { ...header(story, d.story), showText: bool(story.showText, d.story.showText), text: text(story.text, 2000), showImage: bool(story.showImage, d.story.showImage), image: safeImage(story.image), showFounder: bool(story.showFounder, d.story.showFounder), founder: text(story.founder, 80) },
     spotlight: { ...header(spot, d.spotlight), showDescription: bool(spot.showDescription, d.spotlight.showDescription), description: text(spot.description, 200), productId: ids([spot.productId], 1)[0] ?? "", image: safeImage(spot.image), showLogo: bool(spot.showLogo, d.spotlight.showLogo), whatsapp: { show: bool(spotWhatsapp.show, d.spotlight.whatsapp.show), label: text(spotWhatsapp.label, 40, d.spotlight.whatsapp.label) || d.spotlight.whatsapp.label } },

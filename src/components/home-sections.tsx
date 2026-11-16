@@ -231,14 +231,17 @@ export function WhyChooseUs() {
   const mark = section.showLogo && (section.logo
     ? <Image src={section.logo} alt="" width={260} height={260} className="home-why-own-logo" />
     : <Image src={logo.src} alt="Kalacar" width={260} height={111} className={logo.className.replace(" sized", "")} />);
-  return <section className={mark ? "home-section home-why with-logo" : "home-section home-why"} aria-labelledby="why-title">
-    {mark && <div className="home-why-logo">{mark}</div>}
-    <div className="home-why-body">
-      <SectionHead id="why-title" {...section} />
-      <ul className="home-why-list">{section.items.map((item, index) => <li key={`${item.title}-${index}`}>
-        {item.icon && <Image src={item.icon} alt="" width={48} height={48} className="home-why-icon" />}
-        <div>{item.title && <h3>{item.title}</h3>}{item.text && <p>{item.text}</p>}</div>
-      </li>)}</ul>
+  // A full-width band like the product spotlight: the logo on a warm panel, the reasons as cards beside it.
+  return <section className={mark ? "home-why with-logo" : "home-why"} aria-labelledby="why-title">
+    <div className="home-why-inner">
+      {mark && <div className="home-why-logo"><span className="home-why-ring">{mark}</span></div>}
+      <div className="home-why-body">
+        <SectionHead id="why-title" {...section} />
+        <ul className="home-why-list">{section.items.map((item, index) => <li key={`${item.title}-${index}`}>
+          <span className="home-why-mark" aria-hidden="true">{item.icon ? <Image src={item.icon} alt="" width={48} height={48} className="home-why-icon" /> : <span className="home-why-dot" />}</span>
+          <div>{item.title && <h3>{item.title}</h3>}{item.text && <p>{item.text}</p>}</div>
+        </li>)}</ul>
+      </div>
     </div>
   </section>;
 }

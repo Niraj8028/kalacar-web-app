@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { useSiteContent } from "@/components/site-content-provider";
 import { GOOGLE_REVIEWS, SISTER_STUDIO } from "@/data/google-reviews";
 import type { GoogleReview } from "@/data/google-reviews";
 
@@ -28,13 +29,17 @@ function ReviewCard({ review }: { review: GoogleReview }) {
 }
 
 /** Real Google reviews of our sister studio, kept static. Labelled as Murtiverse's, so nobody mistakes them for Kalacar's own. */
-export function GoogleReviews() {
+export function GoogleReviews({ onHome = false }: { onHome?: boolean }) {
+  const head = useSiteContent().home.googleReviews;
+  if (onHome && !head.show) return null;
+  // The studio's name stays bold wherever the owner's description mentions it.
+  const description = head.description.split(SISTER_STUDIO.name).flatMap((part, index) => index ? [<b key={index}>{SISTER_STUDIO.name}</b>, part] : [part]);
   return <section className="greviews" aria-labelledby="greviews-title">
     <div className="greviews-inner">
       <div className="greviews-head">
-        <p className="eyebrow">Google reviews</p>
-        <h2 id="greviews-title">Loved by devotees</h2>
-        <p>Real Google reviews of <b>{SISTER_STUDIO.name}</b>, our sister studio. Same hands, same care.</p>
+        {head.showEyebrow && head.eyebrow && <p className="eyebrow">{head.eyebrow}</p>}
+        <h2 id="greviews-title" className={head.showTitle && head.title ? undefined : "sr-only"}>{head.showTitle && head.title ? head.title : "Google reviews"}</h2>
+        {head.showDescription && head.description && <p>{description}</p>}
         <p className="greviews-badge"><GoogleG /> <b>{SISTER_STUDIO.rating.toFixed(1)}</b> <Stars rating={5} /> <span>{SISTER_STUDIO.reviewCount} reviews on Google</span></p>
       </div>
       <ul className="greviews-grid">{GOOGLE_REVIEWS.map(review => <ReviewCard key={review.name} review={review} />)}</ul>
