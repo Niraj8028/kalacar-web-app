@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { StoreItem } from "@/data/catalogue";
+import { productPath } from "@/lib/permalinks";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 
@@ -25,7 +26,7 @@ export function RecommendedProducts({ current, products }: { current: StoreItem;
       const cheapest = [...visible].sort((a, b) => a.price - b.price)[0] ?? item.variants[0];
       const fromPrice = new Set(item.variants.map(v => v.price)).size > 1;
       const save = cheapest.originalPrice > cheapest.price ? Math.round((1 - cheapest.price / cheapest.originalPrice) * 100) : 0;
-      return <li key={item.id}><Link className="recommended-card" href={`/products/${item.id}`}>
+      return <li key={item.id}><Link className="recommended-card" href={productPath(item)}>
         <span className="recommended-image"><Image src={item.image} alt="" fill sizes="(max-width: 620px) 50vw, 25vw" />{(item.badge || save > 0) && <span className="card-badges">{item.badge && <span className="badge-chip">{item.badge}</span>}{save > 0 && <span className="badge-chip save">Save {save}%</span>}</span>}</span>
         <span className="recommended-info">
           <small>{item.deity}</small>

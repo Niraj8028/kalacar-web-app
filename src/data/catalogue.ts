@@ -22,6 +22,9 @@ export type StoreColour = {
 
 export type StoreItem = {
   id: string;
+  /** Web address after /products/: follows the name unless the owner typed a permalink. */
+  slug?: string;
+  slugCustom?: boolean;
   name: string;
   /** Main category. */
   deity: string;

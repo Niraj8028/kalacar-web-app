@@ -3,11 +3,12 @@ import { deletePhotos, savePhoto } from "@/lib/catalogue-db";
 import { readVerifiedImage } from "@/lib/image-signature";
 import { parseProductAccordions } from "@/lib/product-accordions";
 import { parseColours } from "@/lib/colours";
+import { slugify } from "@/lib/permalinks";
 import type { ColourInput } from "@/lib/colours";
 import type { ProductAccordion } from "@/data/catalogue";
 
 /** Shared parsing for the dashboard's create/edit product form (product details + colours + photos). */
-export type ProductForm = { name: string; deity: string; extraCategories: string[]; badge: string; tagline: string; placement: string; description: string; bundleIds: string[]; accordions: ProductAccordion[]; specs: Array<{ label: string; value: string }>; highlights: string[]; colours: ColourInput[]; files: File[] };
+export type ProductForm = { name: string; permalink: string; deity: string; extraCategories: string[]; badge: string; tagline: string; placement: string; description: string; bundleIds: string[]; accordions: ProductAccordion[]; specs: Array<{ label: string; value: string }>; highlights: string[]; colours: ColourInput[]; files: File[] };
 
 /** Specification cards: up to 8 label/value pairs (owner-entered facts only). */
 function parseSpecs(raw: FormDataEntryValue | null): { error: string } | { value: Array<{ label: string; value: string }> } {
@@ -41,6 +42,9 @@ export function parseProductForm(form: FormData): { error: string } | { value: P
   const text = (key: string) => String(form.get(key) ?? "").trim();
   const name = text("name"), deity = text("deity"), badge = text("badge"), tagline = text("tagline"), placement = text("placement");
   if (name.length < 2 || name.length > 160 || deity.length < 2 || deity.length > 80) return { error: "Enter a product name and choose a category." };
+  const permalink = text("permalink");
+  if (permalink.length > 80) return { error: "Keep the permalink to 80 characters." };
+  if (permalink && !slugify(permalink)) return { error: "Use English letters or numbers in the permalink, like shree-krishna-gold." };
   if (badge.length > 40) return { error: "Keep the badge to 40 characters (e.g. Flagship)." };
   if (tagline.length > 120) return { error: "Keep the tagline to 120 characters." };
   if (placement.length > 255) return { error: "Description must be 255 characters or fewer." };
@@ -67,7 +71,7 @@ export function parseProductForm(form: FormData): { error: string } | { value: P
   if (files.some(file => file.size > 5 * 1024 * 1024)) return { error: "Each photo can be up to 5 MB." };
   const colours = parseColours(form.get("colours"), files.length);
   if ("error" in colours) return { error: colours.error };
-  return { value: { name, deity, extraCategories, badge, tagline, placement, description, bundleIds, accordions, specs: specs.value, highlights: highlights.value, colours: colours.value, files } };
+  return { value: { name, permalink, deity, extraCategories, badge, tagline, placement, description, bundleIds, accordions, specs: specs.value, highlights: highlights.value, colours: colours.value, files } };
 }
 
 const PHOTO_TYPES: Record<string, string> = { ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".avif": "image/avif" };

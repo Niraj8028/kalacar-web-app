@@ -9,6 +9,7 @@ import { useSiteContent } from "@/components/site-content-provider";
 import { WHATSAPP_URL } from "@/components/policy-links";
 import type { StoreItem } from "@/data/catalogue";
 import { useViewerCount } from "@/lib/realtime-client";
+import { productPath } from "@/lib/permalinks";
 
 const money = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 type Proof = { recent: { productId: string; productName: string; minutesAgo: number; firstName: string }[]; soldThisWeek: Record<string, number> };
@@ -67,7 +68,7 @@ export function RecentSaleNotice({ proof, products }: { proof: Proof; products: 
   if (!settings.show || !sale || closed) return null;
   const product = products.find(item => item.id === sale.productId);
   return <div className={`recent-sale size-${settings.size}`} role="status">
-    <Link href={`/products/${sale.productId}`}>
+    <Link href={product ? productPath(product) : `/products/${sale.productId}`}>
       {settings.showImage && product && <span className="recent-sale-image"><Image src={product.image} alt="" fill sizes="64px" /></span>}
       <span className="recent-sale-copy"><span><b>{sale.firstName || "Someone"}</b> has bought {sale.productName}</span><small>{agoText(sale.minutesAgo)}</small></span>
     </Link>
@@ -123,7 +124,7 @@ export function BundleBox({ item, products }: { item: StoreItem; products: Store
   const addAll = () => { all.forEach(product => { const colour = firstColour(product); if (colour && canAdd(product.id, colour.id)) add(product.id, colour.id, 1); }); openDrawer(); };
   return <section className="bundle-box" aria-labelledby="bundle-title">
     <h2 id="bundle-title">Frequently bought together</h2>
-    <ul>{all.map(product => <li key={product.id} className="card-clickable"><span className="bundle-image"><Image src={product.image} alt="" fill sizes="80px" /></span><Link className="card-link" href={`/products/${product.id}`}>{product.name}</Link><small>{money(firstColour(product)?.price ?? 0)}</small></li>)}</ul>
+    <ul>{all.map(product => <li key={product.id} className="card-clickable"><span className="bundle-image"><Image src={product.image} alt="" fill sizes="80px" /></span><Link className="card-link" href={productPath(product)}>{product.name}</Link><small>{money(firstColour(product)?.price ?? 0)}</small></li>)}</ul>
     <button className="detail-add-button" type="button" onClick={addAll}>Add all to bag · {money(total)}</button>
   </section>;
 }
