@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import type { ProductAccordion } from "@/data/catalogue";
 import { CouponError, applyCoupon } from "@/lib/coupons";
 import { slugify } from "@/lib/permalinks";
+import { sameInboxQuery } from "@/lib/email-address";
 
 const scrypt = promisify(scryptCallback);
 
@@ -120,6 +121,14 @@ async function initialize() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [userColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'user_id'");
   if (!userColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN user_id CHAR(36) NULL AFTER id, ADD KEY orders_user_id (user_id)");
+  // Guest checkout: the browser that placed an order holds a token for it. The confirmation email is sent once.
+  const [guestColumns] = await db.query<RowDataPacket[]>("SHOW COLUMNS FROM kalacar_orders LIKE 'guest_token_hash'");
+  if (!guestColumns.length) await db.execute("ALTER TABLE kalacar_orders ADD COLUMN guest_token_hash CHAR(64) NULL AFTER user_id, ADD COLUMN confirmation_sent_at DATETIME NULL, ADD KEY orders_guest_token (guest_token_hash)");
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_login_links (
+    token_hash CHAR(64) PRIMARY KEY, user_id CHAR(36) NOT NULL, expires_at DATETIME NOT NULL, used_at DATETIME NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY login_links_user_id (user_id),
+    CONSTRAINT kalacar_login_links_user_fk FOREIGN KEY (user_id) REFERENCES kalacar_users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   // Coupons managed from the dashboard. Orders keep the coupon id plus a snapshot of the code and discount.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_coupons (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, code VARCHAR(32) NOT NULL UNIQUE, type VARCHAR(10) NOT NULL,
@@ -480,7 +489,7 @@ export async function findOrder(id: string) {
   const order = rows[0];
   if (!order) return null;
   const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; variant_name: string | null; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,variant_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [id]);
-  return { id: order.id, userId: order.user_id, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, amount: Number(order.amount), status: order.status, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
+  return { id: order.id, userId: order.user_id, customer: { name: order.customer_name, email: order.email, phone: order.phone }, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, amount: Number(order.amount), status: order.status, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
 }
 
 const statusLabels: Record<string, string> = { payment_pending: "Awaiting payment", paid: "Paid", paid_after_cancel: "Paid after cancel", payment_failed: "Payment failed", payment_setup_failed: "Payment setup failed", payment_cancelled: "Cancelled", cancelled: "Cancelled", refunded: "Refunded" };
@@ -549,7 +558,8 @@ export async function upsertGoogleCustomer(googleSub: string, email: string, nam
   const db = database();
   const [bySub] = await db.execute<UserRow[]>("SELECT id,name,email,phone,google_sub FROM kalacar_users WHERE google_sub=? LIMIT 1", [googleSub]);
   if (bySub[0]) return { id: bySub[0].id, name: bySub[0].name, email: bySub[0].email, phone: bySub[0].phone };
-  const [byEmail] = await db.execute<UserRow[]>("SELECT id,name,email,phone,google_sub FROM kalacar_users WHERE email=? LIMIT 1", [email]);
+  const inbox = sameInboxQuery(email);
+  const [byEmail] = await db.execute<UserRow[]>(`SELECT id,name,email,phone,google_sub FROM kalacar_users WHERE ${inbox.where} ORDER BY email=? DESC LIMIT 1`, [...inbox.params, email]);
   if (byEmail[0]) {
     if (byEmail[0].google_sub && byEmail[0].google_sub !== googleSub) throw new Error("This email is linked to a different Google account.");
     await db.execute("UPDATE kalacar_users SET google_sub=? WHERE id=? AND google_sub IS NULL", [googleSub, byEmail[0].id]);
@@ -558,6 +568,70 @@ export async function upsertGoogleCustomer(googleSub: string, email: string, nam
   const id = randomUUID();
   await db.execute("INSERT INTO kalacar_users (id,name,email,phone,password_hash,google_sub) VALUES (?,?,?,?,?,?)", [id, name.slice(0, 160), email, "", "google-oauth-only", googleSub]);
   return { id, name: name.slice(0, 160), email, phone: "" };
+}
+
+type CustomerRecord = { id: string; name: string; email: string; phone: string };
+
+/** The account for this email, if any. Gmail spellings of one inbox count as the same account. */
+export async function findCustomerByEmail(email: string): Promise<CustomerRecord | null> {
+  await ensureCatalogue();
+  const inbox = sameInboxQuery(email);
+  const [rows] = await database().execute<(RowDataPacket & CustomerRecord)[]>(`SELECT id,name,email,phone FROM kalacar_users WHERE ${inbox.where} ORDER BY email=? DESC LIMIT 1`, [...inbox.params, email]);
+  return rows[0] ?? null;
+}
+
+export async function findCustomerById(id: string): Promise<CustomerRecord | null> {
+  await ensureCatalogue();
+  const [rows] = await database().execute<(RowDataPacket & CustomerRecord)[]>("SELECT id,name,email,phone FROM kalacar_users WHERE id=?", [id]);
+  return rows[0] ?? null;
+}
+
+/**
+ * Guest checkout: the order goes on the account for this email, created without a password if there is none.
+ * The buyer is never signed in to it here, because anyone can type any email.
+ */
+export async function findOrCreateGuestCustomer(name: string, email: string, phone: string): Promise<CustomerRecord> {
+  const existing = await findCustomerByEmail(email);
+  if (existing) return existing;
+  const id = randomUUID();
+  try {
+    await database().execute("INSERT INTO kalacar_users (id,name,email,phone,password_hash) VALUES (?,?,?,?,?)", [id, name.slice(0, 160), email, phone.slice(0, 32), "guest-no-password"]);
+  } catch (error) {
+    // Two checkouts with a new email at once: the other one created it.
+    if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") { const made = await findCustomerByEmail(email); if (made) return made; }
+    throw error;
+  }
+  return { id, name: name.slice(0, 160), email, phone };
+}
+
+/** Lets the browser that placed a guest order pay, check and see it. */
+export async function setOrderGuestToken(orderId: string, tokenHash: string) {
+  await ensureCatalogue();
+  await database().execute("UPDATE kalacar_orders SET guest_token_hash=? WHERE id=?", [tokenHash, orderId]);
+}
+
+export async function findGuestOrder(id: string, tokenHash: string) {
+  await ensureCatalogue();
+  const [rows] = await database().execute<OrderRow[]>("SELECT id FROM kalacar_orders WHERE id=? AND guest_token_hash=?", [id, tokenHash]);
+  return rows[0] ? findOrder(id) : null;
+}
+
+/** A one-time sign-in link for an email. Returns the token; only its hash is stored. */
+export async function createLoginLink(userId: string, minutes: number) {
+  await ensureCatalogue();
+  const token = randomBytes(32).toString("base64url");
+  await database().execute("INSERT INTO kalacar_login_links (token_hash,user_id,expires_at) VALUES (?,?,DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE))", [createHash("sha256").update(token).digest("hex"), userId, Math.round(minutes)]);
+  return token;
+}
+
+/** Uses up a sign-in link and returns its account, or null if it is unknown, used or expired. */
+export async function redeemLoginLink(token: string) {
+  await ensureCatalogue();
+  const hash = createHash("sha256").update(token).digest("hex");
+  const [used] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_login_links SET used_at=UTC_TIMESTAMP() WHERE token_hash=? AND used_at IS NULL AND expires_at>UTC_TIMESTAMP()", [hash]);
+  if (!used.affectedRows) return null;
+  const [rows] = await database().execute<(RowDataPacket & { user_id: string })[]>("SELECT user_id FROM kalacar_login_links WHERE token_hash=?", [hash]);
+  return rows[0] ? findCustomerById(rows[0].user_id) : null;
 }
 
 export async function createCustomerSession(userId: string) {
@@ -584,6 +658,17 @@ export async function deleteCustomerSession(token: string) {
 export async function listCustomerOrders(userId: string) {
   await ensureCatalogue();
   const [orders] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100", [userId]);
+  return describeOrders(orders);
+}
+
+/** Orders placed as a guest from this browser. */
+export async function listGuestOrders(tokenHash: string) {
+  await ensureCatalogue();
+  const [orders] = await database().execute<OrderRow[]>("SELECT * FROM kalacar_orders WHERE guest_token_hash=? ORDER BY created_at DESC LIMIT 50", [tokenHash]);
+  return describeOrders(orders);
+}
+
+function describeOrders(orders: OrderRow[]) {
   return Promise.all(orders.map(async (order) => {
     const [items] = await database().execute<(RowDataPacket & { product_id: string; product_name: string; variant_name: string | null; unit_price: number; quantity: number })[]>("SELECT product_id,product_name,variant_name,unit_price,quantity FROM kalacar_order_items WHERE order_id=?", [order.id]);
     return { id: order.id, createdAt: order.created_at, amount: Number(order.amount), status: order.status, fulfillmentStatus: order.fulfillment_status, trackingCourier: order.tracking_courier ?? "", trackingId: order.tracking_id ?? "", giftWrap: Boolean(order.gift_wrap), giftWrapPrice: Number(order.gift_wrap_price ?? 0), couponCode: order.coupon_code ?? "", discount: Number(order.discount ?? 0), trackingNote: order.tracking_note ?? "", refundAmount: order.refund_amount === null ? null : Number(order.refund_amount), cancelReason: order.cancel_reason ?? "", email: order.email, phone: order.phone, address: order.address, pincode: order.pincode, razorpayOrderId: order.razorpay_order_id, paymentId: order.razorpay_payment_id, items: items.map(item => ({ id: item.product_id, name: item.product_name, variant: item.variant_name ?? "", price: Number(item.unit_price), quantity: Number(item.quantity) })) };
@@ -608,6 +693,11 @@ function signalOrder(orderId: string, stockChanged = false) {
   void import("@/lib/realtime").then(live => live.announceOrder(orderId, stockChanged)).catch(() => undefined);
 }
 
+/** Sends the buyer's order confirmation. It is sent at most once per order, and a failure never affects the order. */
+function emailCustomer(orderId: string) {
+  void import("@/lib/customer-emails").then(mail => mail.sendOrderConfirmation(orderId)).catch(() => undefined);
+}
+
 /** Runs only when an order first becomes paid, so each order alerts once. Loaded late to keep the database code free of it. */
 function alertOwners(orderId: string) {
   void import("@/lib/owner-alerts").then(alerts => alerts.alertNewPaidOrder(orderId)).catch(() => undefined);
@@ -630,7 +720,7 @@ export async function recordRazorpayWebhook(eventId: string, eventType: string, 
     }
     else if (order && payment.status === "failed") await connection.execute("UPDATE kalacar_orders SET status='payment_failed',razorpay_payment_id=? WHERE id=? AND status='payment_pending'", [payment.id, order.id]);
     await connection.commit();
-    if (newlyPaid) alertOwners(order.id);
+    if (newlyPaid) { alertOwners(order.id); emailCustomer(order.id); }
     if (order) signalOrder(order.id);
     return Boolean(order);
   } catch (error) { await connection.rollback(); throw error; }
@@ -643,6 +733,7 @@ export async function markOrderPaid(id: string, razorpayOrderId: string, payment
   const [paid] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status IN ('payment_pending','payment_failed')", [paymentId, id, razorpayOrderId]);
   const [late] = await database().execute<mysql.ResultSetHeader>("UPDATE kalacar_orders SET status='paid_after_cancel',razorpay_payment_id=? WHERE id=? AND razorpay_order_id=? AND status='cancelled'", [paymentId, id, razorpayOrderId]);
   if (paid.affectedRows > 0 || late.affectedRows > 0) { alertOwners(id); signalOrder(id); }
+  if (paid.affectedRows > 0) emailCustomer(id);
   const order = await findOrder(id);
   return order?.status === "paid";
 }

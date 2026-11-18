@@ -1571,3 +1571,14 @@ body { overflow-x: clip; }
   .home-hero.with-image { min-height: min(60vw, max(860px, calc(100svh - 40px))); }
   .home-hero-wide { object-position: 50% 18%; }
 }
+
+/* Guest checkout: email first, sign-in is optional. */
+.guest-checkout { display: grid; gap: 8px; }
+.guest-signin { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.guest-signin .address-link { min-height: 0; padding: 0; font-size: 12px; }
+.guest-email-hint { margin: -2px 0 0; color: var(--muted); font-size: 11px; }
+.account-link-form { max-width: 480px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.checkout-demo-button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.account-guest-orders { margin-top: 26px; }
+.account-guest-orders h2 { margin: 0; font-size: 22px; }
+.account-guest-orders .account-orders { margin-top: 14px; }
