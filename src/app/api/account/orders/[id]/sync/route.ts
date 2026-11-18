@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import { currentCustomer } from "@/lib/customer-auth";
-import { findCustomerOrder } from "@/lib/catalogue-db";
+import { orderForViewer } from "@/lib/order-access";
 import { syncOrderPayment } from "@/lib/order-payment-sync";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const customer = await currentCustomer();
-  if (!customer) return NextResponse.json({ error: "Sign in to check this order." }, { status: 401 });
   const { id } = await context.params;
-  const order = await findCustomerOrder(id, customer.id);
-  if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  const access = await orderForViewer(id);
+  if (!access) return NextResponse.json({ error: "Order not found. Sign in with the email you ordered with to see it." }, { status: 404 });
+  const { order, owner: customer } = access;
   if (!["payment_pending", "payment_failed"].includes(order.status) || !order.razorpayOrderId) return NextResponse.json({ status: order.status });
   try {
     const { status } = await syncOrderPayment({ ...order, razorpayOrderId: order.razorpayOrderId }, customer.id);

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     response.cookies.set(CUSTOMER_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/", maxAge: 60 * 60 * 24 * 7 });
     return response;
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") return NextResponse.json({ error: "An account already uses this email. Sign in instead." }, { status: 409 });
+    if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") return NextResponse.json({ error: "An account already uses this email. Sign in, or use “Email me a sign-in link”." }, { status: 409 });
     console.error("Customer registration failed:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Could not create your account right now." }, { status: 503 });
   }

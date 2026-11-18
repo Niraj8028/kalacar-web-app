@@ -1,12 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { findOrder, markOrderPaid } from "@/lib/catalogue-db";
-import { currentCustomer } from "@/lib/customer-auth";
+import { markOrderPaid } from "@/lib/catalogue-db";
+import { orderForViewer } from "@/lib/order-access";
 import { razorpayKeys } from "@/lib/payment-status";
 
 export async function POST(request: Request) {
-  const account = await currentCustomer();
-  if (!account) return NextResponse.json({ error: "Sign in to verify this order." }, { status: 401 });
   const keys = razorpayKeys();
   if (!keys) return NextResponse.json({ error: "Payment verification is not configured." }, { status: 503 });
   const { keyId, secret } = keys;
@@ -19,8 +17,8 @@ export async function POST(request: Request) {
   const paymentId = data.razorpay_payment_id;
   const signature = data.razorpay_signature;
   if (typeof orderId !== "string" || typeof razorpayOrderId !== "string" || typeof paymentId !== "string" || typeof signature !== "string" || !/^[a-f0-9]{64}$/i.test(signature)) return NextResponse.json({ error: "Payment response is incomplete." }, { status: 400 });
-  const order = await findOrder(orderId);
-  if (!order || order.userId !== account.id || order.razorpayOrderId !== razorpayOrderId) return NextResponse.json({ error: "Payment does not match your Kalacar order." }, { status: 400 });
+  const order = (await orderForViewer(orderId))?.order;
+  if (!order || order.razorpayOrderId !== razorpayOrderId) return NextResponse.json({ error: "Payment does not match your Kalacar order." }, { status: 400 });
   const expected = createHmac("sha256", secret).update(`${razorpayOrderId}|${paymentId}`).digest();
   const supplied = Buffer.from(signature, "hex");
   if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) return NextResponse.json({ error: "Payment signature could not be verified." }, { status: 400 });

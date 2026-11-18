@@ -86,6 +86,9 @@ export default function BagFlow() {
   const draftReady = useRef(false); // don't overwrite a stored draft before it has been restored
   const [accountLoaded, setAccountLoaded] = useState(false);
   const [account, setAccount] = useState<{ name: string; email: string; phone: string } | null>(null);
+  // A guest's email for the order confirmation. Signed-in buyers use their account's email.
+  const [guestEmail, setGuestEmail] = useState("");
+  const orderEmail = account?.email ?? guestEmail.trim();
   const [savedCheckout, setSavedCheckout] = useState<SavedCheckout | null>(null);
   const [paymentStatus, setPaymentStatus] = useState("");
   const lastAutoSyncAt = useRef(0);
@@ -128,13 +131,13 @@ export default function BagFlow() {
       if (!data.user) addressesFor.current = "";
       const saved = readSavedCheckout();
       setSavedCheckout(saved);
-      if (saved?.orderId && data.user) void syncSavedCheckout(saved, true);
+      if (saved?.orderId) void syncSavedCheckout(saved, true);
     }).catch(() => undefined).finally(() => setAccountLoaded(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!savedCheckout?.orderId || !account) return;
+    if (!savedCheckout?.orderId) return;
     const onReturnToPage = () => {
       if (document.visibilityState !== "visible" || Date.now() - lastAutoSyncAt.current < 5000) return;
       lastAutoSyncAt.current = Date.now();
@@ -143,7 +146,7 @@ export default function BagFlow() {
     window.addEventListener("focus", onReturnToPage);
     document.addEventListener("visibilitychange", onReturnToPage);
     return () => { window.removeEventListener("focus", onReturnToPage); document.removeEventListener("visibilitychange", onReturnToPage); };
-  }, [savedCheckout?.orderId, account?.email]);
+  }, [savedCheckout?.orderId]);
 
   /** With the bag emptied, the confirmation screen shows. If it still holds other items, a notice shows instead. */
   function confirmPaid(message: string, bagCleared: boolean, orderId: string) {
@@ -259,7 +262,7 @@ export default function BagFlow() {
 
   async function placeOrder(startedAfresh = false): Promise<void> {
     if (!await loadRazorpay() || !window.Razorpay) throw new Error("Razorpay Checkout could not load. Please check your connection and retry.");
-    const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)), customer, gift: Boolean(giftOffer && wantGift), coupon: coupon?.code ?? "" });
+    const fingerprint = JSON.stringify({ items: [...lines].sort((a, b) => `${a.id}:${a.variantId ?? ""}`.localeCompare(`${b.id}:${b.variantId ?? ""}`)), customer, email: orderEmail.toLowerCase(), gift: Boolean(giftOffer && wantGift), coupon: coupon?.code ?? "" });
     let existing = readSavedCheckout();
     // The bag or address changed since an earlier unpaid order: that order is cancelled (after checking Razorpay) so its stock is freed.
     if (existing && existing.fingerprint !== fingerprint) {
@@ -271,7 +274,7 @@ export default function BagFlow() {
     }
     const persisted: SavedCheckout = { fingerprint, idempotencyKey: checkoutKey.current.value, orderId: existing?.fingerprint === fingerprint ? existing.orderId : "", razorpayOrderId: existing?.fingerprint === fingerprint ? existing.razorpayOrderId : "", amount: existing?.fingerprint === fingerprint ? existing.amount : 0 };
     localStorage.setItem(SAVED_CHECKOUT_KEY, JSON.stringify(persisted));
-    const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })), customer, saveAddress: selectedAddress === "new" && saveAddress, giftWrap: Boolean(giftOffer && wantGift), couponCode: coupon?.code ?? null }) });
+    const response = await fetch("/api/checkout/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idempotencyKey: checkoutKey.current.value, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })), customer, email: account ? undefined : orderEmail, saveAddress: Boolean(account) && selectedAddress === "new" && saveAddress, giftWrap: Boolean(giftOffer && wantGift), couponCode: coupon?.code ?? null }) });
     const order = await response.json() as { coupon?: boolean; stale?: "paid" | "cancelled"; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string };
     if (!response.ok && order.stale && !startedAfresh) {
       if (order.stale === "paid") { await syncSavedCheckout({ ...persisted, orderId: order.orderId }, true); return; }
@@ -288,7 +291,7 @@ export default function BagFlow() {
     const checkout = new window.Razorpay({
       key: order.keyId, amount: order.amount, currency: order.currency, name: "Kalacar",
       description: "Small devotional murti order", order_id: order.razorpayOrderId,
-      prefill: { name: customer.fullName, email: account?.email ?? "", contact: customer.phone.replace(/\D/g, "").length === 10 ? `+91${customer.phone.replace(/\D/g, "")}` : customer.phone },
+      prefill: { name: customer.fullName, email: orderEmail, contact: customer.phone.replace(/\D/g, "").length === 10 ? `+91${customer.phone.replace(/\D/g, "")}` : customer.phone },
       handler: (payment) => void verifyPayment(order.orderId, payment),
       modal: {
         backdropclose: false, escape: false, handleback: false, confirm_close: true,
@@ -313,14 +316,14 @@ export default function BagFlow() {
     <strong>{savedCheckout.orderId ? `Unpaid order ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout started"}</strong>
     <p>{paymentStatus === "payment_failed" ? "The last payment didn't go through. You can try again." : savedCheckout.orderId ? "This order is saved for 1 hour and hasn't been paid. Changing your bag and paying again cancels it." : "Continue with the same bag to resume it."}</p>
     {savedCheckout.orderId && <div className="bag-unpaid-actions">
-      {account && <button type="button" className="retry-order-button" disabled={busy} onClick={() => void retrySavedCheckout()}>Retry payment</button>}
+      <button type="button" className="retry-order-button" disabled={busy} onClick={() => void retrySavedCheckout()}>Retry payment</button>
       <button type="button" className="sync-order-button" disabled={busy} onClick={() => void syncSavedCheckout()}>{busy ? "Checking…" : "Check payment"}</button>
-      {account && <button type="button" className="sync-order-button" disabled={busy} onClick={() => void cancelUnpaid()}>Cancel order</button>}
+      <button type="button" className="sync-order-button" disabled={busy} onClick={() => void cancelUnpaid()}>Cancel order</button>
     </div>}
   </div>;
   const help = <a className="bag-help" href={whatsappLink("Hi Kalacar, I need help with my order or payment.")} target="_blank" rel="noreferrer">Need help? WhatsApp {SUPPORT_WHATSAPP.display} <External /></a>;
 
-  if (showSuccess && paidOrderId) return <div className="bag-page"><OrderConfirmation orderId={paidOrderId} email={account?.email} /></div>;
+  if (showSuccess && paidOrderId) return <div className="bag-page"><OrderConfirmation orderId={paidOrderId} email={orderEmail} /></div>;
 
   return <div className="bag-page">
     <p className="eyebrow">YOUR SELECTION</p>
@@ -347,13 +350,14 @@ export default function BagFlow() {
         <h2>Checkout</h2>
         <form className="checkout-form bag-checkout" onSubmit={startCheckout}>
           <GiftChoice />
-          {!accountLoaded ? <p className="demo-checkout-message" role="status">Loading your account…</p> : !account ? <div className="account-checkout-gate">
-            <p>Sign in to continue. Your payment status and orders stay linked to your account.</p>
-            <button type="button" className="checkout-demo-button" onClick={signIn}>Sign in to continue</button>
-          </div> : <>
-            <p className="account-checkout-note">{updatesGoTo(account.email, customer.phone || account.phone)}</p>
-            {draftRestored && selectedAddress === "new" && <p className="draft-restored" role="status">We kept the address you were typing.<button type="button" className="address-link" onClick={() => { clearAddressDraft(); setDraftRestored(false); setCustomer(emptyAddress(account.name, account.phone)); }}>Clear it</button></p>}
-            {savedAddresses.length > 0 && <fieldset className="checkout-address-picker">
+          {!accountLoaded ? <p className="demo-checkout-message" role="status">Loading…</p> : <>
+            {account ? <p className="account-checkout-note">{updatesGoTo(account.email, customer.phone || account.phone)}</p> : <div className="guest-checkout">
+              <p className="guest-signin">Have an account? <button type="button" className="address-link" onClick={signIn}>Sign in</button> for saved addresses.</p>
+              <label>Email<input type="email" required maxLength={190} autoComplete="email" inputMode="email" spellCheck={false} enterKeyHint="next" aria-describedby="guest-email-hint" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} /></label>
+              <p id="guest-email-hint" className="guest-email-hint">Your order confirmation and updates are sent here.</p>
+            </div>}
+            {draftRestored && selectedAddress === "new" && <p className="draft-restored" role="status">We kept the address you were typing.<button type="button" className="address-link" onClick={() => { clearAddressDraft(); setDraftRestored(false); setCustomer(emptyAddress(account?.name, account?.phone)); }}>Clear it</button></p>}
+            {account && savedAddresses.length > 0 && <fieldset className="checkout-address-picker">
               <legend>Deliver to</legend>
               {savedAddresses.map(address => <label key={address.id} className={`address-card selectable${selectedAddress === address.id ? " selected" : ""}`}>
                 <input type="radio" name="delivery-address" checked={selectedAddress === address.id} onChange={() => { setSelectedAddress(address.id); setCustomer(toDraft(address)); }} />
@@ -369,8 +373,8 @@ export default function BagFlow() {
               <Link className="address-manage" href="/account">Manage saved addresses</Link>
             </fieldset>}
             {selectedAddress === "new" && <>
-              <AddressFields idPrefix="checkout" value={customer} onChange={setCustomer} />
-              <label className="address-check"><input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />Save this address for next time</label>
+              <AddressFields idPrefix="checkout" value={customer} onChange={setCustomer} showLabel={Boolean(account) && saveAddress} />
+              {account && <label className="address-check"><input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />Save this address for next time</label>}
             </>}
             <CouponBox items={items} giftWrap={Boolean(giftOffer && wantGift)} applied={coupon} disabled={busy} onChange={(next, message) => { setCoupon(next); setCouponNote(message ?? ""); }} />
             {couponNote && <p className="coupon-error" role="status">{couponNote}</p>}
@@ -378,7 +382,7 @@ export default function BagFlow() {
           </>}
           {totals}
           {error && <p className="demo-checkout-message bag-error" role="alert">{error}</p>}
-          {account && <>
+          {accountLoaded && <>
             {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
             <button className="checkout-demo-button bag-pay" type="submit" disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : `Pay ${money(total)}`}</button>
             <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms">Terms</Link>. See <Link href="/shipping">Shipping</Link>, <Link href="/returns">Returns and refunds</Link> and <Link href="/privacy">Privacy</Link>.</p>

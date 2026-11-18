@@ -60,6 +60,7 @@ export default function AccountPanel() {
   const [syncing, setSyncing] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [linkEmail, setLinkEmail] = useState("");
 
   const googleErrorFromUrl = () => {
     const url = new URL(window.location.href);
@@ -86,7 +87,8 @@ export default function AccountPanel() {
     }
     setError(googleErrorFromUrl());
     setUser(session.user ?? null);
-    if (session.user) {
+    // Signed in: the account's orders. A guest: the orders placed from this browser, if any.
+    {
       const ordersResponse = await fetch("/api/account/orders", { cache: "no-store" });
       if (ordersResponse.ok) {
         const savedOrders = (await ordersResponse.json() as { orders: Order[] }).orders;
@@ -105,11 +107,37 @@ export default function AccountPanel() {
             return update ? { ...order, status: update[1] } : order;
           }));
         }
-      }
-    } else setOrders([]);
+      } else setOrders([]);
+    }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    // Opened from an emailed sign-in link: use it up here, then drop it from the address bar.
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("signin");
+    if (!token) { void refresh(); return; }
+    const next = params.get("next");
+    window.history.replaceState(null, "", "/account");
+    void fetch("/api/auth/email-link", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) })
+      .then(async response => {
+        const data = await response.json().catch(() => null) as { error?: string } | null;
+        if (!response.ok) { await refresh(); setError(data?.error || "This sign-in link didn't work. Ask for a new one below."); return; }
+        if (next && /^\/(?!\/)/.test(next) && next !== "/account") { window.location.assign(next); return; }
+        await refresh(); setNotice("You’re signed in.");
+      })
+      .catch(() => { void refresh(); setError("We couldn't sign you in just now. Please try the link again."); });
+  }, [refresh]);
+
+  async function emailLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/auth/email-link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: linkEmail, next: nextPath }) });
+      const data = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || "Could not send a sign-in link.");
+      setNotice(data?.message || "Check your inbox for a sign-in link.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not send a sign-in link."); }
+    finally { setBusy(false); }
+  }
   // Keeps payment, delivery and tracking current without a reload. This customer's own channel only.
   useLiveLoad("orders", refresh, user?.id ?? null);
 
@@ -184,41 +212,7 @@ export default function AccountPanel() {
     await fetch("/api/auth/logout", { method: "POST" }); setUser(null); setOrders([]); setNotice("You have signed out.");
   }
 
-  return <main className="account-page">
-    <header className="detail-header"><ShopLogo /><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></header>
-    <section className="account-content">
-      <p className="eyebrow">KALACAR CUSTOMER ACCOUNT</p>
-      <h1>{user ? `Namaste, ${user.name.split(" ")[0]}` : "Your orders, in one place."}</h1>
-      <p className="account-lede">{user ? "Track your orders and manage your delivery addresses." : "Sign in to track your orders and save delivery addresses."}</p>
-      {testPayments && <p className="account-demo-banner">Test mode: no real payment is taken.</p>}
-      {error && <p className="account-message error" role="alert">{error}</p>}{notice && <p className="account-message" role="status">{notice}</p>}
-      {!user ? <div className="account-card">
-        <a className="google-signin primary" href={`/api/auth/google/start?next=${encodeURIComponent(nextPath)}`}><svg aria-hidden="true" viewBox="0 0 18 18" width="18" height="18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>Continue with Google</a>
-        <p className="account-signin-note">Quickest and needs no new password. By continuing, you agree to our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy</Link> policy.</p>
-        <button type="button" className="account-email-toggle" aria-expanded={showEmail} onClick={() => setShowEmail(open => !open)}>{showEmail ? "Hide email sign-in" : "Use email and password instead"}</button>
-        {showEmail && <div className="account-email-area">
-        <div className="account-tabs"><button className={mode === "login" ? "selected" : ""} onClick={() => { setMode("login"); setError(""); }}>Sign in</button><button className={mode === "register" ? "selected" : ""} onClick={() => { setMode("register"); setError(""); }}>Create account</button></div>
-        <form className="account-form" onSubmit={submit}>
-          {mode === "register" && <><label>Your name<input required minLength={2} maxLength={160} autoComplete="name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label><label>Mobile number<input required type="tel" minLength={10} autoComplete="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label></>}
-          <label>Email<input required type="email" autoComplete="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label>
-          <label>Password<input required type="password" minLength={10} autoComplete={mode === "login" ? "current-password" : "new-password"} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></label>
-          <button className="checkout-demo-button" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
-        </form>
-        </div>}
-      </div> : <>
-        <div className="account-card account-profile-card">
-          <span className="account-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase()}</span>
-          <div className="account-profile-text"><strong>{user.name}</strong><span>{user.email}</span>{user.phone && <span>{user.phone}</span>}</div>
-          <button type="button" className="account-signout" onClick={() => void logout()}>Sign out</button>
-        </div>
-        <div className="account-views" role="group" aria-label="Account sections">
-          <button type="button" className={view === "orders" ? "selected" : ""} aria-pressed={view === "orders"} onClick={() => setView("orders")}>Orders{orders.length > 0 && <b>{orders.length}</b>}</button>
-          <button type="button" className={view === "addresses" ? "selected" : ""} aria-pressed={view === "addresses"} onClick={() => setView("addresses")}>Addresses</button>
-          <Link className="account-bag-link" href="/cart"><BagIcon size={16} />Your bag{count > 0 && <b>{count}</b>}</Link>
-        </div>
-        <div className="account-card" hidden={view !== "addresses"}><AddressBook defaultName={user.name} defaultPhone={user.phone} /></div>
-        <div hidden={view !== "orders"}>
-        {orders.length === 0 ? <div className="account-card account-empty"><p>You haven&apos;t placed an order yet.</p><Link className="checkout-demo-button" href="/#catalogue">Browse murtis</Link></div> : <div className="account-orders">{orders.map(order => {
+  const orderList = <div className="account-orders">{orders.map(order => {
           const status = order.status.replaceAll("_", " ");
           const step = deliveryStep(order.fulfillmentStatus);
           return <article className="account-order" key={order.id}>
@@ -232,7 +226,53 @@ export default function AccountPanel() {
             <details className="order-delivery"><summary>Delivery address</summary><p>{order.address} · PIN {order.pincode}</p></details>
             <div className="order-status-row">{["payment_pending", "payment_failed"].includes(order.status) && <><button type="button" className="retry-order-button" disabled={syncing === order.id} onClick={() => void retry(order)}>Retry payment</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void sync(order)}>{syncing === order.id ? "Checking…" : "Check payment status"}</button><button type="button" className="sync-order-button" disabled={syncing === order.id} onClick={() => void cancel(order)}>Cancel order</button></>}<a className="order-whatsapp" href={waLink(order.id)} target="_blank" rel="noreferrer">WhatsApp help <External /></a></div>
           </article>;
-        })}</div>}
+        })}</div>;
+
+  return <main className="account-page">
+    <header className="detail-header"><ShopLogo /><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></header>
+    <section className="account-content">
+      <p className="eyebrow">KALACAR CUSTOMER ACCOUNT</p>
+      <h1>{user ? `Namaste, ${user.name.split(" ")[0]}` : "Your orders, in one place."}</h1>
+      <p className="account-lede">{user ? "Track your orders and manage your delivery addresses." : "Sign in to track your orders and save delivery addresses."}</p>
+      {testPayments && <p className="account-demo-banner">Test mode: no real payment is taken.</p>}
+      {error && <p className="account-message error" role="alert">{error}</p>}{notice && <p className="account-message" role="status">{notice}</p>}
+      {!user ? <><div className="account-card">
+        <a className="google-signin primary" href={`/api/auth/google/start?next=${encodeURIComponent(nextPath)}`}><svg aria-hidden="true" viewBox="0 0 18 18" width="18" height="18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>Continue with Google</a>
+        <p className="account-signin-note">Quickest and needs no new password. By continuing, you agree to our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy</Link> policy.</p>
+        <form className="account-form account-link-form" onSubmit={emailLink}>
+          <label>Ordered without an account? Get a sign-in link by email<input required type="email" autoComplete="email" inputMode="email" spellCheck={false} placeholder="The email you ordered with" value={linkEmail} onChange={e => setLinkEmail(e.target.value)} /></label>
+          <button className="checkout-demo-button secondary" disabled={busy}>{busy ? "Please wait…" : "Email me a sign-in link"}</button>
+        </form>
+        <button type="button" className="account-email-toggle" aria-expanded={showEmail} onClick={() => setShowEmail(open => !open)}>{showEmail ? "Hide email sign-in" : "Use email and password instead"}</button>
+        {showEmail && <div className="account-email-area">
+        <div className="account-tabs"><button className={mode === "login" ? "selected" : ""} onClick={() => { setMode("login"); setError(""); }}>Sign in</button><button className={mode === "register" ? "selected" : ""} onClick={() => { setMode("register"); setError(""); }}>Create account</button></div>
+        <form className="account-form" onSubmit={submit}>
+          {mode === "register" && <><label>Your name<input required minLength={2} maxLength={160} autoComplete="name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label><label>Mobile number<input required type="tel" minLength={10} autoComplete="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label></>}
+          <label>Email<input required type="email" autoComplete="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label>
+          <label>Password<input required type="password" minLength={10} autoComplete={mode === "login" ? "current-password" : "new-password"} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></label>
+          <button className="checkout-demo-button" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}</button>
+        </form>
+        </div>}
+      </div>
+      {orders.length > 0 && <section className="account-guest-orders" aria-labelledby="guest-orders-title">
+        <h2 id="guest-orders-title">Orders from this device</h2>
+        <p className="account-signin-note">Sign in with the email you ordered with to see them on any device.</p>
+        {orderList}
+      </section>}
+      </> : <>
+        <div className="account-card account-profile-card">
+          <span className="account-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase()}</span>
+          <div className="account-profile-text"><strong>{user.name}</strong><span>{user.email}</span>{user.phone && <span>{user.phone}</span>}</div>
+          <button type="button" className="account-signout" onClick={() => void logout()}>Sign out</button>
+        </div>
+        <div className="account-views" role="group" aria-label="Account sections">
+          <button type="button" className={view === "orders" ? "selected" : ""} aria-pressed={view === "orders"} onClick={() => setView("orders")}>Orders{orders.length > 0 && <b>{orders.length}</b>}</button>
+          <button type="button" className={view === "addresses" ? "selected" : ""} aria-pressed={view === "addresses"} onClick={() => setView("addresses")}>Addresses</button>
+          <Link className="account-bag-link" href="/cart"><BagIcon size={16} />Your bag{count > 0 && <b>{count}</b>}</Link>
+        </div>
+        <div className="account-card" hidden={view !== "addresses"}><AddressBook defaultName={user.name} defaultPhone={user.phone} /></div>
+        <div hidden={view !== "orders"}>
+        {orders.length === 0 ? <div className="account-card account-empty"><p>You haven&apos;t placed an order yet.</p><Link className="checkout-demo-button" href="/#catalogue">Browse murtis</Link></div> : orderList}
         </div>
       </>}
       <a className="account-contact" href={waLink()} target="_blank" rel="noreferrer">Questions about an order? WhatsApp Kalacar · {SUPPORT_WHATSAPP.display}</a>

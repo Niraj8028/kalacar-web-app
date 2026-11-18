@@ -27,7 +27,8 @@ export const INDIAN_STATES = ["Andaman and Nicobar Islands", "Andhra Pradesh", "
 type PinStatus = { pin: string; kind: "checking" | "found" | "mismatch" | "notfound" | "error"; text: string } | null;
 
 /** Controlled delivery-address inputs shared by checkout and the account address book. */
-export function AddressFields({ value, onChange, idPrefix }: { value: AddressDraft; onChange: (next: AddressDraft) => void; idPrefix: string }) {
+/** `showLabel` is off when the address won't be saved (e.g. a guest checkout), so "Save as" would mean nothing. */
+export function AddressFields({ value, onChange, idPrefix, showLabel = true }: { value: AddressDraft; onChange: (next: AddressDraft) => void; idPrefix: string; showLabel?: boolean }) {
   const set = (key: keyof AddressDraft) => (event: { target: { value: string } }) => onChange({ ...value, [key]: event.target.value });
   // Values last filled from the map; a field is only replaced if it is empty or still holds that value,
   // so anything the customer typed themselves is never overwritten.
@@ -76,14 +77,14 @@ export function AddressFields({ value, onChange, idPrefix }: { value: AddressDra
   };
   return <>
     <LocationPicker onUse={applyLocation} />
-    <fieldset className="address-label-picker">
+    {showLabel && <fieldset className="address-label-picker">
       <legend>Save as</legend>
       {(["Home", "Work", "Other"] as const).map(label => (
         <label key={label} className={value.label === label ? "selected" : ""}>
           <input type="radio" name={`${idPrefix}-label`} value={label} checked={value.label === label} onChange={() => onChange({ ...value, label })} />{label}
         </label>
       ))}
-    </fieldset>
+    </fieldset>}
     <label>Full name<input required minLength={2} maxLength={160} autoComplete="name" spellCheck={false} enterKeyHint="next" value={value.fullName} onChange={set("fullName")} /></label>
     <label>Mobile number<input required type="tel" inputMode="tel" minLength={10} maxLength={16} autoComplete="tel" spellCheck={false} enterKeyHint="next" value={value.phone} onChange={e => onChange({ ...value, phone: e.target.value.replace(/[^\d+ ]/g, "") })} /></label>
     <label>Area, building and street<textarea required minLength={8} maxLength={500} autoComplete="street-address" value={value.address} onChange={set("address")} /></label>
