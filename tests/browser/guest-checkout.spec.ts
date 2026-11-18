@@ -15,6 +15,7 @@ test("a guest pays without signing in, and the email typed goes with the order",
   await expect(page.getByText("Sign in to continue")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(page.getByText("Save this address for next time")).toHaveCount(0);
+  await expect(page.getByText("Save as")).toHaveCount(0);
   await page.getByLabel("Email").fill("guest@example.test");
   await page.getByLabel("Full name").fill("Guest Buyer");
   await page.getByLabel("Mobile number").fill("9876543210");
@@ -63,4 +64,13 @@ test("an expired sign-in link says so and offers a new one", async ({ page }) =>
   await page.goto(`/account?signin=${"B".repeat(43)}`);
   await expect(page.getByText("This sign-in link has expired or was already used.", { exact: false })).toBeVisible();
   await expect(page.getByRole("button", { name: "Email me a sign-in link" })).toBeVisible();
+});
+
+test("signed-in buyers see Save as only while the address will be saved", async ({ page }) => {
+  await mockShop(page, { user: { id: "u1", name: "Test Buyer", email: "buyer@example.test", phone: "9876543210" } });
+  await page.addInitScript(() => localStorage.setItem("kalacar-demo-cart-v1", JSON.stringify([{ id: "ganesh", variantId: "plain", quantity: 1 }])));
+  await page.goto("/cart");
+  await expect(page.getByText("Save as")).toBeVisible();
+  await page.getByLabel("Save this address for next time").uncheck();
+  await expect(page.getByText("Save as")).toHaveCount(0);
 });

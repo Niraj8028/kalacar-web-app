@@ -373,7 +373,7 @@ export default function BagFlow() {
               <Link className="address-manage" href="/account">Manage saved addresses</Link>
             </fieldset>}
             {selectedAddress === "new" && <>
-              <AddressFields idPrefix="checkout" value={customer} onChange={setCustomer} />
+              <AddressFields idPrefix="checkout" value={customer} onChange={setCustomer} showLabel={Boolean(account) && saveAddress} />
               {account && <label className="address-check"><input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />Save this address for next time</label>}
             </>}
             <CouponBox items={items} giftWrap={Boolean(giftOffer && wantGift)} applied={coupon} disabled={busy} onChange={(next, message) => { setCoupon(next); setCouponNote(message ?? ""); }} />
