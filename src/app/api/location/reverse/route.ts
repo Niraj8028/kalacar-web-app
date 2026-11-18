@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { MINUTE, limitOrNull } from "@/lib/rate-limit";
+import { MINUTE, clientIp, limitOrNull } from "@/lib/rate-limit";
 import { currentCustomer } from "@/lib/customer-auth";
 import { toAddressFields } from "@/lib/geocode";
 import type { GeocodeResult } from "@/lib/geocode";
@@ -15,10 +15,13 @@ export async function GET(request: Request) {
   const key = process.env.GOOGLE_MAPS_SERVER_KEY;
   if (!key) return NextResponse.json({ error: "Location lookup is not configured." }, { status: 503 });
 
-  let user;
-  try { user = await currentCustomer(); } catch { return NextResponse.json({ error: "Account service is unavailable." }, { status: 503 }); }
-  if (!user) return NextResponse.json({ error: "Sign in to use your location." }, { status: 401 });
-  const limited = limitOrNull([{ key: `location:user:${user.id}`, limit: 30, windowMs: MINUTE }], "Too many location lookups. Wait a minute and try again.");
+  // Signed in or not, the lookup works; the account only decides which limit applies.
+  const user = await currentCustomer().catch(() => null);
+  // Guests can check out too, so they can use the map. Each lookup costs money, so guests get a tighter limit per connection.
+  const ip = clientIp(request);
+  const limited = limitOrNull(user
+    ? [{ key: `location:user:${user.id}`, limit: 30, windowMs: MINUTE }]
+    : [{ key: `location:ip:${ip}`, limit: 15, windowMs: MINUTE }, { key: `location:ip-hour:${ip}`, limit: 120, windowMs: 60 * MINUTE }], "Too many location lookups. Wait a minute and try again.");
   if (limited) return limited;
 
   const params = new URL(request.url).searchParams;
