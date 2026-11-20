@@ -67,7 +67,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
     : !showCount ? { tone: "ok", text: "In stock" }
     : colour.stock - inCart <= productPage.lowStock.threshold ? { tone: "low", text: inCart > 0 ? `Only ${colour.stock - inCart} more available` : productPage.lowStock.text.replaceAll("{count}", String(colour.stock)) } : { tone: "ok", text: "In stock" };
   // Add and Buy now only work for pieces not already in the bag; what's in the bag is reachable from the note below.
-  const buyNow = () => { if (canBuy < 1) return; add(item.id, colour.id, qty); router.push("/cart"); };
+  const buyNow = () => { if (canBuy < 1) return; add(item.id, colour.id, qty); router.push("/checkout"); };
 
   return <main className="product-page">
     {process.env.NODE_ENV === "development" && <p className="local-data-notice" role="note">Local development · Confirm this database product’s details, price, and stock before launch. Payments remain in test mode.</p>}

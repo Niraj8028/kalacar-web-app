@@ -148,7 +148,7 @@ export function ProductSpotlight() {
   const buyNow = () => {
     if (available.length !== 1) { router.push(productPath(item)); return; }
     if (canAdd(item.id, available[0].id)) add(item.id, available[0].id, 1);
-    router.push("/cart");
+    router.push("/checkout");
   };
   return <section className="spotlight" aria-labelledby="spotlight-name">
     <div className="spotlight-inner card-clickable">

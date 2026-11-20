@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { BagLines, GiftChoice, money } from "@/components/bag-lines";
-import { useCart } from "@/components/cart-provider";
+import { CHECKOUT_PATHS, useCart } from "@/components/cart-provider";
 import { ArrowRight, BagIcon, CloseMark } from "@/components/icons";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])';
@@ -13,7 +13,7 @@ const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:n
 export default function CartDrawer() {
   const { drawerOpen, closeDrawer, resolved, count, subtotal, giftOffer, wantGift, catalogueLoading, catalogueError } = useCart();
   const pathname = usePathname();
-  const open = drawerOpen && pathname !== "/cart";
+  const open = drawerOpen && !CHECKOUT_PATHS.includes(pathname);
   const panel = useRef<HTMLDivElement>(null);
   const previousPath = useRef(pathname);
 
@@ -64,7 +64,7 @@ export default function CartDrawer() {
             {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
             <div className="bag-total"><span>Total</span><strong>{money(subtotal + giftTotal)}</strong></div>
           </div>
-          <Link className="checkout-demo-button" href="/cart" onClick={leave}>Proceed to checkout <ArrowRight /></Link>
+          <Link className="checkout-demo-button" href="/checkout" onClick={leave}>Proceed to checkout <ArrowRight /></Link>
           <button type="button" className="bag-text-link" onClick={() => closeDrawer()}>Continue shopping</button>
         </footer>}
       </div>

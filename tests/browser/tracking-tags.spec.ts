@@ -56,8 +56,10 @@ test("shopping steps reach Meta and Google: view, add to bag, checkout, and one 
   await page.goto("/products/krushna");
   await expect.poll(tracked).toEqual({ meta: ["ViewContent 999"], google: ["view_item 999"] });
   await page.locator(".product-buy-row, .detail-copy").getByRole("button", { name: "Buy now" }).first().click();
-  await expect(page).toHaveURL(/\/cart$/);
+  await expect(page).toHaveURL(/\/checkout$/);
   await page.getByRole("button", { name: /^Pay / }).click();
+  // The thank-you page has its own URL, so Meta and Google can count it as a conversion page too.
+  await expect(page).toHaveURL(new RegExp(`/order-confirmed\\?order=${ORDER}$`));
   await expect(page.getByText("Thank you, your order is confirmed")).toBeVisible();
   // Buy now adds to the bag too. The purchase carries the amount paid and the order ID, so Meta can drop repeats.
   await expect.poll(tracked).toEqual({

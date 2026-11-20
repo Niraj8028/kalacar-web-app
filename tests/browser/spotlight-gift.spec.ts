@@ -10,7 +10,7 @@ test.describe("product spotlight", () => {
     await page.goto("/");
     await expect(page.locator(".spotlight")).toHaveCount(0);
   });
-  test("shows the product's own name, price and stock, without the old heading; Buy now goes to the bag", async ({ page }) => {
+  test("shows the product's own name, price and stock, without the old heading; Buy now goes to checkout", async ({ page }) => {
     const errors = watchErrors(page);
     await mockShop(page, { content: content({ show: true, title: "Bring home the divine", description: "Experience the joy", productId: "ganesh" }) });
     await page.goto("/");
@@ -26,7 +26,7 @@ test.describe("product spotlight", () => {
     await expect(page.locator(".hero-arrow, .spotlight .hero-dots")).toHaveCount(0);
     await expectFits(page);
     await spot.getByRole("button", { name: "Buy now" }).click();
-    await expect(page).toHaveURL(/\/cart$/);
+    await expect(page).toHaveURL(/\/checkout$/);
     expect(await page.evaluate(() => JSON.stringify(window.localStorage))).toContain("ganesh");
     expect(errors).toEqual([]);
   });

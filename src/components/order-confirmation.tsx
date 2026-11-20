@@ -8,7 +8,7 @@ import { useSiteContent } from "@/components/site-content-provider";
 import { DELIVERY_ESTIMATE, updatesGoTo } from "@/lib/store-info";
 import { trackShopEvent } from "@/components/tracking-tags";
 
-type ConfirmedOrder = { id: string; createdAt: string; amount: number; email?: string; phone?: string; address: string; pincode: string; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number; items: { id?: string; name: string; variant?: string; price: number; quantity: number }[] };
+type ConfirmedOrder = { id: string; status?: string; createdAt: string; amount: number; email?: string; phone?: string; address: string; pincode: string; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number; items: { id?: string; name: string; variant?: string; price: number; quantity: number }[] };
 
 const TRACKED_KEY = "kalacar.tracked-purchases.v1";
 
@@ -25,18 +25,33 @@ function trackPurchaseOnce(order: ConfirmedOrder) {
 export function OrderConfirmation({ orderId, email }: { orderId: string; email?: string }) {
   const { testPayments } = useSiteContent();
   const [order, setOrder] = useState<ConfirmedOrder | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const missing = !orderId || notFound;
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
   useEffect(() => {
     let active = true;
-    fetch("/api/account/orders", { cache: "no-store" }).then(r => r.json()).then((data: { orders?: ConfirmedOrder[] }) => {
-      const found = data.orders?.find(item => item.id === orderId) ?? null;
+    if (!orderId) return;
+    fetch("/api/account/orders", { cache: "no-store" }).then(r => r.ok ? r.json() : {}).then((data: { orders?: ConfirmedOrder[] }) => {
+      const found = data.orders?.find(item => item.id === orderId && (!item.status || item.status === "paid")) ?? null;
       if (!active) return;
       setOrder(found);
+      setNotFound(!found);
       if (found) trackPurchaseOnce(found);
     }).catch(() => undefined);
     return () => { active = false; };
   }, [orderId]);
+  // Opened without a paid order this browser can see (an old link, another device): no thank-you, just a way to the orders.
+  if (missing) return <section className="order-confirmed">
+    <div className="order-confirmed-head">
+      <h1 ref={heading} tabIndex={-1}>We couldn&apos;t find this order</h1>
+      <p>Your orders are on your account page. If you paid on another device, sign in there with the email you used.</p>
+    </div>
+    <div className="order-confirmed-actions">
+      <Link className="checkout-demo-button" href="/account">View your orders</Link>
+      <Link className="bag-text-link" href="/#catalogue">Continue shopping</Link>
+    </div>
+  </section>;
   return <section className="order-confirmed">
     <div className="order-confirmed-head">
       <span className="order-confirmed-mark" aria-hidden="true"><CheckMark size={24} /></span>
