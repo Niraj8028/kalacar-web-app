@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { money } from "@/components/bag-lines";
 import { CheckMark } from "@/components/icons";
@@ -88,4 +89,10 @@ export function OrderConfirmation({ orderId, email }: { orderId: string; email?:
       <Link className="bag-text-link" href="/#catalogue">Continue shopping</Link>
     </div>
   </section>;
+}
+
+/** The thank-you page's confirmation, for the order named in ?order=. */
+export function OrderConfirmationFromUrl() {
+  const order = useSearchParams().get("order") ?? "";
+  return <OrderConfirmation orderId={/^[0-9a-f-]{36}$/i.test(order) ? order : ""} />;
 }
