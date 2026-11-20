@@ -11,7 +11,7 @@ test("a guest pays without signing in, and the email typed goes with the order",
   await page.route("**/api/checkout/orders", route => { bodies.push(route.request().postDataJSON()); return route.fulfill({ json: { orderId: ORDER, razorpayOrderId: "order_guest", amount: 99900, currency: "INR", keyId: "rzp_test_x" } }); });
   await page.route("https://checkout.razorpay.com/**", route => route.fulfill({ contentType: "text/javascript", body: "window.Razorpay = class { constructor(o) { window.__prefill = o.prefill; } on() {} open() {} };" }));
   await page.addInitScript(() => localStorage.setItem("kalacar-demo-cart-v1", JSON.stringify([{ id: "ganesh", variantId: "plain", quantity: 1 }])));
-  await page.goto("/cart");
+  await page.goto("/checkout");
   await expect(page.getByText("Sign in to continue")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(page.getByText("Save this address for next time")).toHaveCount(0);
@@ -69,8 +69,32 @@ test("an expired sign-in link says so and offers a new one", async ({ page }) =>
 test("signed-in buyers see Save as only while the address will be saved", async ({ page }) => {
   await mockShop(page, { user: { id: "u1", name: "Test Buyer", email: "buyer@example.test", phone: "9876543210" } });
   await page.addInitScript(() => localStorage.setItem("kalacar-demo-cart-v1", JSON.stringify([{ id: "ganesh", variantId: "plain", quantity: 1 }])));
-  await page.goto("/cart");
+  await page.goto("/checkout");
   await expect(page.getByText("Save as")).toBeVisible();
   await page.getByLabel("Save this address for next time").uncheck();
   await expect(page.getByText("Save as")).toHaveCount(0);
+});
+
+test("the bag, checkout and thank-you steps each have their own page", async ({ page }) => {
+  await mockShop(page, { orders: [PAID_ORDER] });
+  await page.addInitScript(() => localStorage.setItem("kalacar-demo-cart-v1", JSON.stringify([{ id: "ganesh", variantId: "plain", quantity: 1 }])));
+  await page.goto("/cart");
+  await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Pay / })).toHaveCount(0);
+  await expect(page.getByLabel("Email")).toHaveCount(0);
+  await page.getByRole("link", { name: "Proceed to checkout" }).click();
+  await expect(page).toHaveURL(/\/checkout$/);
+  await expect(page.getByRole("heading", { name: "Checkout", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Pay / })).toBeVisible();
+  await page.goto(`/order-confirmed?order=${ORDER}`);
+  await expect(page.getByText("Thank you, your order is confirmed")).toBeVisible();
+});
+
+test("the thank-you page doesn't thank anyone for an order it can't find", async ({ page }) => {
+  await mockShop(page);
+  await page.goto("/order-confirmed?order=55555555-5555-4555-8555-555555555555");
+  await expect(page.getByRole("heading", { name: "We couldn't find this order" })).toBeVisible();
+  await expect(page.getByText("Thank you, your order is confirmed")).toHaveCount(0);
+  await page.goto("/order-confirmed");
+  await expect(page.getByRole("heading", { name: "We couldn't find this order" })).toBeVisible();
 });

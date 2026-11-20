@@ -1582,3 +1582,8 @@ body { overflow-x: clip; }
 .account-guest-orders { margin-top: 26px; }
 .account-guest-orders h2 { margin: 0; font-size: 22px; }
 .account-guest-orders .account-orders { margin-top: 14px; }
+
+/* Bag page summary: the step before checkout. */
+.bag-summary-note { margin: 0; color: var(--muted); font-size: 13px; }
+.bag-page a.bag-pay { gap: 8px; text-decoration: none; }
+.bag-page a.bag-pay.disabled { opacity: .55; cursor: not-allowed; }

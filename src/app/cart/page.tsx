@@ -1,18 +1,10 @@
-import { ShopLogo } from "@/components/shop-logo";
-import { MobileMenu } from "@/components/mobile-menu";
-import Link from "next/link";
+import type { Metadata } from "next";
 import BagFlow from "@/components/bag-flow";
-import { SiteFooter } from "@/components/site-footer";
-import { ArrowLeft, UserCircle } from "@/components/icons";
+import { CheckoutPageShell } from "@/components/checkout-page-shell";
 
-/** The full bag page, opened from the top bar's bag button, Account, or Proceed to checkout in the drawer. */
+export const metadata: Metadata = { title: "Your bag — Kalacar" };
+
+/** Step 1 of buying: the bag. Opened from the top bar's bag button and Account. */
 export default function CartPage() {
-  return <main className="cart-page">
-    <header className="detail-header">
-      <MobileMenu /><ShopLogo />
-      <div className="detail-header-links"><Link className="account-link" href="/account" aria-label="Your account" title="Your account"><UserCircle size={20} /><span>Account</span></Link><Link className="back-to-shop" href="/#catalogue"><ArrowLeft /> Continue shopping</Link></div>
-    </header>
-    <section className="cart-page-flow"><BagFlow /></section>
-    <SiteFooter />
-  </main>;
+  return <CheckoutPageShell><BagFlow step="cart" /></CheckoutPageShell>;
 }

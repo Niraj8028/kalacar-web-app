@@ -38,6 +38,6 @@ test("checkout says order updates go to the email and the delivery phone", async
   await mockShop(page, { user: USER });
   await page.route("**/api/account/addresses", route => route.fulfill({ json: { addresses: [] } }));
   await page.addInitScript(() => localStorage.setItem("kalacar-demo-cart-v1", JSON.stringify([{ id: "krushna", variantId: "gold", quantity: 1 }])));
-  await page.goto("/cart");
+  await page.goto("/checkout");
   await expect(page.getByText("Order updates go to buyer@example.test and 9876543210.")).toBeVisible();
 });

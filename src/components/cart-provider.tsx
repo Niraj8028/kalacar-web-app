@@ -8,6 +8,9 @@ import type { ReactNode } from "react";
 import { BagIcon } from "@/components/icons";
 import type { StoreColour, StoreItem } from "@/data/catalogue";
 
+/** Pages that already show the bag, so the drawer stays shut there. */
+export const CHECKOUT_PATHS = ["/cart", "/checkout", "/order-confirmed"];
+
 /** A cart line is one colour of one product. Old saved carts have no variantId: they use the first colour. */
 export type CartLine = { id: string; variantId?: string; quantity: number };
 export type ResolvedLine = { key: string; line: CartLine; product: StoreItem; colour: StoreColour };
@@ -63,7 +66,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Opening adds a history step, so a phone's Back button closes the drawer instead of leaving the page.
   const openDrawer = useCallback(() => {
-    if (!drawerRef.current && window.location.pathname !== "/cart") window.history.pushState({ kalacarDrawer: true }, "");
+    if (!drawerRef.current && !CHECKOUT_PATHS.includes(window.location.pathname)) window.history.pushState({ kalacarDrawer: true }, "");
     drawerRef.current = true;
     setDrawerOpen(true);
   }, []);

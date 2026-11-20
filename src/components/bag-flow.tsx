@@ -12,11 +12,10 @@ import { useSiteContent } from "@/components/site-content-provider";
 import type { RazorpayPaymentSuccess } from "@/types/razorpay";
 import { AddressFields, addressSummary, emptyAddress, toDraft } from "@/components/address-fields";
 import type { AddressDraft, SavedAddress } from "@/components/address-fields";
-import { OrderConfirmation } from "@/components/order-confirmation";
 import { updatesGoTo } from "@/lib/store-info";
 import { trackShopEvent } from "@/components/tracking-tags";
 import { DeliveryLine } from "@/components/product-facts";
-import { BagIcon, External } from "@/components/icons";
+import { ArrowRight, BagIcon, External } from "@/components/icons";
 
 
 type SavedCheckout = { fingerprint: string; idempotencyKey: string; orderId: string; razorpayOrderId: string; amount: number };
@@ -62,20 +61,21 @@ function loadRazorpay() {
   });
 }
 
-/** The full bag page: items on the left, summary and checkout on the right. All prices and stock are decided again by the server at payment. */
-export default function BagFlow() {
+/** The bag ("cart" step) and checkout ("checkout" step) pages: items on the left, summary or checkout on the right.
+ *  Each step has its own URL, and a paid order opens /order-confirmed, so ad platforms can follow the funnel by page.
+ *  All prices and stock are decided again by the server at payment. */
+export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
   const { testPayments } = useSiteContent();
   const { lines, resolved, subtotal, count, clear, catalogueLoading, catalogueError, giftOffer, wantGift, setWantGift } = useCart();
   const router = useRouter();
   const [notice, setNotice] = useState("");
-  const [paidOrderId, setPaidOrderId] = useState("");
+  const [openingOrder, setOpeningOrder] = useState(false);
   const giftTotal = giftOffer && wantGift ? giftOffer.price * count : 0;
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [couponNote, setCouponNote] = useState("");
   const discount = coupon?.discount ?? 0;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [verificationData, setVerificationData] = useState<{ orderId: string; payment: RazorpayPaymentSuccess } | null>(null);
   const checkoutKey = useRef({ fingerprint: "", value: "" });
   const [customer, setCustomer] = useState<AddressDraft>(emptyAddress());
@@ -93,8 +93,6 @@ export default function BagFlow() {
   const [paymentStatus, setPaymentStatus] = useState("");
   const lastAutoSyncAt = useRef(0);
   const products = resolved.map(({ key, product, colour, line }) => ({ key, item: product, colour, quantity: line.quantity }));
-  // A success message belongs to the completed order, not to any items added afterward.
-  const showSuccess = Boolean(success) && products.length === 0;
 
   useEffect(() => {
     if (!draftReady.current) return;
@@ -104,10 +102,6 @@ export default function BagFlow() {
       else sessionStorage.removeItem(ADDRESS_DRAFT_KEY);
     } catch { /* storage unavailable: nothing to keep */ }
   }, [customer, selectedAddress, saveAddress]);
-
-  useEffect(() => {
-    if (success && products.length > 0) setSuccess("");
-  }, [success, products.length]);
 
   // Addresses load once per account, so typed details and the chosen address stay.
   const addressesFor = useRef("");
@@ -148,9 +142,11 @@ export default function BagFlow() {
     return () => { window.removeEventListener("focus", onReturnToPage); document.removeEventListener("visibilitychange", onReturnToPage); };
   }, [savedCheckout?.orderId]);
 
-  /** With the bag emptied, the confirmation screen shows. If it still holds other items, a notice shows instead. */
+  /** With the bag emptied, the order-confirmed page opens. If the bag still holds other items, a notice shows instead. */
   function confirmPaid(message: string, bagCleared: boolean, orderId: string) {
-    if (bagCleared) { setPaidOrderId(orderId); setSuccess(message); } else setNotice(message);
+    if (!bagCleared) { setNotice(message); return; }
+    setOpeningOrder(true);
+    router.replace(`/order-confirmed?order=${encodeURIComponent(orderId)}`);
   }
 
   /** Drops the saved checkout, so the next Pay places a fresh order. */
@@ -206,7 +202,7 @@ export default function BagFlow() {
   async function retrySavedCheckout() {
     if (!savedCheckout?.orderId) return;
     const saved = savedCheckout;
-    setBusy(true); setError(""); setSuccess("");
+    setBusy(true); setError("");
     const sameItems = sameBag(saved.fingerprint, lines);
     try {
       const response = await fetch(`/api/account/orders/${saved.orderId}/retry`, { method: "POST" });
@@ -253,7 +249,7 @@ export default function BagFlow() {
   }
 
   async function startCheckout(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(""); setSuccess(""); setNotice("");
+    event.preventDefault(); setBusy(true); setError(""); setNotice("");
     trackShopEvent("begin_checkout", resolved.map(({ product, colour, line }) => ({ id: product.id, name: product.name, variant: colour.name, price: colour.price, quantity: line.quantity })));
     try { await placeOrder(); }
     catch (checkoutError) { setError(checkoutError instanceof Error ? checkoutError.message : "Could not start checkout."); }
@@ -305,14 +301,14 @@ export default function BagFlow() {
   const total = subtotal - discount + giftTotal;
   const items = resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity }));
   const stockProblem = products.some(({ colour, quantity }) => colour.stock < quantity);
-  const signIn = () => router.push("/account?next=%2Fcart");
+  const signIn = () => router.push("/account?next=%2Fcheckout");
   const totals = <div className="bag-totals">
     <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
     {discount > 0 && <div className="cart-discount"><span>Coupon {coupon?.code}</span><span>−{money(discount)}</span></div>}
     {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
     <div className="bag-total"><span>Total</span><strong>{money(total)}</strong></div>
   </div>;
-  const unpaid = savedCheckout && !showSuccess && <div className="bag-unpaid" role="status">
+  const unpaid = savedCheckout && <div className="bag-unpaid" role="status">
     <strong>{savedCheckout.orderId ? `Unpaid order ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout started"}</strong>
     <p>{paymentStatus === "payment_failed" ? "The last payment didn't go through. You can try again." : savedCheckout.orderId ? "This order is saved for 1 hour and hasn't been paid. Changing your bag and paying again cancels it." : "Continue with the same bag to resume it."}</p>
     {savedCheckout.orderId && <div className="bag-unpaid-actions">
@@ -323,20 +319,15 @@ export default function BagFlow() {
   </div>;
   const help = <a className="bag-help" href={whatsappLink("Hi Kalacar, I need help with my order or payment.")} target="_blank" rel="noreferrer">Need help? WhatsApp {SUPPORT_WHATSAPP.display} <External /></a>;
 
-  if (showSuccess && paidOrderId) return <div className="bag-page"><OrderConfirmation orderId={paidOrderId} email={orderEmail} /></div>;
+  if (openingOrder) return <div className="bag-page"><div className="bag-empty" role="status"><p>Payment confirmed. Opening your order…</p></div></div>;
 
   return <div className="bag-page">
-    <p className="eyebrow">YOUR SELECTION</p>
-    <h1>Your bag</h1>
+    <p className="eyebrow">{step === "cart" ? "YOUR SELECTION" : "SECURE CHECKOUT"}</p>
+    <h1>{step === "cart" ? "Your bag" : "Checkout"}</h1>
     {testPayments && <p className="bag-test-note">Test mode: no real payment is taken.</p>}
     {notice && <p className="account-message" role="status">{notice}</p>}
     {unpaid}
-    {showSuccess ? <div className="bag-done" role="status">
-      <h3>Thank you</h3>
-      <p>{success}</p>
-      <Link className="checkout-demo-button" href="/account">View your orders</Link>
-      <Link className="bag-text-link" href="/#catalogue">Continue shopping</Link>
-    </div> : catalogueError ? <div className="bag-empty" role="alert">
+    {catalogueError ? <div className="bag-empty" role="alert">
       <p>{catalogueError}</p><p>Your bag is saved in this browser. We can&apos;t confirm prices and stock right now, so checkout is unavailable.</p>
     </div> : catalogueLoading ? <div className="bag-empty" role="status"><p>Checking current prices and stock…</p></div>
     : products.length === 0 ? <div className="bag-empty">
@@ -346,8 +337,17 @@ export default function BagFlow() {
       <Link className="checkout-demo-button" href="/#catalogue">Browse murtis</Link>
     </div> : <div className="bag-page-grid">
       <section className="bag-page-items" aria-label="Items in your bag"><BagLines />{help}</section>
-      <aside className="bag-page-side">
-        <h2>Checkout</h2>
+      {step === "cart" ? <aside className="bag-page-side">
+        <h2>Order summary</h2>
+        <div className="checkout-form bag-checkout">
+          <GiftChoice />
+          <DeliveryLine />
+          {totals}
+          <p className="bag-summary-note">Add delivery details and coupons on the next step.</p>
+          <Link className={`checkout-demo-button bag-pay${stockProblem ? " disabled" : ""}`} href="/checkout" aria-disabled={stockProblem || undefined} onClick={e => { if (stockProblem) e.preventDefault(); }}>Proceed to checkout <ArrowRight /></Link>
+        </div>
+      </aside> : <aside className="bag-page-side">
+        <h2>Delivery and payment</h2>
         <form className="checkout-form bag-checkout" onSubmit={startCheckout}>
           <GiftChoice />
           {!accountLoaded ? <p className="demo-checkout-message" role="status">Loading…</p> : <>
@@ -388,7 +388,7 @@ export default function BagFlow() {
             <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms">Terms</Link>. See <Link href="/shipping">Shipping</Link>, <Link href="/returns">Returns and refunds</Link> and <Link href="/privacy">Privacy</Link>.</p>
           </>}
         </form>
-      </aside>
+      </aside>}
     </div>}
   </div>;
 }

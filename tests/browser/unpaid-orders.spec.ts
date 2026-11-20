@@ -27,7 +27,7 @@ async function setup(page: Page, cancelStatus: string) {
     // Saved for a different bag (Krushna), so the Ganesh bag counts as changed.
     localStorage.setItem("kalacar.pending-checkout.v1", JSON.stringify({ fingerprint: JSON.stringify({ items: [{ id: "krushna", variantId: "gold", quantity: 1 }] }), idempotencyKey: "33333333-3333-4333-8333-333333333333", orderId: oldOrder, razorpayOrderId: "order_old", amount: 99900 }));
   }, [OLD_ORDER]);
-  await page.goto("/cart");
+  await page.goto("/checkout");
   await expect(page.getByText(`Unpaid order ${OLD_ORDER.slice(0, 8).toUpperCase()}`)).toBeVisible();
   return calls;
 }
@@ -54,6 +54,8 @@ test("an old order that turns out to be paid is not replaced by a new one", asyn
   const calls = await setup(page, "paid");
   await page.route(`**/api/account/orders/${OLD_ORDER}/sync`, route => route.fulfill({ json: { status: "paid" } }));
   await page.getByRole("button", { name: /^Pay / }).click();
+  // That order was for a different bag, so the shopper stays on checkout with this bag kept.
   await expect(page.getByText(/Payment confirmed/)).toBeVisible();
+  await expect(page).toHaveURL(/\/checkout$/);
   expect(calls).not.toContain("/api/checkout/orders");
 });
