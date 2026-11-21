@@ -59,3 +59,39 @@ test("an old order that turns out to be paid is not replaced by a new one", asyn
   await expect(page).toHaveURL(/\/checkout$/);
   expect(calls).not.toContain("/api/checkout/orders");
 });
+
+// An unpaid order the server can't find for this visitor (placed while signed in elsewhere, or long expired)
+// must not block checkout: Retry, Check and Cancel used to show "Order not found" and Pay stayed stuck.
+const NOT_FOUND = { status: 404, json: { error: "Order not found. Sign in with the email you ordered with to see it." } };
+
+test("an earlier unpaid order the server can't find is cleared on opening checkout", async ({ page }) => {
+  const calls = await setup(page, "cancelled");
+  await page.unroute("**/api/account/orders/*/*");
+  await page.route("**/api/account/orders/*/*", route => { calls.push(new URL(route.request().url()).pathname); return route.fulfill(NOT_FOUND); });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("kalacar.pending-checkout.v1"))).toBeNull();
+  expect(calls).toContain(`/api/account/orders/${OLD_ORDER}/sync`);
+  await expect(page.locator(".bag-unpaid")).toHaveCount(0);
+  await page.getByRole("button", { name: /^Pay / }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __opened?: string }).__opened)).toBe("order_new");
+  await expect(page.getByText("Order not found")).toHaveCount(0);
+});
+
+test("Pay isn't blocked when the earlier unpaid order can't be cancelled because the server can't find it", async ({ page }) => {
+  const calls = await setup(page, "cancelled");
+  await page.route(`**/api/account/orders/${OLD_ORDER}/cancel`, route => { calls.push("cancel-404"); return route.fulfill(NOT_FOUND); });
+  await page.getByRole("button", { name: /^Pay / }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __opened?: string }).__opened)).toBe("order_new");
+  expect(calls).toContain("cancel-404");
+  await expect(page.getByText("Order not found")).toHaveCount(0);
+});
+
+test("Cancel order on an order the server can't find clears it without claiming it was cancelled", async ({ page }) => {
+  await setup(page, "cancelled");
+  await page.route(`**/api/account/orders/${OLD_ORDER}/cancel`, route => route.fulfill(NOT_FOUND));
+  page.once("dialog", dialog => void dialog.accept());
+  await page.getByRole("button", { name: "Cancel order" }).click();
+  await expect(page.getByText(/couldn't open your earlier unpaid order .* so it was cleared/)).toBeVisible();
+  await expect(page.getByText(/was cancelled and nothing was charged/)).toHaveCount(0);
+  await expect(page.locator(".bag-unpaid")).toHaveCount(0);
+});

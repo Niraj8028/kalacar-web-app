@@ -154,23 +154,30 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
     localStorage.removeItem(SAVED_CHECKOUT_KEY); setSavedCheckout(null); setPaymentStatus(""); checkoutKey.current = { fingerprint: "", value: "" };
   }
   const CANCELLED = ["cancelled", "payment_cancelled", "payment_setup_failed"];
+  // The server can't find the saved order for this visitor (placed while signed in to another account, or in another session).
+  // Nothing more can be done with it here, so it is let go and the bag can be paid for afresh. Unpaid orders expire on the server by themselves.
+  const unreachableNotice = (orderId: string) => `We couldn't open your earlier unpaid order ${orderId.slice(0, 8).toUpperCase()} here, so it was cleared. You can pay for your bag now. If you already paid for it, you'll find it in your account.`;
   const cancelledNotice = (orderId: string) => `Order ${orderId.slice(0, 8).toUpperCase()} was cancelled and nothing was charged. Your bag is still here.`;
 
   /** Cancels the saved unpaid order (the server asks Razorpay first). Returns false if it turned out to be paid or is still being paid. */
-  async function cancelSavedOrder(saved: SavedCheckout): Promise<boolean> {
+  async function cancelSavedOrder(saved: SavedCheckout): Promise<false | "cancelled" | "gone"> {
     const response = await fetch(`/api/account/orders/${saved.orderId}/cancel`, { method: "POST", cache: "no-store" });
+    if (response.status === 404) { forgetSavedCheckout(); return "gone"; }
     const result = await response.json().catch(() => ({})) as { status?: string; error?: string };
     if (!response.ok) throw new Error(result.error || "Could not cancel the earlier order. Please try again.");
     if (result.status === "paid") { await syncSavedCheckout(saved, true, sameBag(saved.fingerprint, lines)); return false; }
     forgetSavedCheckout();
-    return true;
+    return "cancelled";
   }
 
   async function cancelUnpaid() {
     if (!savedCheckout?.orderId || !window.confirm(`Cancel unpaid order ${savedCheckout.orderId.slice(0, 8).toUpperCase()}? Your bag stays as it is.`)) return;
     const saved = savedCheckout;
     setBusy(true); setError(""); setNotice("");
-    try { if (await cancelSavedOrder(saved)) setNotice(cancelledNotice(saved.orderId)); }
+    try {
+      const result = await cancelSavedOrder(saved);
+      if (result) setNotice(result === "gone" ? unreachableNotice(saved.orderId) : cancelledNotice(saved.orderId));
+    }
     catch (e) { setError(e instanceof Error ? e.message : "Could not cancel the order."); }
     finally { setBusy(false); }
   }
@@ -181,6 +188,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
     if (!quiet) { setBusy(true); setError(""); }
     try {
       const response = await fetch(`/api/account/orders/${saved.orderId}/sync`, { method: "POST", cache: "no-store" });
+      if (response.status === 404) { forgetSavedCheckout(); setError(""); if (!quiet) setNotice(unreachableNotice(saved.orderId)); return; }
       const result = await response.json() as { status?: string; error?: string };
       if (!response.ok) throw new Error(result.error || "Could not check payment status.");
       if (CANCELLED.includes(result.status ?? "")) { forgetSavedCheckout(); setError(""); setNotice(cancelledNotice(saved.orderId)); return; }
@@ -206,6 +214,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
     const sameItems = sameBag(saved.fingerprint, lines);
     try {
       const response = await fetch(`/api/account/orders/${saved.orderId}/retry`, { method: "POST" });
+      if (response.status === 404) { forgetSavedCheckout(); setNotice(unreachableNotice(saved.orderId)); return; }
       const retry = await response.json() as { status?: string; error?: string; orderId: string; razorpayOrderId: string; amount: number; currency: string; keyId: string; customer: { name: string; email: string; phone: string } };
       if (!response.ok) throw new Error(retry.error || "Could not reopen payment.");
       if (retry.status === "cancelled") { forgetSavedCheckout(); setNotice(`${cancelledNotice(saved.orderId)} Tap Pay to place it again.`); return; }
