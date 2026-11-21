@@ -19,7 +19,7 @@ describe("product permalinks", () => {
 describe("website title and icon", () => {
   it("keeps the built-in text when a field is empty and only accepts this site's photos", () => {
     expect(parseSeo({ title: "  ", description: "", favicon: "https://evil.example/x.png" })).toEqual(DEFAULT_SEO);
-    expect(parseSeo({ title: " Kalacar   murtis ", description: "Small murtis", favicon: "/uploads/icon.png" })).toEqual({ title: "Kalacar murtis", description: "Small murtis", favicon: "/uploads/icon.png" });
+    expect(parseSeo({ title: " Kalacar   murtis ", description: "Small murtis", favicon: "/uploads/icon.png" })).toEqual({ title: "Kalacar murtis", description: "Small murtis", favicon: "/uploads/icon.png", showOnGoogle: true });
     expect(parseSeo({ favicon: "/uploads/../secret" }).favicon).toBe("");
     expect(parseSeo(null)).toEqual(DEFAULT_SEO);
   });
