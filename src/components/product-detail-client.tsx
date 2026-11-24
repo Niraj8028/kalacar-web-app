@@ -113,7 +113,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
             </div>
             {inCart > 0 && <span className="in-cart-note">{inCart} in your bag</span>}
           </div>
-          <p className={`stock-message ${stockMessage.tone}`} role="status">{stockMessage.text}</p>
+          {(stockMessage.tone !== "ok" || productPage.inStock.show) && <p className={`stock-message ${stockMessage.tone}`} role="status">{stockMessage.text}</p>}
           {stockMessage.tone !== "out" && <FreeDeliveryNote delivery={productPage.delivery} />}
           <div className="buy-buttons" ref={buyButtons}>
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" label="Add to bag" />

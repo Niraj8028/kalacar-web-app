@@ -55,7 +55,7 @@ export function parseHome(body: unknown): HomeContent {
 
 export function parseProductPage(body: unknown): ProductPageContent {
   const input = obj(body), d = DEFAULT_PRODUCT_PAGE;
-  const stockCount = obj(input.stockCount), googleReviews = obj(input.googleReviews), delivery = obj(input.delivery), free = obj(delivery.free);
+  const stockCount = obj(input.stockCount), googleReviews = obj(input.googleReviews), delivery = obj(input.delivery), free = obj(delivery.free), freeUnderStock = obj(delivery.freeUnderStock), inStock = obj(input.inStock);
   const eyebrow = obj(input.eyebrow), offer = obj(input.offer), how = obj(input.howMade), faqs = obj(input.faqs), viewers = obj(input.viewers), sales = obj(input.recentSales), sold = obj(input.soldThisWeek), low = obj(input.lowStock), sticky = obj(input.stickyBar), end = obj(input.endLink), help = obj(input.whatsappHelp);
   return {
     offer: { show: bool(offer.show, d.offer.show), title: text(offer.title, 60, d.offer.title), text: text(offer.text, 240) },
@@ -71,7 +71,8 @@ export function parseProductPage(body: unknown): ProductPageContent {
     eyebrow: { show: bool(eyebrow.show, d.eyebrow.show), text: text(eyebrow.text, 80, d.eyebrow.text) },
     stockCount: { show: bool(stockCount.show, d.stockCount.show) },
     googleReviews: { show: bool(googleReviews.show, d.googleReviews.show) },
-    delivery: { estimate: text(delivery.estimate, 60, d.delivery.estimate) || d.delivery.estimate, note: text(delivery.note, 160, d.delivery.note), free: { show: bool(free.show, d.delivery.free.show), text: text(free.text, 60, d.delivery.free.text) || d.delivery.free.text } },
+    delivery: { estimate: text(delivery.estimate, 60, d.delivery.estimate) || d.delivery.estimate, note: text(delivery.note, 160, d.delivery.note), free: { show: bool(free.show, d.delivery.free.show), text: text(free.text, 60, d.delivery.free.text) || d.delivery.free.text }, freeUnderStock: { show: bool(freeUnderStock.show, d.delivery.freeUnderStock.show) } },
+    inStock: { show: bool(inStock.show, d.inStock.show) },
   };
 }
 
