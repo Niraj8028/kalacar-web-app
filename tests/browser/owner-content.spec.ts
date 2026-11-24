@@ -145,12 +145,21 @@ test.describe("product page follows the dashboard", () => {
   test("free delivery and the owner's delivery time show by the buy buttons", async ({ page }) => {
     await mockShop(page, { content: content() });
     await page.goto("/products/ganesh");
-    await expect(page.locator(".free-delivery-note")).toHaveText("Free delivery across India");
     await expect(page.locator(".delivery-line")).toContainText("Free delivery across India. Delivered in 3–7 business days.");
-    await mockShop(page, { content: content({}, { delivery: { estimate: "5–8 business days", note: "", free: { show: false, text: "Free delivery across India" } } }) });
+    await expect(page.locator(".free-delivery-note")).toHaveCount(0);
+    await mockShop(page, { content: content({}, { delivery: { estimate: "5–8 business days", note: "", free: { show: false, text: "Free delivery across India" }, freeUnderStock: { show: true } } }) });
     await page.goto("/products/ganesh");
     await expect(page.locator(".delivery-line")).toHaveText("Delivered in 5–8 business days.");
-    await expect(page.locator(".free-delivery-note")).toHaveCount(0);
+    await expect(page.locator(".free-delivery-note")).toHaveText("Free delivery across India");
+  });
+  test("the owner can hide \"In stock\", but stock warnings still show", async ({ page }) => {
+    await mockShop(page, { content: content({}, { inStock: { show: false } }) });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".detail-copy")).toBeVisible();
+    await expect(page.locator(".stock-message")).toHaveCount(0);
+    await mockShop(page, { content: content({}, { inStock: { show: false }, stockCount: { show: true }, lowStock: { threshold: 10, text: "Hurry! Only {count} left" } }) });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".stock-message")).toHaveText("Hurry! Only 8 left");
   });
   test("tapping the rating scrolls to the Google reviews", async ({ page }) => {
     await mockShop(page, { content: content(), reviews: [review({})] });

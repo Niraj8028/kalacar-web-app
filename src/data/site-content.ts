@@ -46,8 +46,10 @@ export type ProductPageContent = {
   stockCount: { show: boolean };
   /** The same Google reviews section as the home page, near the end of the product page. */
   googleReviews: { show: boolean };
-  /** "Delivered in {estimate}." on the product page, bag, checkout, order confirmed and the order email; `free` adds "Free delivery". */
-  delivery: { estimate: string; note: string; free: { show: boolean; text: string } };
+  /** "Delivered in {estimate}." on the product page, bag, checkout, order confirmed and the order email; `free` adds "Free delivery" to it, `freeUnderStock` also shows it under "In stock". */
+  delivery: { estimate: string; note: string; free: { show: boolean; text: string }; freeUnderStock: { show: boolean } };
+  /** Off hides the green "In stock" in the buy box; low stock and out of stock messages still show. */
+  inStock: { show: boolean };
 };
 
 export const DEFAULT_HERO_SLIDE: HeroSlide = { productId: "", backgroundImage: "", desktopImage: "", showEyebrow: true, eyebrow: "THE KALACAR SHOP", showTitle: true, title: "Small murtis, close to home.", showDescription: true, description: "A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.", buy: { show: true, label: "Buy now", showPrice: true }, explore: { show: true, label: "Explore collections", link: "#catalogue" } };
@@ -78,7 +80,8 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   eyebrow: { show: true, text: "{category} · SMALL DEVOTIONAL MURTI" },
   stockCount: { show: false },
   googleReviews: { show: true },
-  delivery: { estimate: "3–7 business days", note: "Carefully chosen, packed and shipped by us.", free: { show: true, text: "Free delivery across India" } },
+  delivery: { estimate: "3–7 business days", note: "Carefully chosen, packed and shipped by us.", free: { show: true, text: "Free delivery across India" }, freeUnderStock: { show: false } },
+  inStock: { show: true },
 };
 
 export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; showOnProduct: boolean; published: boolean };
