@@ -65,7 +65,7 @@ function loadRazorpay() {
  *  Each step has its own URL, and a paid order opens /order-confirmed, so ad platforms can follow the funnel by page.
  *  All prices and stock are decided again by the server at payment. */
 export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
-  const { testPayments } = useSiteContent();
+  const { testPayments, productPage } = useSiteContent();
   const { lines, resolved, subtotal, count, clear, catalogueLoading, catalogueError, giftOffer, wantGift, setWantGift } = useCart();
   const router = useRouter();
   const [notice, setNotice] = useState("");
@@ -350,7 +350,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
         <h2>Order summary</h2>
         <div className="checkout-form bag-checkout">
           <GiftChoice />
-          <DeliveryLine />
+          <DeliveryLine delivery={productPage.delivery} />
           {totals}
           <p className="bag-summary-note">Add delivery details and coupons on the next step.</p>
           <Link className={`checkout-demo-button bag-pay${stockProblem ? " disabled" : ""}`} href="/checkout" aria-disabled={stockProblem || undefined} onClick={e => { if (stockProblem) e.preventDefault(); }}>Proceed to checkout <ArrowRight /></Link>
@@ -387,7 +387,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
             </>}
             <CouponBox items={items} giftWrap={Boolean(giftOffer && wantGift)} applied={coupon} disabled={busy} onChange={(next, message) => { setCoupon(next); setCouponNote(message ?? ""); }} />
             {couponNote && <p className="coupon-error" role="status">{couponNote}</p>}
-            <DeliveryLine />
+            <DeliveryLine delivery={productPage.delivery} />
           </>}
           {totals}
           {error && <p className="demo-checkout-message bag-error" role="alert">{error}</p>}

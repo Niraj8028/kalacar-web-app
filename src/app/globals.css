@@ -478,6 +478,8 @@ button { color: inherit; }
 .quantity-label { color: var(--muted); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
 .in-cart-note { color: var(--muted); font-size: 13px; }
 .stock-message { margin: 0; font-size: 14px; font-weight: 600; }
+.free-delivery-note { display: flex; align-items: center; gap: 6px; margin: -4px 0 0; color: #3f6b3a; font-size: 14px; font-weight: 600; }
+.delivery-line .free-delivery { color: #3f6b3a; }
 .stock-message.ok { color: #3f6b3a; } .stock-message.low { color: #a45d12; } .stock-message.out { color: #a14636; }
 .buy-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .buy-buttons .detail-add-button { margin: 0; }

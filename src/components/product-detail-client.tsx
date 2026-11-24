@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
-import { DeliveryLine, ProductHighlights, SpecCards } from "@/components/product-facts";
+import { DeliveryLine, FreeDeliveryNote, ProductHighlights, SpecCards } from "@/components/product-facts";
 import { RecommendedProducts } from "@/components/recommended-products";
 import { ArrowLeft, UserCircle } from "@/components/icons";
 import { BundleBox, CommonFaqs, EndOfPageLink, HowItsMade, LiveViewers, OfferBox, RecentSaleNotice, SoldThisWeek, StickyBuyBar, WhatsappHelp, useSocialProof } from "@/components/product-extras";
@@ -85,7 +85,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
       <div className="detail-copy">
         {productPage.eyebrow.show && productPage.eyebrow.text && <p className="eyebrow">{productPage.eyebrow.text.replaceAll("{category}", item.deity)}</p>}
         <h1>{item.name}</h1>
-        <div className="detail-proof-row"><RatingLine reviews={itemReviews} link={listedReviews.length > 0} /><SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} /></div>
+        <div className="detail-proof-row"><RatingLine reviews={itemReviews} href={productPage.googleReviews.show ? "#google-reviews" : listedReviews.length > 0 ? "#customer-reviews" : undefined} /><SoldThisWeek count={proof.soldThisWeek[item.id] ?? 0} /></div>
         {item.tagline && <p className="detail-tagline">{item.tagline}</p>}
         {item.placement && <p className="detail-placement">{item.placement}</p>}
         <p className="detail-price">{money(colour?.price ?? item.price)}{save > 0 && <><del>{money(colour.originalPrice)}</del><span className="save-chip">Save {save}%</span></>}</p>
@@ -114,12 +114,13 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
             {inCart > 0 && <span className="in-cart-note">{inCart} in your bag</span>}
           </div>
           <p className={`stock-message ${stockMessage.tone}`} role="status">{stockMessage.text}</p>
+          {stockMessage.tone !== "out" && <FreeDeliveryNote delivery={productPage.delivery} />}
           <div className="buy-buttons" ref={buyButtons}>
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" label="Add to bag" />
             <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}>Buy now</button>
           </div>
           <OfferBox />
-          <DeliveryLine />
+          <DeliveryLine delivery={productPage.delivery} />
           <ProductHighlights items={item.highlights ?? []} />
         </div>
       </div>

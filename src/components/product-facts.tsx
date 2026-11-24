@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { DELIVERY_ESTIMATE, DELIVERY_NOTE } from "@/lib/store-info";
+import type { ProductPageContent } from "@/data/site-content";
 
 const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 const icons: Record<string, ReactNode> = {
@@ -25,8 +25,14 @@ function iconFor(label: string) {
   return icons.other;
 }
 
-export function DeliveryLine() {
-  return <p className="delivery-line"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M3 7h11v9H3z M14 10h4l3 3v3h-7 M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01" {...stroke} /></svg><span><b>Delivered in {DELIVERY_ESTIMATE}.</b> {DELIVERY_NOTE}</span></p>;
+export function DeliveryLine({ delivery }: { delivery: ProductPageContent["delivery"] }) {
+  return <p className="delivery-line"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M3 7h11v9H3z M14 10h4l3 3v3h-7 M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01" {...stroke} /></svg><span>{delivery.free.show && <><b className="free-delivery">{delivery.free.text}.</b>{" "}</>}<b>Delivered in {delivery.estimate}.</b>{delivery.note && <> {delivery.note}</>}</span></p>;
+}
+
+/** The green "Free delivery" line under "In stock". */
+export function FreeDeliveryNote({ delivery }: { delivery: ProductPageContent["delivery"] }) {
+  if (!delivery.free.show) return null;
+  return <p className="free-delivery-note"><svg aria-hidden="true" viewBox="0 0 16 16" width="15" height="15"><path d="M3.5 8.5 6.5 11.5 12.5 5" {...stroke} strokeWidth={1.8} /></svg>{delivery.free.text}</p>;
 }
 
 export function ProductHighlights({ items }: { items: string[] }) {

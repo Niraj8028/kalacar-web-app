@@ -1,7 +1,8 @@
-// Store-wide facts shown to customers. Generic for now (owner decision 2026-11-04);
-// a region/PIN-based delivery estimate comes later.
-export const DELIVERY_ESTIMATE = "12–17 business days";
-export const DELIVERY_NOTE = "Carefully chosen, packed and shipped by us.";
+import { DEFAULT_PRODUCT_PAGE } from "@/data/site-content";
+
+// Defaults for pages that can't read the owner's settings. The owner changes the delivery wording in
+// Dashboard → Product page settings → Delivery.
+export const DELIVERY_ESTIMATE = DEFAULT_PRODUCT_PAGE.delivery.estimate;
 
 /** "Order updates go to …" with the email and, when there is one, the phone number. */
 export function updatesGoTo(email: string, phone: string) {

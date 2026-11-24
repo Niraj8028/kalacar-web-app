@@ -2,6 +2,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { addressDb, createLoginLink } from "@/lib/catalogue-db";
 import { emailEnabled, sendEmail } from "@/lib/mailer";
 import { buildOrderEmail, buildSignInEmail, type OrderEmailData } from "@/lib/email-templates";
+import { getProductPage } from "@/lib/site-content";
 
 // Emails to customers: the order confirmation (once, when an order is first paid) and sign-in links.
 
@@ -42,6 +43,7 @@ export async function sendOrderConfirmation(orderId: string) {
       items: items.map(item => ({ name: item.product_name, variant: item.variant_name && item.variant_name !== "Standard" ? item.variant_name : "", price: Number(item.unit_price), quantity: Number(item.quantity) })),
       giftWrapPrice: order.gift_wrap ? Number(order.gift_wrap_price) : null, couponCode: order.coupon_code ?? "", discount: Number(order.discount ?? 0),
       viewLink: order.user_id ? await signInLink(order.user_id, ORDER_LINK_MINUTES).catch(() => null) : null,
+      deliveryEstimate: await getProductPage().then(page => page.delivery.estimate).catch(() => undefined),
     };
     const email = { to: order.email, ...buildOrderEmail(data) };
     // One more try a little later if the mail server didn't take it; if that fails too, it stays marked unsent.

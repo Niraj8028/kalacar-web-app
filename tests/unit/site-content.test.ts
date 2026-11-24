@@ -115,6 +115,12 @@ describe("home and product page settings", () => {
     expect(DEFAULT_PRODUCT_PAGE.recentSales.showFirstName).toBe(false);
     expect(DEFAULT_PRODUCT_PAGE.soldThisWeek.show).toBe(false);
   });
+  it("keeps the owner's delivery wording and falls back when it's blank", async () => {
+    const { parseProductPage } = await import("@/lib/site-content");
+    expect(parseProductPage({ delivery: { estimate: "5–8 business days", note: "", free: { show: false, text: "Free shipping" } } }).delivery).toEqual({ estimate: "5–8 business days", note: "", free: { show: false, text: "Free shipping" } });
+    expect(parseProductPage({ delivery: { estimate: "  ", free: { text: "" } } }).delivery).toEqual(DEFAULT_PRODUCT_PAGE.delivery);
+    expect(DEFAULT_PRODUCT_PAGE.delivery).toMatchObject({ estimate: "3–7 business days", free: { show: true } });
+  });
 });
 
 describe("reviews", () => {

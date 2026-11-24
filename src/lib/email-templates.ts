@@ -7,6 +7,8 @@ export type OrderEmailData = {
   orderId: string; name: string; email: string; phone: string; address: string; pincode: string; total: number; placedAt: Date;
   items: { name: string; variant: string; price: number; quantity: number }[];
   giftWrapPrice: number | null; couponCode: string; discount: number; viewLink: string | null;
+  /** The owner's delivery time; the default is used when it's missing. */
+  deliveryEstimate?: string;
 };
 
 const INK = "#28211c", MUTED = "#6f6259", ACCENT = "#8d3e2e", LINE = "#eadfd3", PAGE = "#fbf7f1";
@@ -17,10 +19,11 @@ const escape = (value: string) => value.replace(/[&<>"']/g, c => ({ "&": "&amp;"
 const multiline = (value: string) => escape(value).replaceAll("\n", "<br>");
 const date = (value: Date) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(value);
 
-export const NEXT_STEPS = [
+/** What happens next; `estimate` is the delivery time from the owner's settings. */
+export const nextSteps = (estimate: string) => [
   { title: "We choose your murti", text: "We pick out your murti and check it carefully." },
   { title: "We pack and dispatch it", text: "It is packed safely and handed to the courier. Tracking details appear on your order once it ships." },
-  { title: "We ship it to you", text: `It reaches your address in ${DELIVERY_ESTIMATE}.` },
+  { title: "We ship it to you", text: `It reaches your address in ${estimate}.` },
 ];
 
 function layout(title: string, body: string) {
@@ -38,6 +41,7 @@ const button = (href: string, label: string) => `<p style="margin:24px 0"><a hre
 
 export function buildOrderEmail(order: OrderEmailData) {
   const number = orderNumber(order.orderId);
+  const steps = nextSteps(order.deliveryEstimate ?? DELIVERY_ESTIMATE);
   const firstName = order.name.trim().split(/\s+/)[0] || "there";
   const lines = [
     ...order.items.map(item => ({ label: `${item.name}${item.variant ? ` (${item.variant})` : ""} × ${item.quantity}`, amount: money(item.price * item.quantity) })),
@@ -55,7 +59,7 @@ ${lines.map(line => `<tr><td style="padding:10px 0;border-bottom:1px solid ${LIN
 <h2 style="margin:22px 0 6px;font-size:15px">Delivering to</h2>
 <p style="margin:0;color:${MUTED}">${escape(order.name)}<br>${multiline(order.address)}<br>PIN ${escape(order.pincode)}<br>${escape(order.phone)}</p>
 <h2 style="margin:22px 0 6px;font-size:15px">What happens next</h2>
-<ol style="margin:0;padding-left:20px">${NEXT_STEPS.map(step => `<li style="margin:0 0 8px"><strong>${escape(step.title)}</strong><br><span style="color:${MUTED}">${escape(step.text)}</span></li>`).join("")}</ol>
+<ol style="margin:0;padding-left:20px">${steps.map(step => `<li style="margin:0 0 8px"><strong>${escape(step.title)}</strong><br><span style="color:${MUTED}">${escape(step.text)}</span></li>`).join("")}</ol>
 ${order.viewLink ? button(order.viewLink, "View your order") : ""}
 <p style="margin:0;color:${MUTED};font-size:13px">Please keep your order number ${number} handy if you contact us.</p>`);
   const text = [
@@ -68,7 +72,7 @@ ${order.viewLink ? button(order.viewLink, "View your order") : ""}
     "Delivering to:", order.name, order.address, `PIN ${order.pincode}`, order.phone,
     "",
     "What happens next:",
-    ...NEXT_STEPS.map((step, index) => `${index + 1}. ${step.title}: ${step.text}`),
+    ...steps.map((step, index) => `${index + 1}. ${step.title}: ${step.text}`),
     ...(order.viewLink ? ["", `View your order: ${order.viewLink}`] : []),
     "",
     `Questions? WhatsApp us on ${SUPPORT_WHATSAPP.display} or reply to this email.`,

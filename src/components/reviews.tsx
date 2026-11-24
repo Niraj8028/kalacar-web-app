@@ -14,11 +14,12 @@ export function Stars({ rating }: { rating: number }) {
 }
 
 /** Shown only when there are real reviews. */
-export function RatingLine({ reviews, link = true }: { reviews: Review[]; link?: boolean }) {
+/** `href` is where tapping the rating scrolls to; without it the rating is plain text. */
+export function RatingLine({ reviews, href }: { reviews: Review[]; href?: string }) {
   const summary = reviewSummary(reviews);
   if (!summary) return null;
   const body = <><Stars rating={summary.average} /><span>{summary.average.toFixed(1)} ({summary.count} {summary.count === 1 ? "review" : "reviews"})</span></>;
-  return link ? <a className="rating-line" href="#customer-reviews">{body}</a> : <span className="rating-line">{body}</span>;
+  return href ? <a className="rating-line" href={href}>{body}</a> : <span className="rating-line">{body}</span>;
 }
 
 const SourceIcon = ({ kind }: { kind: "youtube" | "instagram" }) => kind === "instagram"
@@ -82,7 +83,7 @@ export function ProductReviews({ reviews, counted = reviews }: { reviews: Review
   const written = reviews.filter(review => !videoEmbed(review.videoUrl) && (review.text || review.photos.length));
   return <section className="product-reviews" id="customer-reviews" aria-labelledby="customer-reviews-title">
     <h2 id="customer-reviews-title">Customer reviews and photos</h2>
-    <RatingLine reviews={counted} link={false} />
+    <RatingLine reviews={counted} />
     <VideoRow reviews={reviews} />
     {written.length > 0 && <ul className="review-list">{written.map(review => <li className="review-card" key={review.id}>
       <Stars rating={review.rating} />
