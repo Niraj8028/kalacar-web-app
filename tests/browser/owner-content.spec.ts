@@ -142,6 +142,23 @@ test.describe("product page follows the dashboard", () => {
     await expect(page.locator(".product-facts")).toContainText("In stock");
     await expect(page.getByText(/\b8\b.*(left|in stock)/)).toHaveCount(0);
   });
+  test("free delivery and the owner's delivery time show by the buy buttons", async ({ page }) => {
+    await mockShop(page, { content: content() });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".free-delivery-note")).toHaveText("Free delivery across India");
+    await expect(page.locator(".delivery-line")).toContainText("Free delivery across India. Delivered in 3–7 business days.");
+    await mockShop(page, { content: content({}, { delivery: { estimate: "5–8 business days", note: "", free: { show: false, text: "Free delivery across India" } } }) });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".delivery-line")).toHaveText("Delivered in 5–8 business days.");
+    await expect(page.locator(".free-delivery-note")).toHaveCount(0);
+  });
+  test("tapping the rating scrolls to the Google reviews", async ({ page }) => {
+    await mockShop(page, { content: content(), reviews: [review({})] });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".detail-copy .rating-line")).toHaveAttribute("href", "#google-reviews");
+    await page.locator(".detail-copy .rating-line").click();
+    await expect(page.locator("#google-reviews")).toBeInViewport();
+  });
   test("every review counts in the stars, but only the chosen ones are listed", async ({ page }) => {
     await mockShop(page, { content: content(), reviews: [review({ id: 1, productId: "ganesh", rating: 5, text: "Listed review" }), review({ id: 2, productId: "ganesh", rating: 4, text: "Hidden review", showOnProduct: false })] });
     await page.goto("/products/ganesh");

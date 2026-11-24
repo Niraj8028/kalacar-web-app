@@ -34,7 +34,7 @@ export function GoogleReviews({ onHome = false }: { onHome?: boolean }) {
   if (onHome && !head.show) return null;
   // The studio's name stays bold wherever the owner's description mentions it.
   const description = head.description.split(SISTER_STUDIO.name).flatMap((part, index) => index ? [<b key={index}>{SISTER_STUDIO.name}</b>, part] : [part]);
-  return <section className="greviews" aria-labelledby="greviews-title">
+  return <section className="greviews" id="google-reviews" aria-labelledby="greviews-title">
     <div className="greviews-inner">
       <div className="greviews-head">
         {head.showEyebrow && head.eyebrow && <p className="eyebrow">{head.eyebrow}</p>}

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { money } from "@/components/bag-lines";
 import { CheckMark } from "@/components/icons";
 import { useSiteContent } from "@/components/site-content-provider";
-import { DELIVERY_ESTIMATE, updatesGoTo } from "@/lib/store-info";
+import { updatesGoTo } from "@/lib/store-info";
 import { trackShopEvent } from "@/components/tracking-tags";
 
 type ConfirmedOrder = { id: string; status?: string; createdAt: string; amount: number; email?: string; phone?: string; address: string; pincode: string; giftWrap?: boolean; giftWrapPrice?: number; couponCode?: string; discount?: number; items: { id?: string; name: string; variant?: string; price: number; quantity: number }[] };
@@ -24,7 +24,7 @@ function trackPurchaseOnce(order: ConfirmedOrder) {
 
 /** Shown after payment. Details come from the saved order, so they always match what was paid for. */
 export function OrderConfirmation({ orderId, email }: { orderId: string; email?: string }) {
-  const { testPayments } = useSiteContent();
+  const { testPayments, productPage } = useSiteContent();
   const [order, setOrder] = useState<ConfirmedOrder | null>(null);
   const [notFound, setNotFound] = useState(false);
   const missing = !orderId || notFound;
@@ -80,7 +80,7 @@ export function OrderConfirmation({ orderId, email }: { orderId: string; email?:
         <ol className="order-next">
           <li><b>We choose your murti</b><span>We pick out your murti and check it carefully.</span></li>
           <li><b>We pack and dispatch it</b><span>It is packed safely and handed to the courier. Tracking details appear on your order once it ships.</span></li>
-          <li><b>We ship it to you</b><span>It is delivered to your address in {DELIVERY_ESTIMATE}.</span></li>
+          <li><b>We ship it to you</b><span>It is delivered to your address in {productPage.delivery.estimate}.</span></li>
         </ol>
       </div>
     </div>

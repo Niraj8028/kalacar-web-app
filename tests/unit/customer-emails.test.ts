@@ -28,9 +28,10 @@ describe("order confirmation email", () => {
   const email = buildOrderEmail(ORDER);
   it("names the order in the subject", () => expect(email.subject).toBe("Order ABCDEF12 confirmed – Kalacar"));
   it("lists the items, total, address and next steps", () => {
-    for (const part of ["Krushna (Gold) × 2", "₹1,998", "Gift packaging", "Total paid: ₹2,148", "1 Temple Road", "PIN 411001", "What happens next", "We choose your murti", "12–17 business days"]) expect(email.text).toContain(part);
+    for (const part of ["Krushna (Gold) × 2", "₹1,998", "Gift packaging", "Total paid: ₹2,148", "1 Temple Road", "PIN 411001", "What happens next", "We choose your murti", "3–7 business days"]) expect(email.text).toContain(part);
     expect(email.html).toContain("1 Temple Road<br>Pune");
   });
+  it("uses the owner's delivery time", () => expect(buildOrderEmail({ ...ORDER, deliveryEstimate: "5–8 business days" }).text).toContain("It reaches your address in 5–8 business days."));
   it("links to the order", () => expect(email.html).toContain('href="https://kalacar.in/account?signin=TOKEN"'));
   it("leaves out the button when there is no link", () => expect(buildOrderEmail({ ...ORDER, viewLink: null }).html).not.toContain("View your order"));
   it("escapes what customers typed", () => {
