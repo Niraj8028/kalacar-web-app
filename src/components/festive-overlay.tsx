@@ -186,7 +186,7 @@ const SHOWER = [6, 14, 23, 31, 42, 50, 59, 68, 76, 85, 93];
 export function FestiveOverlay() {
   const { festive } = useSiteContent();
   const path = usePathname();
-  if (festive.overlay === "off" || path.startsWith("/cart") || path.startsWith("/checkout") || path.startsWith("/order-confirmed") || path.startsWith("/account")) return null;
+  if (festive.overlay === "off" || path.startsWith("/cart") || path.startsWith("/checkout") || path.startsWith("/order-confirmed") || path.startsWith("/order-details") || path.startsWith("/account")) return null;
   const theme = THEMES[festive.overlay];
   return <div className={`festive-overlay ${festive.overlay}`} aria-hidden="true">
     <svg width="0" height="0" className="festive-defs">

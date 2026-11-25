@@ -33,5 +33,8 @@ export async function cancelIfUnpaid(order: SyncableOrder, customerId: string, r
     if (decision.kind === "paid") return "paid";
     if (decision.kind === "in_progress" || decision.kind === "mismatch") return "in_progress";
   }
-  return (await cancelUnpaidOrder(order.id, reason)).ok ? "cancelled" : "not_unpaid";
+  if (!(await cancelUnpaidOrder(order.id, reason)).ok) return "not_unpaid";
+  // The customer gave up or an hour passed: tell the owner, so they can follow up. Owner cancels don't come here.
+  void import("@/lib/owner-emails").then(mail => mail.emailOwnersAboutOrder(order.id, "unpaid")).catch(() => undefined);
+  return "cancelled";
 }

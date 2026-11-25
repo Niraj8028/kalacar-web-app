@@ -839,6 +839,14 @@ button { color: inherit; }
 :root[data-theme="dark"] .order-confirmed-actions .checkout-demo-button { color: #1c1712; }
 :root[data-theme="dark"] .order-confirmed-mark { background: #2c3a2b; color: #bcd9b5; }
 @media (max-width: 760px) { .order-confirmed-grid { grid-template-columns: minmax(0, 1fr); } }
+.order-details .order-status { display: inline-block; }
+.order-details-whatsapp { display: grid; justify-items: center; gap: 8px; padding: 16px; border: 1px solid #b9d7b0; border-radius: 8px; background: #eef6eb; text-align: center; }
+.order-details-whatsapp p { margin: 0; font-size: 14px; line-height: 1.5; }
+.order-details-whatsapp small { color: var(--muted); font-size: 12px; }
+.order-details-whatsapp-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 22px; border-radius: 6px; background: #1f8a4c; color: #fff; font-weight: 600; text-decoration: none; }
+.order-details-payment { margin: 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.order-details-payment b { color: var(--ink); font-weight: 600; }
+:root[data-theme="dark"] .order-details-whatsapp { background: #1f2a1e; border-color: #3a5236; }
 
 .detail-add-button:disabled, .add-button:disabled { border-color: var(--disabled); background: var(--disabled); color: var(--muted); opacity: 1; cursor: not-allowed; }
 @media (max-width: 760px) { .detail-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .detail-header .account-link span { display: none; } .detail-header-links { gap: 6px; } .detail-header .wordmark small { display: none; } }

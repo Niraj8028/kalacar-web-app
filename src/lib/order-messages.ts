@@ -2,9 +2,10 @@ import type { RowDataPacket } from "mysql2/promise";
 import { addressDb } from "@/lib/catalogue-db";
 
 // Messages the owner sends by hand from Orders. Each delivery status has its own templates, saved
-// in its own settings row, so saving one status can never overwrite another.
+// in its own settings row, so saving one status can never overwrite another. "unpaid" is for orders
+// that were never paid (awaiting payment, payment failed, cancelled).
 
-export const MESSAGE_STATUSES = ["unfulfilled", "processing", "dispatched", "completed"] as const;
+export const MESSAGE_STATUSES = ["unfulfilled", "processing", "dispatched", "completed", "unpaid"] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
 export type MessageTemplate = { whatsapp: string; sms: string; emailSubject: string; emailBody: string };
 
@@ -52,7 +53,25 @@ export const DEFAULT_TEMPLATES: Record<MessageStatus, MessageTemplate> = {
     emailSubject: "Your {shop_name} order {order_id} has been delivered",
     emailBody: `Hi {customer_name},\n\nYour order {order_id} ({product_names}) has been delivered. Thank you for shopping with us.${signOff}`,
   },
+  unpaid: {
+    whatsapp: "Hi {first_name}, this is {shop_name}. We saw you tried to order {product_names} ({order_total}), but the payment didn't go through. Would you like to complete your order? Reply here and we'll help you.",
+    sms: "{shop_name}: Hi {first_name}, your order {order_id} wasn't paid. Reply or WhatsApp us and we'll help you complete it.",
+    emailSubject: "Complete your {shop_name} order",
+    emailBody: `Hi {customer_name},\n\nWe saw you tried to order {product_names} ({order_total}), but the payment didn't go through. If you'd still like it, reply to this email or message us on WhatsApp and we'll help you complete your order.${signOff}`,
+  },
 };
+
+type MessageOrder = { id: string; customerName: string; total: number; items: { name: string; variant?: string | null; quantity: number }[] };
+
+/** The values for a template, as the dashboard fills them. Tracking values are empty: these are for new orders. */
+export function orderMessageValues(order: MessageOrder, status: string): Record<string, string> {
+  const name = order.customerName.trim();
+  const products = order.items.map(item => `${item.name}${item.variant && item.variant !== "Standard" ? ` (${item.variant})` : ""} x ${item.quantity}`).join(", ");
+  return { customer_name: name, first_name: name.split(/\s+/)[0] ?? "", product_names: products, order_id: order.id.slice(0, 8).toUpperCase(), order_total: `₹${order.total.toLocaleString("en-IN")}`, status, courier: "", tracking_id: "", tracking_link: "", tracking_note: "", shop_name: "Kalacar" };
+}
+
+/** Fills a template in one pass, so a customer's own text can't be read as a variable. */
+export const fillMessage = (template: string, values: Record<string, string>) => template.replace(/\{([a-z_]+)\}/g, (_match, key: string) => values[key] ?? "");
 
 const rowName = (status: MessageStatus) => `order_message_${status}`;
 export const isMessageStatus = (value: unknown): value is MessageStatus => MESSAGE_STATUSES.includes(value as MessageStatus);

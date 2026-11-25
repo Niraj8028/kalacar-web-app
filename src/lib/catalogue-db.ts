@@ -701,6 +701,7 @@ function emailCustomer(orderId: string) {
 /** Runs only when an order first becomes paid, so each order alerts once. Loaded late to keep the database code free of it. */
 function alertOwners(orderId: string) {
   void import("@/lib/owner-alerts").then(alerts => alerts.alertNewPaidOrder(orderId)).catch(() => undefined);
+  void import("@/lib/owner-emails").then(mail => mail.emailOwnersAboutOrder(orderId, "paid")).catch(() => undefined);
 }
 
 export async function recordRazorpayWebhook(eventId: string, eventType: string, payment: { id: string; order_id: string; amount: number; currency: string; status: string }) {

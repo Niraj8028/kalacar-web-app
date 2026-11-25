@@ -68,6 +68,8 @@ test("shopping steps reach Meta and Google: view, add to bag, checkout, and one 
   });
   // Showing the confirmation again doesn't report the purchase twice.
   await page.reload();
+  // A refresh opens the order's details instead, so nothing counts the thank-you page twice.
+  await expect(page).toHaveURL(new RegExp(`/order-details\\?order=${ORDER}$`));
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("kalacar.tracked-purchases.v1") ?? "[]"))).toEqual([ORDER]);
 });
 
