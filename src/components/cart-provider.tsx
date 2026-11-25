@@ -9,7 +9,7 @@ import { BagIcon } from "@/components/icons";
 import type { StoreColour, StoreItem } from "@/data/catalogue";
 
 /** Pages that already show the bag, so the drawer stays shut there. */
-export const CHECKOUT_PATHS = ["/cart", "/checkout", "/order-confirmed"];
+export const CHECKOUT_PATHS = ["/cart", "/checkout", "/order-confirmed", "/order-details"];
 
 /** A cart line is one colour of one product. Old saved carts have no variantId: they use the first colour. */
 export type CartLine = { id: string; variantId?: string; quantity: number };

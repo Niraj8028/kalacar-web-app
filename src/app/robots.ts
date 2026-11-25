@@ -8,5 +8,5 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   await connection();
   const seo = await cachedSeo();
   if (process.env.KALACAR_ALLOW_SEARCH === "false" || !seo.showOnGoogle) return { rules: { userAgent: "*", disallow: "/" } };
-  return { rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/account", "/cart", "/checkout", "/order-confirmed"] }, sitemap: `${siteOrigin()}/sitemap.xml` };
+  return { rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/account", "/cart", "/checkout", "/order-confirmed", "/order-details"] }, sitemap: `${siteOrigin()}/sitemap.xml` };
 }

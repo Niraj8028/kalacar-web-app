@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { publicHost } from "@/lib/public-origin";
+import { SEEN_ORDERS_COOKIE, seenOrders } from "@/lib/seen-orders";
 
 // CSRF protection for the API: a request that changes data (POST/PUT/PATCH/DELETE) must come from
 // a Kalacar page — the browser's Origin must match the host it is talking to. Session cookies are
@@ -28,6 +29,14 @@ const MAX_UPLOAD_BYTES = 26 * 1024 * 1024;
 const MAX_JSON_BYTES = 100 * 1024;
 
 export function proxy(request: NextRequest) {
+  // A thank-you page this browser has already shown opens the order's details instead, before any tracking loads.
+  if (request.nextUrl.pathname === "/order-confirmed") {
+    const order = request.nextUrl.searchParams.get("order") ?? "";
+    if (!order || !seenOrders(request.cookies.get(SEEN_ORDERS_COOKIE)?.value).includes(order)) return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.pathname = "/order-details";
+    return NextResponse.redirect(url);
+  }
   if (!WRITE_METHODS.has(request.method)) return NextResponse.next();
   const length = Number(request.headers.get("content-length") ?? "0");
   const multipart = (request.headers.get("content-type") ?? "").includes("multipart/form-data");
@@ -39,4 +48,4 @@ export function proxy(request: NextRequest) {
   return NextResponse.json({ error: "This request didn't come from the Kalacar site, so it was blocked." }, { status: 403 });
 }
 
-export const config = { matcher: "/api/:path*" };
+export const config = { matcher: ["/api/:path*", "/order-confirmed"] };

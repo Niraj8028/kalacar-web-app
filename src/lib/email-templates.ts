@@ -26,14 +26,15 @@ export const nextSteps = (estimate: string) => [
   { title: "We ship it to you", text: `It reaches your address in ${estimate}.` },
 ];
 
-function layout(title: string, body: string) {
+/** `customer` adds the "Questions? WhatsApp us" footer, which the owner's own emails don't need. */
+function layout(title: string, body: string, customer = true) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title></head>
 <body style="margin:0;padding:0;background:${PAGE};font-family:Georgia,'Times New Roman',serif;color:${INK}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE}"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${LINE}">
 <tr><td style="padding:22px 28px;border-bottom:1px solid ${LINE};font-size:22px;letter-spacing:4px;color:${ACCENT}">KALACAR</td></tr>
 <tr><td style="padding:26px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6">${body}</td></tr>
-<tr><td style="padding:18px 28px;border-top:1px solid ${LINE};font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${MUTED}">Questions? WhatsApp us on <a href="${whatsappLink()}" style="color:${ACCENT}">${SUPPORT_WHATSAPP.display}</a> or reply to this email.</td></tr>
+${customer ? `<tr><td style="padding:18px 28px;border-top:1px solid ${LINE};font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${MUTED}">Questions? WhatsApp us on <a href="${whatsappLink()}" style="color:${ACCENT}">${SUPPORT_WHATSAPP.display}</a> or reply to this email.</td></tr>` : ""}
 </table></td></tr></table></body></html>`;
 }
 
@@ -76,6 +77,62 @@ ${order.viewLink ? button(order.viewLink, "View your order") : ""}
     ...(order.viewLink ? ["", `View your order: ${order.viewLink}`] : []),
     "",
     `Questions? WhatsApp us on ${SUPPORT_WHATSAPP.display} or reply to this email.`,
+  ].join("\n");
+  return { subject, html, text };
+}
+
+export type OwnerOrderKind = "paid" | "unpaid";
+type OwnerExtras = { status: string; reason: string; paymentTried: boolean; whatsapp: string; whatsappLink: string; dashboardLink: string };
+const time = (value: Date) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(value);
+
+/** The owner's copy: who ordered, what, where to send it, and a WhatsApp message ready to send them. */
+export function buildOwnerOrderEmail(kind: OwnerOrderKind, order: OrderEmailData, extra: OwnerExtras) {
+  const number = orderNumber(order.orderId);
+  const lines = [
+    ...order.items.map(item => ({ label: `${item.name}${item.variant ? ` (${item.variant})` : ""} × ${item.quantity}`, amount: money(item.price * item.quantity) })),
+    ...(order.giftWrapPrice !== null ? [{ label: "Gift packaging", amount: money(order.giftWrapPrice) }] : []),
+    ...(order.couponCode && order.discount ? [{ label: `Coupon ${order.couponCode}`, amount: `−${money(order.discount)}` }] : []),
+  ];
+  const afterCancel = extra.status === "paid_after_cancel";
+  const outcome = kind === "paid"
+    ? afterCancel ? "Paid after the order was cancelled. Decide whether to ship it or refund it." : "Paid. Ready to prepare."
+    : `Not paid${extra.paymentTried ? " (a payment was tried and failed)" : ""}. ${extra.reason || "Cancelled"}.`;
+  const subject = kind === "paid" ? `${afterCancel ? "Paid after cancel" : "New paid order"}: ${money(order.total)} · ${order.name} · ${number}` : `Unpaid order: ${money(order.total)} · ${order.name} · ${number}`;
+  const heading = kind === "paid" ? `New order from ${order.name}` : `${order.name} didn't complete their order`;
+  const phoneDigits = order.phone.replace(/[^\d+]/g, "");
+  const html = layout(subject, `
+<h1 style="margin:0 0 6px;font-family:Georgia,serif;font-size:24px;font-weight:normal">${escape(heading)}</h1>
+<p style="margin:0 0 4px;color:${MUTED}">Order <strong style="color:${INK}">${number}</strong> · ${time(order.placedAt)}</p>
+<p style="margin:0 0 18px;font-weight:bold;color:${kind === "paid" && !afterCancel ? "#3f6b3a" : ACCENT}">${escape(outcome)}</p>
+<h2 style="margin:0 0 6px;font-size:15px">Customer</h2>
+<p style="margin:0">${escape(order.name)}<br><a href="tel:${escape(phoneDigits)}" style="color:${ACCENT}">${escape(order.phone)}</a><br><a href="mailto:${escape(order.email)}" style="color:${ACCENT}">${escape(order.email)}</a></p>
+<h2 style="margin:18px 0 6px;font-size:15px">Address</h2>
+<p style="margin:0">${multiline(order.address)}<br>PIN ${escape(order.pincode)}</p>
+<h2 style="margin:18px 0 6px;font-size:15px">Items</h2>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${LINE}">
+${lines.map(line => `<tr><td style="padding:10px 0;border-bottom:1px solid ${LINE}">${escape(line.label)}</td><td align="right" style="padding:10px 0;border-bottom:1px solid ${LINE};white-space:nowrap">${line.amount}</td></tr>`).join("")}
+<tr><td style="padding:12px 0;font-weight:bold">${kind === "paid" ? "Total paid" : "Order total"}</td><td align="right" style="padding:12px 0;font-weight:bold">${money(order.total)}</td></tr>
+</table>
+${extra.whatsapp ? `<h2 style="margin:18px 0 6px;font-size:15px">WhatsApp message for the customer</h2>
+<p style="margin:0 0 6px;color:${MUTED};font-size:13px">Copy it, or tap the button to open WhatsApp with it typed in.</p>
+<div style="padding:12px 14px;background:${PAGE};border:1px solid ${LINE};white-space:pre-wrap">${multiline(extra.whatsapp)}</div>
+${extra.whatsappLink ? button(extra.whatsappLink, "Send on WhatsApp") : `<p style="margin:12px 0;color:${MUTED}">This phone number can't open in WhatsApp. Copy the message instead.</p>`}` : ""}
+<p style="margin:0;font-size:13px"><a href="${escape(extra.dashboardLink)}" style="color:${ACCENT}">Open this order in the dashboard</a></p>`, false);
+  const text = [
+    heading,
+    `Order ${number} · ${time(order.placedAt)}`,
+    outcome,
+    "",
+    "Customer:", order.name, order.phone, order.email,
+    "",
+    "Address:", order.address, `PIN ${order.pincode}`,
+    "",
+    "Items:",
+    ...lines.map(line => `${line.label}: ${line.amount}`),
+    `${kind === "paid" ? "Total paid" : "Order total"}: ${money(order.total)}`,
+    ...(extra.whatsapp ? ["", "WhatsApp message for the customer:", extra.whatsapp, ...(extra.whatsappLink ? ["", `Send on WhatsApp: ${extra.whatsappLink}`] : [])] : []),
+    "",
+    `Open this order in the dashboard: ${extra.dashboardLink}`,
   ].join("\n");
   return { subject, html, text };
 }

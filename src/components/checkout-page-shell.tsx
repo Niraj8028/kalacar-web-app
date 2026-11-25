@@ -5,7 +5,7 @@ import { MobileMenu } from "@/components/mobile-menu";
 import { SiteFooter } from "@/components/site-footer";
 import { ArrowLeft, UserCircle } from "@/components/icons";
 
-/** Header and footer shared by the bag, checkout and order-confirmed pages. */
+/** Header and footer shared by the bag, checkout, order-confirmed and order-details pages. */
 export function CheckoutPageShell({ children }: { children: ReactNode }) {
   return <main className="cart-page">
     <header className="detail-header">
