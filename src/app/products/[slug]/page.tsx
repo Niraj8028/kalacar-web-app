@@ -5,6 +5,8 @@ import ProductDetailClient from "@/components/product-detail-client";
 import { currentProductSlug } from "@/lib/catalogue-db";
 import { listShopProducts } from "@/lib/shop-products";
 import { jsonForScript, productJsonLd, productSeo } from "@/lib/product-seo";
+import { getProductPage } from "@/lib/site-content";
+import { DEFAULT_PRODUCT_PAGE } from "@/data/site-content";
 
 export const instant = false;
 
@@ -41,8 +43,9 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const current = await currentSlug(slug);
   if (current && current !== slug) permanentRedirect(`/products/${current}${initialColour ? `?colour=${initialColour}` : ""}`);
   const product = current ? await productFor(current) : null;
+  const delivery = product ? (await getProductPage().catch(() => DEFAULT_PRODUCT_PAGE)).delivery : null;
   return <>
-    {product && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(productJsonLd(product)) }} />}
+    {product && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(productJsonLd(product, delivery?.estimate)) }} />}
     <ProductDetailClient slug={slug} initialColour={initialColour} />
   </>;
 }

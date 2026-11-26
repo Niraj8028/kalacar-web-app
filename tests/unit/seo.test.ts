@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseSeo, siteOrigin } from "@/lib/seo";
-import { displayName, jsonForScript, productJsonLd, productSeo } from "@/lib/product-seo";
+import { displayName, jsonForScript, productJsonLd, productSeo, transitDays } from "@/lib/product-seo";
 
 type Product = Parameters<typeof productSeo>[0];
 const krishna = { id: "p1", slug: "cute-krishna-holding-bansuri", name: "CUTE KRISHNA HOLDING BANSURI", deity: "Krishna", tagline: "Bal Krishna with his flute", description: "", image: "/uploads/krishna.webp", gallery: ["/uploads/krishna.webp", "/uploads/krishna-2.webp"], imageAlt: "", price: 799, stock: 4 } as unknown as Product;
@@ -46,6 +46,13 @@ describe("product pages in Google", () => {
     expect(data.offers).toMatchObject({ priceCurrency: "INR", price: 799, availability: "https://schema.org/InStock" });
     expect(data.image).toHaveLength(2);
     expect(productJsonLd({ ...krishna, stock: 0 } as Product).offers.availability).toBe("https://schema.org/OutOfStock");
+  });
+  it("tells Google delivery is free across India, in the shop's delivery time", () => {
+    expect(productJsonLd(krishna).offers).not.toHaveProperty("shippingDetails");
+    const shipping = productJsonLd(krishna, "3–7 business days").offers.shippingDetails;
+    expect(shipping).toMatchObject({ shippingRate: { value: 0, currency: "INR" }, shippingDestination: { addressCountry: "IN" }, deliveryTime: { transitTime: { minValue: 2, maxValue: 7 } } });
+    expect(productJsonLd(krishna, "About a week").offers.shippingDetails).not.toHaveProperty("deliveryTime");
+    expect([transitDays("5 to 9 days"), transitDays("10 days"), transitDays("9-3 days")]).toEqual([{ min: 5, max: 9 }, { min: 10, max: 10 }, null]);
   });
   it("can't break out of its script tag", () => {
     expect(jsonForScript({ name: "</script><script>alert(1)</script>" })).not.toContain("</script>");

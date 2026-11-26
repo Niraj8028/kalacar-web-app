@@ -7,7 +7,12 @@ import { Suspense } from "react";
 import { ContactForm } from "@/components/contact-form";
 import { ArrowLeft } from "@/components/icons";
 import { SiteFooter } from "@/components/site-footer";
+import { BusinessDetailsBlock } from "@/components/business-details";
+import { hasBusinessDetails, type BusinessDetails } from "@/data/site-content";
 import { cleanPageHtml, defaultPage, getPage } from "@/lib/pages";
+import { jsonForScript } from "@/lib/product-seo";
+import { siteOrigin } from "@/lib/seo";
+import { getFooter } from "@/lib/site-content";
 
 /** If the database can't be reached, the page's starting text is shown, so it's never blank. */
 async function load(slug: string) {
@@ -21,12 +26,26 @@ export async function pageMetadata(slug: string): Promise<Metadata> {
   return { title: page.seoTitle || `${page.title} — Kalacar`, description: page.seoDescription, robots: page.draft || !page.published ? { index: false, follow: true } : undefined };
 }
 
+/** Tells Google who runs the shop and how to reach it. */
+function organizationJsonLd(business: BusinessDetails) {
+  return {
+    "@context": "https://schema.org", "@type": "OnlineStore", name: "Kalacar", url: siteOrigin(),
+    ...(business.name && { legalName: business.name }),
+    ...(business.email && { email: business.email }),
+    ...(business.phone && { telephone: business.phone }),
+    ...(business.address && { address: { "@type": "PostalAddress", streetAddress: business.address, addressCountry: "IN" } }),
+  };
+}
+
 async function Body({ slug }: { slug: string }) {
   const page = await load(slug);
   if (!page || !page.published) notFound();
+  const business = page.hasForm ? (await getFooter().catch(() => null))?.business : undefined;
   return <article className="policy-content">
+    {business && hasBusinessDetails(business) && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(organizationJsonLd(business)) }} />}
     <h1>{page.title}</h1>
     {page.intro && <p className="policy-intro">{page.intro}</p>}
+    <BusinessDetailsBlock business={business} className="contact-business" />
     {page.draft && <p className="policy-draft" role="note"><b>Draft, owner review before launch.</b> Highlighted items are not decided yet and are not promises.</p>}
     {/* Cleaned on save and again here, so only simple formatting can appear. */}
     <div className="managed-page-body" dangerouslySetInnerHTML={{ __html: cleanPageHtml(page.content) }} />

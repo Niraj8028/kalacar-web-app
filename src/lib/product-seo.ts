@@ -24,7 +24,26 @@ export function productSeo(product: Product) {
 }
 
 /** Product details Google can show in results: price, stock, photo. */
-export function productJsonLd(product: Product) {
+/** "3–7 business days" → {min 3, max 7}; null when the owner's wording has no day range Google can read. */
+export function transitDays(estimate: string) {
+  const match = /(\d{1,2})\s*(?:[–-]|to)\s*(\d{1,2})/.exec(estimate) ?? /(\d{1,2})()/.exec(estimate);
+  if (!match) return null;
+  const min = Number(match[1]), max = Number(match[2] || match[1]);
+  return min <= max ? { min, max } : null;
+}
+
+/** Free delivery across India, with the delivery time from Product page settings, so Google's shipping matches the site. */
+function shippingDetails(estimate: string) {
+  const days = transitDays(estimate);
+  return {
+    "@type": "OfferShippingDetails",
+    shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "INR" },
+    shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
+    ...(days && { deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: Math.max(0, days.min - 1), maxValue: days.max, unitCode: "DAY" } } }),
+  };
+}
+
+export function productJsonLd(product: Product, deliveryEstimate?: string) {
   const seo = productSeo(product);
   const images = [...new Set([product.image, ...product.gallery].filter(Boolean))].slice(0, 6).map(absolute);
   return {
@@ -43,6 +62,7 @@ export function productJsonLd(product: Product) {
       price: product.price,
       availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
+      ...(deliveryEstimate !== undefined && { shippingDetails: shippingDetails(deliveryEstimate) }),
     },
   };
 }

@@ -153,14 +153,21 @@ describe("reviews", () => {
 describe("footer, why-choose icons and product eyebrow", () => {
   it("keeps the footer automatic until a list is saved, and drops unsafe or empty links", async () => {
     const { parseFooter } = await import("@/lib/site-content");
-    expect(parseFooter(undefined)).toEqual({ text: "Prices and availability reflect the current catalogue.", showWhatsapp: true, links: null });
+    const noBusiness = { name: "", address: "", email: "", phone: "" };
+    expect(parseFooter(undefined)).toEqual({ text: "Prices and availability reflect the current catalogue.", showWhatsapp: true, links: null, business: noBusiness });
     const saved = parseFooter({ text: "  Made with devotion  ", showWhatsapp: false, links: [
       { label: "About", link: "/about" }, { label: "Insta", link: "https://instagram.com/kalacar" },
       { label: "Bad", link: "javascript:alert(1)" }, { label: "Bad 2", link: "//evil.com" }, { label: "", link: "/faq" },
     ] });
-    expect(saved).toEqual({ text: "Made with devotion", showWhatsapp: false, links: [{ label: "About", link: "/about" }, { label: "Insta", link: "https://instagram.com/kalacar" }] });
+    expect(saved).toEqual({ text: "Made with devotion", showWhatsapp: false, links: [{ label: "About", link: "/about" }, { label: "Insta", link: "https://instagram.com/kalacar" }], business: noBusiness });
     expect(parseFooter({ links: [] }).links).toEqual([]);
     expect(parseFooter({ text: "" }).text).toBe("");
+  });
+  it("keeps the business details, dropping an email that isn't one", async () => {
+    const { parseFooter } = await import("@/lib/site-content");
+    const business = parseFooter({ business: { name: " Kalacar Studio ", address: "12 MG Road, Pune 411001", email: "Hello@Kalacar.in", phone: "+91 95615 79131<script>" } }).business;
+    expect(business).toEqual({ name: "Kalacar Studio", address: "12 MG Road, Pune 411001", email: "hello@kalacar.in", phone: "+91 95615 79131" });
+    expect(parseFooter({ business: { email: "not an email" } }).business.email).toBe("");
   });
   it("keeps a reason's icon only if it is a photo stored by the shop", async () => {
     const { parseHome } = await import("@/lib/site-content");
