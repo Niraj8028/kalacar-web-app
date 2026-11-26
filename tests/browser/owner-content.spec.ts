@@ -396,6 +396,18 @@ test.describe("footer, why choose and product line follow the dashboard", () => 
     await expect(footer.getByRole("link", { name: "Instagram" })).toHaveAttribute("target", "_blank");
     await expect(footer.getByRole("link", { name: "Contact us" })).toHaveCount(0);
   });
+  test("business details from Settings show in the footer and on the Contact page", async ({ page }) => {
+    await mockShop(page, { content: { ...content(), footer: { text: "", showWhatsapp: true, links: null, business: { name: "Kalacar Studio", address: "12 MG Road, Pune 411001", email: "hello@kalacar.in", phone: "+91 95615 79131" } } } });
+    await page.goto("/products/ganesh");
+    const details = page.locator("footer .footer-business");
+    await expect(details).toContainText("Kalacar Studio");
+    await expect(details).toContainText("12 MG Road, Pune 411001");
+    await expect(details.getByRole("link", { name: "hello@kalacar.in" })).toHaveAttribute("href", "mailto:hello@kalacar.in");
+    await expect(details.getByRole("link", { name: "+91 95615 79131" })).toHaveAttribute("href", "tel:+919561579131");
+    await mockShop(page, { content: { ...content(), footer: { text: "", showWhatsapp: true, links: null, business: { name: "", address: "", email: "", phone: "" } } } });
+    await page.goto("/products/ganesh");
+    await expect(page.locator(".footer-business")).toHaveCount(0);
+  });
   test("the Google reviews heading is the owner's, and can be hidden on the home page", async ({ page }) => {
     const googleReviews = { show: true, showEyebrow: true, eyebrow: "Real reviews", showTitle: true, title: "Trusted by families", showDescription: true, description: "Reviews of Murtiverse, our sister studio." };
     await mockShop(page, { content: content({ googleReviews }) });

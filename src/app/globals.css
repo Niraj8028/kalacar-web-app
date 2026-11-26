@@ -123,6 +123,11 @@ button { color: inherit; }
 .footer-wordmark .brand-logo { width: clamp(140px, 13vw, 180px); }
 .shop-footer > p { max-width: 530px; margin: 0 auto; color: #c5bbae; font-size: 12px; line-height: 1.6; }
 .shop-footer > small { color: #c5bbae; font-size: 12px; }
+.footer-business { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 18px; padding-top: 14px; border-top: 1px solid rgba(255, 253, 250, .14); color: #c5bbae; font-size: 12px; font-style: normal; line-height: 1.6; }
+.footer-business b { color: var(--page); font-weight: 600; }
+.footer-business a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.contact-business { margin: 0 0 22px; padding: 16px 18px; display: grid; gap: 4px; border: 1px solid var(--line); background: var(--surface-soft); font-style: normal; font-size: 14px; line-height: 1.6; }
+.contact-business a { color: var(--accent); }
 
 .product-page { min-height: 100vh; background: var(--surface); }
 .detail-header { min-height: 82px; padding: 0 clamp(18px, 5vw, 76px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); }

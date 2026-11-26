@@ -7,7 +7,7 @@ import { getBrand } from "@/lib/brand";
 import { getTracking } from "@/lib/tracking";
 import { listCategories } from "@/lib/categories";
 import { DEFAULT_FOOTER, DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_FOOTER_LINKS, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
-import type { FooterSettings, HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
+import type { BusinessDetails, FooterSettings, HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
 
 const text = (value: unknown, max: number, fallback = "") => typeof value === "string" ? value.trim().slice(0, max) : fallback;
 const bool = (value: unknown, fallback: boolean) => typeof value === "boolean" ? value : fallback;
@@ -90,7 +90,12 @@ async function writeRow(name: string, value: unknown) {
 export function parseFooter(body: unknown): FooterSettings {
   const input = obj(body), d = DEFAULT_FOOTER;
   const links = Array.isArray(input.links) ? input.links.slice(0, MAX_FOOTER_LINKS).map(item => ({ label: text(obj(item).label, 60), link: safeLink(obj(item).link, "") })).filter(item => item.label && item.link) : null;
-  return { text: text(input.text, 300, d.text), showWhatsapp: bool(input.showWhatsapp, d.showWhatsapp), links };
+  return { text: text(input.text, 300, d.text), showWhatsapp: bool(input.showWhatsapp, d.showWhatsapp), links, business: parseBusiness(input.business) };
+}
+/** An email without a plain name@domain shape is dropped, so a typo can't become a broken mailto link. */
+export function parseBusiness(body: unknown): BusinessDetails {
+  const input = obj(body), email = text(input.email, 120).toLowerCase();
+  return { name: text(input.name, 120), address: text(input.address, 300), email: /^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/.test(email) ? email : "", phone: text(input.phone, 30).replace(/[^\d+ ()-]/g, "") };
 }
 export const getFooter = async () => parseFooter(await readRow("footer"));
 export const saveFooter = (value: FooterSettings) => writeRow("footer", value);

@@ -99,8 +99,12 @@ export const MAX_GOOGLE_TAGS = 5;
 /** A link in the footer and the phone menu: a page on this site or an https address. */
 export type FooterLink = { label: string; link: string };
 /** The footer on every page. links null means automatic: published pages with "Show in the footer" on. */
-export type FooterSettings = { text: string; showWhatsapp: boolean; links: FooterLink[] | null };
-export const DEFAULT_FOOTER: FooterSettings = { text: "Prices and availability reflect the current catalogue.", showWhatsapp: true, links: null };
+/** Who runs the shop, shown in the footer and on the Contact page. Google Merchant Center checks for these. Empty fields are hidden. */
+export type BusinessDetails = { name: string; address: string; email: string; phone: string };
+export type FooterSettings = { text: string; showWhatsapp: boolean; links: FooterLink[] | null; business: BusinessDetails };
+export const DEFAULT_BUSINESS: BusinessDetails = { name: "", address: "", email: "", phone: "" };
+export const DEFAULT_FOOTER: FooterSettings = { text: "Prices and availability reflect the current catalogue.", showWhatsapp: true, links: null, business: DEFAULT_BUSINESS };
+export const hasBusinessDetails = (business: BusinessDetails | undefined) => !!business && Object.values(business).some(Boolean);
 export const MAX_FOOTER_LINKS = 16;
 export const DEFAULT_INSTAGRAM: InstagramSettings = { show: false, username: "" };
 export const instagramLink = (username: string) => `https://www.instagram.com/${encodeURIComponent(username)}/`;
