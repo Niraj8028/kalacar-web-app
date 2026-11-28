@@ -181,3 +181,31 @@ test("the leaving-the-shop question can be turned off", async ({ page }) => {
   await page.goBack();
   await expect(page).toHaveURL("about:blank");
 });
+
+test("Secured by: theme-coloured icon, the owner's words and uploaded logos, on the product page and at checkout", async ({ page }) => {
+  const securedBy = { showOnProduct: true, showOnCheckout: true, icon: "secure", text: "Secured by", image: "/uploads/pay-logos.png", imageAlt: "Razorpay, GPay, PhonePe" };
+  await atCheckout(page, { securedBy });
+  await page.route("**/uploads/pay-logos.png", route => route.fulfill({ contentType: "image/svg+xml", body: "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='40'/>" }));
+  await page.goto("/products/ganesh");
+  const row = page.locator(".detail-copy .secured-by");
+  await expect(row).toContainText("Secured by");
+  await expect(row.getByRole("img", { name: "Razorpay, GPay, PhonePe" })).toHaveAttribute("src", "/uploads/pay-logos.png");
+  // The lock sits on the theme colour, not green.
+  const background = await row.locator(".secured-by-icon").evaluate(element => getComputedStyle(element).backgroundColor);
+  const accent = await page.evaluate(() => { const probe = document.createElement("i"); probe.style.color = "var(--accent)"; document.body.append(probe); const value = getComputedStyle(probe).color; probe.remove(); return value; });
+  expect(background).toBe(accent);
+  // The trust strip is always 2 per row, also on computers.
+  const columns = await page.locator(".detail-copy .trust-strip").evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length);
+  expect(columns).toBe(2);
+  await page.goto("/checkout");
+  await expect(page.locator("form.bag-checkout .secured-by")).toContainText("Secured by");
+});
+
+test("Secured by can be hidden on each page", async ({ page }) => {
+  await atCheckout(page, { securedBy: { ...DEFAULT_PRODUCT_PAGE.securedBy, showOnProduct: false } });
+  await page.goto("/products/ganesh");
+  await expect(page.locator(".detail-copy .trust-strip")).toBeVisible();
+  await expect(page.locator(".secured-by")).toHaveCount(0);
+  await page.goto("/checkout");
+  await expect(page.locator("form.bag-checkout .secured-by")).toContainText("Secured by Razorpay");
+});

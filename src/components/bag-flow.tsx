@@ -16,7 +16,7 @@ import { updatesGoTo } from "@/lib/store-info";
 import { trackShopEvent } from "@/components/tracking-tags";
 import { DeliveryLine } from "@/components/product-facts";
 import { LeaveSurvey, type LeaveSurveyHandle } from "@/components/leave-survey";
-import { FreeRows, PayLabel, PaymentBox, SecureCheckoutTitle, TaxNote, TrustLine, YouSave } from "@/components/trust";
+import { FreeRows, PayLabel, PaymentBox, SecuredBy, SecureCheckoutTitle, TaxNote, TrustLine, YouSave } from "@/components/trust";
 import { ArrowRight, BagIcon, External } from "@/components/icons";
 
 
@@ -441,6 +441,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
             {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
             <PaymentBox box={productPage.paymentBox} />
             <TrustLine page={productPage} />
+            <SecuredBy secured={productPage.securedBy} place="checkout" />
             <button className="checkout-demo-button bag-pay" type="submit" disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : <PayLabel pay={productPage.payButton} total={money(total)} />}</button>
             <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms">Terms</Link>. See <Link href="/shipping">Shipping</Link>, <Link href="/returns">Returns and refunds</Link> and <Link href="/privacy">Privacy</Link>.</p>
           </>}

@@ -41,6 +41,9 @@ describe("trust settings", () => {
     expect(page.payButton).toEqual({ label: "Pay now {total}", icon: "none" });
     expect(page.paymentBox.note).toBe("");
     expect(page).not.toHaveProperty("freeGift");
+    // Only pictures stored by the shop can be shown.
+    expect(parseProductPage({ securedBy: { image: "https://evil.example/x.png" } }).securedBy.image).toBe("");
+    expect(parseProductPage({ securedBy: { image: "/uploads/pay.png", text: "" } }).securedBy).toMatchObject({ image: "/uploads/pay.png", text: "" });
   });
   it("keeps the leaving reasons fixed, with the owner's words and on/off for each", () => {
     const survey = parseProductPage({ leaveSurvey: { siteShow: false, reasons: [{ key: "cod", label: "COD chahiye", show: true }, { key: "price", show: false }, { key: "hack", label: "x" }], contact: { title: "Baat karein", showCall: false } } }).leaveSurvey;

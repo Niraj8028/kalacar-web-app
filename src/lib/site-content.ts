@@ -93,9 +93,9 @@ const icon = (value: unknown, fallback: TrustIcon) => (TRUST_ICONS as readonly u
 const words = (value: unknown, max: number, fallback: string) => text(value, max) || fallback;
 
 /** Buy now, totals, secure checkout, payment box, Pay, WhatsApp button, leaving questions and the photo promise. */
-function parseTrustSettings(input: Record<string, unknown>): Pick<ProductPageContent, "deliveryDates" | "buyNow" | "bagTrust" | "secureCheckout" | "paymentBox" | "payButton" | "whatsappFloat" | "leaveSurvey" | "preDispatch"> {
+function parseTrustSettings(input: Record<string, unknown>): Pick<ProductPageContent, "deliveryDates" | "buyNow" | "bagTrust" | "secureCheckout" | "paymentBox" | "securedBy" | "payButton" | "whatsappFloat" | "leaveSurvey" | "preDispatch"> {
   const d = DEFAULT_PRODUCT_PAGE;
-  const dates = obj(input.deliveryDates), buy = obj(input.buyNow), bag = obj(input.bagTrust), secure = obj(input.secureCheckout), box = obj(input.paymentBox), pay = obj(input.payButton), wa = obj(input.whatsappFloat), leave = obj(input.leaveSurvey), contact = obj(leave.contact), photo = obj(input.preDispatch);
+  const dates = obj(input.deliveryDates), sec = obj(input.securedBy), buy = obj(input.buyNow), bag = obj(input.bagTrust), secure = obj(input.secureCheckout), box = obj(input.paymentBox), pay = obj(input.payButton), wa = obj(input.whatsappFloat), leave = obj(input.leaveSurvey), contact = obj(leave.contact), photo = obj(input.preDispatch);
   const bagRow = obj(bag.delivery), tax = obj(bag.taxNote), save = obj(bag.youSave);
   const savedReasons = Array.isArray(leave.reasons) ? leave.reasons.map(obj) : [];
   const ls = d.leaveSurvey, lc = ls.contact;
@@ -110,6 +110,7 @@ function parseTrustSettings(input: Record<string, unknown>): Pick<ProductPageCon
     },
     secureCheckout: { show: bool(secure.show, d.secureCheckout.show), icon: icon(secure.icon, d.secureCheckout.icon), label: words(secure.label, 40, d.secureCheckout.label) },
     paymentBox: { show: bool(box.show, d.paymentBox.show), icon: icon(box.icon, d.paymentBox.icon), title: words(box.title, 60, d.paymentBox.title), marks: text(box.marks, 150, d.paymentBox.marks), note: text(box.note, 300, d.paymentBox.note) },
+    securedBy: { showOnProduct: bool(sec.showOnProduct, d.securedBy.showOnProduct), showOnCheckout: bool(sec.showOnCheckout, d.securedBy.showOnCheckout), icon: icon(sec.icon, d.securedBy.icon), text: text(sec.text, 60, d.securedBy.text), image: safeImage(sec.image), imageAlt: words(sec.imageAlt, 120, d.securedBy.imageAlt) },
     payButton: { label: words(pay.label, 40, d.payButton.label), icon: icon(pay.icon, d.payButton.icon) },
     whatsappFloat: { show: bool(wa.show, d.whatsappFloat.show), label: text(wa.label, 60, d.whatsappFloat.label), message: words(wa.message, 300, d.whatsappFloat.message), productMessage: words(wa.productMessage, 300, d.whatsappFloat.productMessage) },
     leaveSurvey: {

@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
-import { BuyNowLabel, TrustStrip } from "@/components/trust";
+import { BuyNowLabel, SecuredBy, TrustStrip } from "@/components/trust";
 import { DeliveryLine, FreeDeliveryNote, ProductHighlights, SpecCards } from "@/components/product-facts";
 import { RecommendedProducts } from "@/components/recommended-products";
 import { ArrowLeft, UserCircle } from "@/components/icons";
@@ -120,6 +120,7 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" label="Add to bag" />
             <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}><BuyNowLabel buyNow={productPage.buyNow} /></button>
           </div>
+          <SecuredBy secured={productPage.securedBy} place="product" />
           <TrustStrip strip={productPage.trustStrip} />
           <OfferBox />
           <DeliveryLine page={productPage} />

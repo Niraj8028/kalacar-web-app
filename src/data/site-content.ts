@@ -62,6 +62,8 @@ export type ProductPageContent = {
   secureCheckout: { show: boolean; icon: TrustIcon; label: string };
   /** The box just above Pay: who handles payment, the ways to pay, and a short note. */
   paymentBox: { show: boolean; icon: TrustIcon; title: string; marks: string; note: string };
+  /** "🔒 Secured by Razorpay [logos]" under the Buy buttons and above Pay. `image` is the owner's uploaded logo picture. */
+  securedBy: { showOnProduct: boolean; showOnCheckout: boolean; icon: TrustIcon; text: string; image: string; imageAlt: string };
   /** The Pay button. {total} becomes the amount. */
   payButton: { label: string; icon: TrustIcon };
   /** Round WhatsApp button on every page. `label` is the small bubble (empty: none). {product} is the murti on product pages. */
@@ -127,6 +129,7 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   bagTrust: { showLine: true, delivery: { show: true, label: "Delivery", value: "FREE" }, taxNote: { show: true, text: "Inclusive of all taxes" }, youSave: { show: true, text: "You save {amount} on this order" } },
   secureCheckout: { show: true, icon: "secure", label: "Secure checkout" },
   paymentBox: { show: true, icon: "secure", title: "Pay securely with Razorpay", marks: "UPI, GPay, PhonePe, Paytm, Visa, Mastercard, RuPay", note: "You choose UPI, card or net banking in the next step. All payments are encrypted, and we never see or store your card or UPI details." },
+  securedBy: { showOnProduct: true, showOnCheckout: true, icon: "secure", text: "Secured by Razorpay", image: "", imageAlt: "UPI, GPay, PhonePe and cards" },
   payButton: { label: "Pay {total} securely", icon: "secure" },
   whatsappFloat: { show: true, label: "Questions? Chat with us", message: "Hi Kalacar, I have a question.", productMessage: "Hi Kalacar, I have a question about {product}." },
   leaveSurvey: {

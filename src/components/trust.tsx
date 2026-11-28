@@ -58,6 +58,17 @@ export function PaymentBox({ box }: { box: ProductPageContent["paymentBox"] }) {
   </div>;
 }
 
+/** "🔒 Secured by Razorpay" with the owner's logo picture, in the shop's colours. */
+export function SecuredBy({ secured, place }: { secured: ProductPageContent["securedBy"]; place: "product" | "checkout" }) {
+  if (!(place === "product" ? secured.showOnProduct : secured.showOnCheckout) || (!secured.text && !secured.image)) return null;
+  return <p className="secured-by">
+    {(secured.icon !== "none" || secured.text) && <span className="secured-by-label">{secured.icon !== "none" && <span className="secured-by-icon" aria-hidden="true"><Icon name={secured.icon} size={15} /></span>}{secured.text}</span>}
+    {/* Any size the owner uploads, shown at a fixed height. */}
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    {secured.image && <img src={secured.image} alt={secured.imageAlt} />}
+  </p>;
+}
+
 /** The Pay button's words, with {total} filled in. */
 export function PayLabel({ pay, total }: { pay: ProductPageContent["payButton"]; total: string }) {
   return <><Icon name={pay.icon} size={15} />{pay.label.replaceAll("{total}", total)}</>;
