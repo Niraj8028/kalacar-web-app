@@ -56,14 +56,17 @@ test("bag: free delivery row, taxes included, and the trust line above checkout"
   const totals = page.locator(".bag-page-side .bag-totals");
   await expect(totals.locator(".free-row")).toHaveText(["DeliveryFREE"]);
   await expect(totals.getByText("Inclusive of all taxes")).toBeVisible();
-  await expect(page.locator(".bag-page-side .trust-line")).toContainText("Breakage covered");
+  // The trust strip's promises, small: icon, words, then a green tick.
+  const mini = page.locator(".bag-page-side .trust-mini li");
+  await expect(mini).toHaveText(["Free delivery", "Breakage covered", "Photo before dispatch", "Secure payment"]);
+  await expect(mini.first().locator("> *").last()).toHaveClass("trust-mini-tick");
 });
 
 test("every new line uses the owner's words and icons, and each can be hidden", async ({ page }) => {
   await atCheckout(page, {
     buyNow: { label: "Order now", icon: "star", showMarks: false, marks: "" },
     payButton: { label: "Complete payment of {total}", icon: "none" },
-    secureCheckout: { show: false, icon: "secure", label: "", info: "" },
+    secureCheckout: { show: false, icon: "secure", label: "" },
     paymentBox: { show: true, icon: "check", title: "Safe payments", marks: "UPI, RuPay", note: "" },
     bagTrust: { showLine: false, delivery: { show: true, label: "Shipping", value: "Free" }, taxNote: { show: false, text: "" }, youSave: { show: true, text: "" } },
     deliveryDates: { show: true, cutoffHour: 14, text: "Pahunchega {from} se {to} tak.", note: "" },
@@ -75,7 +78,8 @@ test("every new line uses the owner's words and icons, and each can be hidden", 
   await expect(page.locator(".delivery-line")).toContainText("Pahunchega");
   await page.goto("/checkout");
   await expect(page.getByRole("button", { name: /^Complete payment of ₹999$/ })).toBeVisible();
-  await expect(page.locator(".secure-checkout")).toHaveCount(0);
+  await expect(page.locator(".secure-checkout-title")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: "Checkout" })).toBeVisible();
   await expect(page.locator(".payment-box")).toContainText("Safe payments");
   await expect(page.locator(".payment-box .payment-marks span")).toHaveText(["UPI", "RuPay"]);
   await expect(page.locator(".bag-page-side .bag-totals .free-row")).toHaveText(["ShippingFree"]);
@@ -93,9 +97,11 @@ test("checkout: name and mobile come first, the checkout is saved once they're t
   await page.getByLabel("Mobile number").fill("+91 98765 43210");
   await expect.poll(() => leads.length).toBe(1);
   expect(leads[0]).toMatchObject({ name: "Asha Patil", phone: "9876543210", items: [{ id: "ganesh", variantId: "plain", quantity: 1 }] });
-  await expect(page.locator(".secure-checkout-label")).toHaveText("Secure checkout");
-  await page.getByRole("button", { name: "How we protect your payment" }).click();
-  await expect(page.getByText(/never see or store your card or UPI details, and we don't sell/)).toBeVisible();
+  // The page title is the green "Secure checkout", with no (i) and no separate "Checkout" heading.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Secure checkout");
+  await expect(page.locator(".bag-page > .eyebrow")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "How we protect your payment" })).toHaveCount(0);
+  await expect(page.locator("form.bag-checkout .trust-mini li")).toHaveCount(4);
   await expect(page.locator(".payment-box")).toContainText("Pay securely with Razorpay");
   await expect(page.getByRole("button", { name: /^Pay ₹999 securely$/ })).toBeVisible();
 });
