@@ -56,10 +56,10 @@ export type ProductPageContent = {
   deliveryDates: { show: boolean; cutoffHour: number; text: string; note: string };
   /** The Buy now button: its words, an icon before them, and small payment labels under them. */
   buyNow: { label: string; icon: TrustIcon; showMarks: boolean; marks: string };
-  /** Bag and checkout totals: the trust line above Checkout, the free delivery row, the tax note and the coupon saving. */
+  /** Bag and checkout totals: the small trust promises (bag and checkout), the free delivery row, the tax note and the coupon saving. */
   bagTrust: { showLine: boolean; delivery: { show: boolean; label: string; value: string }; taxNote: { show: boolean; text: string }; youSave: { show: boolean; text: string } };
-  /** "Secure checkout" at the top of checkout, with an (i) that opens `info`. */
-  secureCheckout: { show: boolean; icon: TrustIcon; label: string; info: string };
+  /** The checkout page's title, large and green with its icon. Off: the plain "Checkout" title. */
+  secureCheckout: { show: boolean; icon: TrustIcon; label: string };
   /** The box just above Pay: who handles payment, the ways to pay, and a short note. */
   paymentBox: { show: boolean; icon: TrustIcon; title: string; marks: string; note: string };
   /** The Pay button. {total} becomes the amount. */
@@ -125,7 +125,7 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   deliveryDates: { show: true, cutoffHour: 14, text: "Order today, get it between {from} – {to}.", note: "Exact date depends on your PIN code." },
   buyNow: { label: "Buy now", icon: "secure", showMarks: true, marks: "UPI, GPay, PhonePe, Paytm" },
   bagTrust: { showLine: true, delivery: { show: true, label: "Delivery", value: "FREE" }, taxNote: { show: true, text: "Inclusive of all taxes" }, youSave: { show: true, text: "You save {amount} on this order" } },
-  secureCheckout: { show: true, icon: "secure", label: "Secure checkout", info: "Payments are processed by Razorpay over an encrypted connection. We never see or store your card or UPI details, and we don't sell your information." },
+  secureCheckout: { show: true, icon: "secure", label: "Secure checkout" },
   paymentBox: { show: true, icon: "secure", title: "Pay securely with Razorpay", marks: "UPI, GPay, PhonePe, Paytm, Visa, Mastercard, RuPay", note: "You choose UPI, card or net banking in the next step. All payments are encrypted, and we never see or store your card or UPI details." },
   payButton: { label: "Pay {total} securely", icon: "secure" },
   whatsappFloat: { show: true, label: "Questions? Chat with us", message: "Hi Kalacar, I have a question.", productMessage: "Hi Kalacar, I have a question about {product}." },

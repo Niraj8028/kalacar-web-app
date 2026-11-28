@@ -108,7 +108,7 @@ function parseTrustSettings(input: Record<string, unknown>): Pick<ProductPageCon
       taxNote: { show: bool(tax.show, d.bagTrust.taxNote.show), text: words(tax.text, 60, d.bagTrust.taxNote.text) },
       youSave: { show: bool(save.show, d.bagTrust.youSave.show), text: words(save.text, 80, d.bagTrust.youSave.text) },
     },
-    secureCheckout: { show: bool(secure.show, d.secureCheckout.show), icon: icon(secure.icon, d.secureCheckout.icon), label: words(secure.label, 40, d.secureCheckout.label), info: text(secure.info, 300, d.secureCheckout.info) },
+    secureCheckout: { show: bool(secure.show, d.secureCheckout.show), icon: icon(secure.icon, d.secureCheckout.icon), label: words(secure.label, 40, d.secureCheckout.label) },
     paymentBox: { show: bool(box.show, d.paymentBox.show), icon: icon(box.icon, d.paymentBox.icon), title: words(box.title, 60, d.paymentBox.title), marks: text(box.marks, 150, d.paymentBox.marks), note: text(box.note, 300, d.paymentBox.note) },
     payButton: { label: words(pay.label, 40, d.payButton.label), icon: icon(pay.icon, d.payButton.icon) },
     whatsappFloat: { show: bool(wa.show, d.whatsappFloat.show), label: text(wa.label, 60, d.whatsappFloat.label), message: words(wa.message, 300, d.whatsappFloat.message), productMessage: words(wa.productMessage, 300, d.whatsappFloat.productMessage) },

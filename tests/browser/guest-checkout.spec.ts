@@ -84,7 +84,7 @@ test("the bag, checkout and thank-you steps each have their own page", async ({ 
   await expect(page.getByLabel("Email")).toHaveCount(0);
   await page.getByRole("link", { name: "Proceed to checkout" }).click();
   await expect(page).toHaveURL(/\/checkout$/);
-  await expect(page.getByRole("heading", { name: "Checkout", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Secure checkout" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Pay / })).toBeVisible();
   await page.goto(`/order-confirmed?order=${ORDER}`);
   await expect(page.getByText("Thank you, your order is confirmed")).toBeVisible();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { ProductPageContent, TrustIcon } from "@/data/site-content";
 import { CameraIcon, ChatIcon, CheckMark, GiftIcon, HeartIcon, LockIcon, PhoneIcon, ShieldIcon, StarIcon, TruckIcon } from "@/components/icons";
 
@@ -25,11 +25,15 @@ export function TrustStrip({ strip }: { strip: ProductPageContent["trustStrip"] 
   </li>)}</ul>;
 }
 
-/** The trust strip's titles in one line, above the bag's Checkout button. */
+/** A small version of the trust strip for the bag and checkout: icon, promise, then a green tick. */
 export function TrustLine({ page }: { page: ProductPageContent }) {
   const { trustStrip } = page;
   if (!page.bagTrust.showLine || !trustStrip.items.length) return null;
-  return <p className="trust-line">{trustStrip.items.map((item, index) => <span key={`${index}-${item.title}`}><CheckMark size={12} />{item.title}</span>)}</p>;
+  return <ul className="trust-mini" aria-label="Why shop with Kalacar">{trustStrip.items.map((item, index) => <li key={`${index}-${item.title}`}>
+    {item.icon !== "none" && <span className="trust-mini-icon" aria-hidden="true"><Icon name={item.icon} size={16} /></span>}
+    <span className="trust-mini-text">{item.title}</span>
+    <span className="trust-mini-tick" aria-hidden="true"><CheckMark size={13} /></span>
+  </li>)}</ul>;
 }
 
 /** Names of the ways to pay, as small labels. Text, not brand artwork, so they stay sharp and honest. */
@@ -59,15 +63,9 @@ export function PayLabel({ pay, total }: { pay: ProductPageContent["payButton"];
   return <><Icon name={pay.icon} size={15} />{pay.label.replaceAll("{total}", total)}</>;
 }
 
-/** "Secure checkout" with an (i) that explains how payment details are protected. */
-export function SecureCheckoutBadge({ secure }: { secure: ProductPageContent["secureCheckout"] }) {
-  const [open, setOpen] = useState(false);
-  if (!secure.show) return null;
-  return <div className="secure-checkout">
-    <span className="secure-checkout-label"><Icon name={secure.icon} size={15} />{secure.label}</span>
-    {secure.info && <button type="button" className="secure-checkout-info" aria-expanded={open} aria-controls="secure-checkout-text" aria-label="How we protect your payment" onClick={() => setOpen(value => !value)}>i</button>}
-    {open && secure.info && <p id="secure-checkout-text" className="secure-checkout-text" role="note">{secure.info}</p>}
-  </div>;
+/** The checkout page's title: a large green "Secure checkout" with its icon. */
+export function SecureCheckoutTitle({ secure }: { secure: ProductPageContent["secureCheckout"] }) {
+  return <h1 className="secure-checkout-title"><Icon name={secure.icon} size={30} />{secure.label}</h1>;
 }
 
 /** The free delivery row under the subtotal. */
