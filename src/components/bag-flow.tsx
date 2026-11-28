@@ -16,8 +16,8 @@ import { updatesGoTo } from "@/lib/store-info";
 import { trackShopEvent } from "@/components/tracking-tags";
 import { DeliveryLine } from "@/components/product-facts";
 import { LeaveSurvey, type LeaveSurveyHandle } from "@/components/leave-survey";
-import { FreeRows, PaymentBox, SecureCheckoutBadge, TaxNote, TrustLine } from "@/components/trust";
-import { ArrowRight, BagIcon, External, LockIcon } from "@/components/icons";
+import { FreeRows, PayLabel, PaymentBox, SecureCheckoutBadge, TaxNote, TrustLine, YouSave } from "@/components/trust";
+import { ArrowRight, BagIcon, External } from "@/components/icons";
 
 
 type SavedCheckout = { fingerprint: string; idempotencyKey: string; orderId: string; razorpayOrderId: string; amount: number };
@@ -356,8 +356,8 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
     {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
     <FreeRows page={productPage} />
     <div className="bag-total"><span>Total</span><strong>{money(total)}</strong></div>
-    <TaxNote />
-    {discount > 0 && <p className="you-save">You save {money(discount)} on this order</p>}
+    <TaxNote page={productPage} />
+    {discount > 0 && <YouSave page={productPage} amount={money(discount)} />}
   </div>;
   const unpaid = savedCheckout && <div className="bag-unpaid" role="status">
     <strong>{savedCheckout.orderId ? `Unpaid order ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout started"}</strong>
@@ -375,8 +375,8 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
   return <div className="bag-page">
     <p className="eyebrow">{step === "cart" ? "YOUR SELECTION" : "SECURE CHECKOUT"}</p>
     <h1>{step === "cart" ? "Your bag" : "Checkout"}</h1>
-    {step === "checkout" && <SecureCheckoutBadge />}
-    {step === "checkout" && <LeaveSurvey ref={survey} enabled={productPage.leaveSurvey.show && resolved.length > 0} leadId={leadId} />}
+    {step === "checkout" && <SecureCheckoutBadge secure={productPage.secureCheckout} />}
+    {step === "checkout" && <LeaveSurvey ref={survey} enabled={resolved.length > 0} leadId={leadId} />}
     {testPayments && <p className="bag-test-note">Test mode: no real payment is taken.</p>}
     {notice && <p className="account-message" role="status">{notice}</p>}
     {unpaid}
@@ -397,7 +397,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
           <DeliveryLine page={productPage} />
           {totals}
           <p className="bag-summary-note">Add delivery details and coupons on the next step.</p>
-          <TrustLine strip={productPage.trustStrip} />
+          <TrustLine page={productPage} />
           <Link className={`checkout-demo-button bag-pay${stockProblem ? " disabled" : ""}`} href="/checkout" aria-disabled={stockProblem || undefined} onClick={e => { if (stockProblem) e.preventDefault(); }}>Proceed to checkout <ArrowRight /></Link>
         </div>
       </aside> : <aside className="bag-page-side">
@@ -438,8 +438,8 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
           {error && <p className="demo-checkout-message bag-error" role="alert">{error}</p>}
           {accountLoaded && <>
             {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
-            <PaymentBox />
-            <button className="checkout-demo-button bag-pay" type="submit" disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : <><LockIcon /> Pay {money(total)} securely</>}</button>
+            <PaymentBox box={productPage.paymentBox} />
+            <button className="checkout-demo-button bag-pay" type="submit" disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : <PayLabel pay={productPage.payButton} total={money(total)} />}</button>
             <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms">Terms</Link>. See <Link href="/shipping">Shipping</Link>, <Link href="/returns">Returns and refunds</Link> and <Link href="/privacy">Privacy</Link>.</p>
           </>}
         </form>

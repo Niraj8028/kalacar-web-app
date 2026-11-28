@@ -67,9 +67,9 @@ export default function CartDrawer() {
             {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
             <FreeRows page={productPage} />
             <div className="bag-total"><span>Total</span><strong>{money(subtotal + giftTotal)}</strong></div>
-            <TaxNote />
+            <TaxNote page={productPage} />
           </div>
-          <TrustLine strip={productPage.trustStrip} />
+          <TrustLine page={productPage} />
           <Link className="checkout-demo-button" href="/checkout" onClick={leave}>Proceed to checkout <ArrowRight /></Link>
           <button type="button" className="bag-text-link" onClick={() => closeDrawer()}>Continue shopping</button>
         </footer>}

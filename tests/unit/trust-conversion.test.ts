@@ -34,10 +34,21 @@ describe("trust settings", () => {
     expect(custom.trustStrip.items[0].icon).toBe("secure");
     expect(custom.trustStrip.items).toHaveLength(3);
   });
-  it("hides a free gift with no name, and keeps the cut-off hour in range", () => {
-    expect(parseProductPage({ freeGift: { show: true, name: "  " } }).freeGift.show).toBe(false);
-    expect(parseProductPage({ freeGift: { show: true, name: "Blessing card" } }).freeGift).toEqual({ show: true, name: "Blessing card" });
+  it("keeps the cut-off hour in range, and falls back to the default words when a label is emptied", () => {
     expect(parseProductPage({ deliveryDates: { show: true, cutoffHour: 30 } }).deliveryDates.cutoffHour).toBe(14);
+    const page = parseProductPage({ buyNow: { label: "  ", icon: "rocket", showMarks: false, marks: "UPI" }, payButton: { label: "Pay now {total}", icon: "none" }, paymentBox: { note: "" } });
+    expect(page.buyNow).toEqual({ label: "Buy now", icon: "secure", showMarks: false, marks: "UPI" });
+    expect(page.payButton).toEqual({ label: "Pay now {total}", icon: "none" });
+    expect(page.paymentBox.note).toBe("");
+    expect(page).not.toHaveProperty("freeGift");
+  });
+  it("keeps the leaving reasons fixed, with the owner's words and on/off for each", () => {
+    const survey = parseProductPage({ leaveSurvey: { siteShow: false, reasons: [{ key: "cod", label: "COD chahiye", show: true }, { key: "price", show: false }, { key: "hack", label: "x" }], contact: { title: "Baat karein", showCall: false } } }).leaveSurvey;
+    expect(survey.siteShow).toBe(false);
+    expect(survey.reasons.map(reason => reason.key)).toEqual(["cod", "trust", "delivery", "price", "payment", "question", "other"]);
+    expect(survey.reasons[0]).toEqual({ key: "cod", label: "COD chahiye", show: true });
+    expect(survey.reasons[3]).toMatchObject({ label: "The price feels high", show: false });
+    expect(survey.contact).toMatchObject({ show: true, title: "Baat karein", showCall: false, whatsappLabel: "Chat on WhatsApp" });
   });
 });
 

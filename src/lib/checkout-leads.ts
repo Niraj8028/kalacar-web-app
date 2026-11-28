@@ -1,20 +1,13 @@
 import type { RowDataPacket } from "mysql2/promise";
 import { addressDb } from "@/lib/catalogue-db";
 import { listShopProducts } from "@/lib/shop-products";
+import { getProductPage } from "@/lib/site-content";
+import { DEFAULT_PRODUCT_PAGE, LEAVE_REASON_KEYS, type LeaveReasonKey } from "@/data/site-content";
 
 // Checkouts people started but may not have paid for, and why they left. Owner-only to read.
 
-export const LEAVE_REASONS = [
-  { key: "cod", label: "I want Cash on Delivery" },
-  { key: "trust", label: "Not sure about the quality or the shop" },
-  { key: "delivery", label: "Delivery takes too long" },
-  { key: "price", label: "The price feels high" },
-  { key: "payment", label: "Payment didn't work" },
-  { key: "question", label: "I have a question first" },
-  { key: "other", label: "Something else" },
-] as const;
-export type LeaveReason = (typeof LEAVE_REASONS)[number]["key"];
-const REASON_KEYS = new Set<string>(LEAVE_REASONS.map(reason => reason.key));
+const REASON_KEYS = new Set<string>(LEAVE_REASON_KEYS);
+type LeaveReason = LeaveReasonKey;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const obj = (value: unknown) => (value && typeof value === "object" && !Array.isArray(value) ? value : {}) as Record<string, unknown>;
 const str = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -61,7 +54,7 @@ export function parseFeedback(body: unknown): { error: string } | { value: { lea
   const other = str(input.other, 300);
   if (!reasons.length && !other) return { error: "Choose a reason." };
   const leadId = str(input.leadId, 36);
-  return { value: { leadId: UUID.test(leadId) ? leadId : null, reasons, other, source: ["back", "payment", "mouse", "link"].includes(str(input.source, 20)) ? str(input.source, 20) : "" } };
+  return { value: { leadId: UUID.test(leadId) ? leadId : null, reasons, other, source: ["back", "payment", "mouse", "site"].includes(str(input.source, 20)) ? str(input.source, 20) : "" } };
 }
 
 export async function saveFeedback(value: { leadId: string | null; reasons: string[]; other: string; source: string }) {
@@ -92,7 +85,8 @@ export async function listLeads() {
       return { id: lead.id, name: lead.name, phone: lead.phone, email: lead.email, pincode: lead.pincode, items: json(lead.items), total: lead.total, contacted: Boolean(lead.contacted), createdAt: lead.created_at.toISOString(), updatedAt: lead.updated_at.toISOString(), outcome: paid ? "paid" : order ? "unpaid" : "none", orderId: order?.id ?? null };
     }),
     feedback: feedback.map(row => ({ id: row.id, leadId: row.lead_id, reasons: json(row.reasons) as string[], other: row.other, source: row.source, createdAt: row.created_at.toISOString() })),
-    reasons: LEAVE_REASONS,
+    // The owner's own words for each reason, as shoppers saw them.
+    reasons: (await getProductPage().catch(() => DEFAULT_PRODUCT_PAGE)).leaveSurvey.reasons.map(({ key, label }) => ({ key, label })),
   };
 }
 

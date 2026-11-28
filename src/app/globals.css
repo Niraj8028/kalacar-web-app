@@ -1638,7 +1638,7 @@ body { overflow-x: clip; }
 .bag-pay { gap: 7px; }
 .whatsapp-float { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 45; display: flex; align-items: flex-end; gap: 10px; }
 .whatsapp-float.raised { bottom: calc(86px + env(safe-area-inset-bottom)); }
-.whatsapp-float-button { display: grid; place-items: center; width: 54px; height: 54px; border: 0; border-radius: 50%; background: #1f8f4e; color: #fff; box-shadow: 0 6px 18px rgb(0 0 0 / 22%); cursor: pointer; }
+.whatsapp-float-button { display: grid; place-items: center; width: 54px; height: 54px; border: 0; border-radius: 50%; background: #1f8a4c; color: #fff; box-shadow: 0 6px 18px rgb(0 0 0 / 22%); cursor: pointer; }
 .whatsapp-float-button:hover { background: #18773f; }
 .whatsapp-bubble { position: relative; display: flex; align-items: center; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
 .whatsapp-bubble-text { padding: 9px 4px 9px 12px; border: 0; background: none; color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
@@ -1653,8 +1653,19 @@ body { overflow-x: clip; }
 .leave-survey fieldset { display: grid; gap: 2px; margin: 0; padding: 0; border: 0; }
 .leave-survey-option { display: flex; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; cursor: pointer; }
 .leave-survey-option input { width: 18px; height: 18px; accent-color: var(--accent); }
-.leave-survey-whatsapp { display: inline-flex; margin: 6px 0 2px; color: #1f8f4e; font-size: 14px; font-weight: 600; }
+.leave-survey-whatsapp { display: inline-flex; margin: 6px 0 2px; color: #1f8a4c; font-size: 14px; font-weight: 600; }
 .leave-survey-other { display: grid; gap: 4px; margin-top: 8px; font-size: 13px; }
 .leave-survey-other textarea { padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--page); color: var(--ink); font: inherit; }
 .leave-survey-actions { display: grid; gap: 8px; margin-top: 16px; }
 .leave-survey-exit { min-height: 44px; border: 1px solid var(--line); border-radius: 6px; background: none; color: var(--ink); cursor: pointer; font-size: 14px; }
+.leave-contact { display: grid; gap: 8px; margin: 4px 0 16px; padding: 16px; border: 1px solid #b9d7b0; border-radius: 10px; background: #eef6eb; }
+:root[data-theme="dark"] .leave-contact { background: #1f2a1e; border-color: #3a5236; }
+.leave-contact h3 { margin: 0; font: 400 20px/1.25 var(--font-display); }
+.leave-contact p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.leave-contact-buttons { display: grid; gap: 8px; margin-top: 4px; }
+.leave-contact-whatsapp, .leave-contact-call { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 6px; font-size: 15px; font-weight: 600; text-decoration: none; }
+.leave-contact-whatsapp { background: #1f8a4c; color: #fff; }
+.leave-contact-whatsapp:hover { background: #18773f; }
+.leave-contact-call { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+@media (min-width: 480px) { .leave-contact-buttons { grid-template-columns: 1.4fr 1fr; } }
+.leave-survey-legend { margin-bottom: 4px; padding: 0; font-size: 14px; font-weight: 600; }

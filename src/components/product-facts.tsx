@@ -47,9 +47,15 @@ export function DeliveryLine({ page }: { page: ProductPageContent }) {
   const dates = useDeliveryWindow(page);
   return <p className="delivery-line"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M3 7h11v9H3z M14 10h4l3 3v3h-7 M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01" {...stroke} /></svg><span>
     {delivery.free.show && <><b className="free-delivery">{delivery.free.text}.</b>{" "}</>}
-    {dates ? <><b>Order today, get it between <span className="delivery-dates">{shortDate(dates.from)} – {shortDate(dates.to)}</span>.</b> Exact date depends on your PIN code.</> : <b>Delivered in {delivery.estimate}.</b>}
+    {dates ? <><b><DatesText text={page.deliveryDates.text} from={shortDate(dates.from)} to={shortDate(dates.to)} /></b>{page.deliveryDates.note && <> {page.deliveryDates.note}</>}</> : <b>Delivered in {delivery.estimate}.</b>}
     {delivery.note && <> {delivery.note}</>}
   </span></p>;
+}
+
+/** The owner's dates sentence, with the dates kept on one line. */
+function DatesText({ text, from, to }: { text: string; from: string; to: string }) {
+  const parts = text.split(/(\{from\}\s*[–-]\s*\{to\}|\{from\}|\{to\})/);
+  return <>{parts.map((part, index) => /^\{from\}\s*[–-]\s*\{to\}$/.test(part) ? <span className="delivery-dates" key={index}>{from} – {to}</span> : part === "{from}" ? <span className="delivery-dates" key={index}>{from}</span> : part === "{to}" ? <span className="delivery-dates" key={index}>{to}</span> : part)}</>;
 }
 
 /** The green "Free delivery" line under "In stock", when the owner turns it on. */

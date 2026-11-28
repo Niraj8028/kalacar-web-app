@@ -28,7 +28,7 @@ export function WhatsappFloat() {
   const closeBubble = () => { setBubble(false); try { sessionStorage.setItem(BUBBLE_KEY, "1"); } catch { /* fine */ } };
   const open = () => {
     const product = pathname.startsWith("/products/") ? document.querySelector("h1")?.textContent?.trim() : "";
-    window.open(whatsappLink(product ? `Hi Kalacar, I have a question about ${product}.` : "Hi Kalacar, I have a question."), "_blank", "noopener,noreferrer");
+    window.open(whatsappLink(product ? setting.productMessage.replaceAll("{product}", product) : setting.message), "_blank", "noopener,noreferrer");
     closeBubble();
   };
   return <div className={`whatsapp-float${pathname.startsWith("/products/") ? " raised" : ""}`}>

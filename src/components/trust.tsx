@@ -2,60 +2,82 @@
 
 import { useState, type ReactNode } from "react";
 import type { ProductPageContent, TrustIcon } from "@/data/site-content";
-import { CameraIcon, ChatIcon, GiftIcon, LockIcon, ShieldIcon, TruckIcon } from "@/components/icons";
+import { CameraIcon, ChatIcon, CheckMark, GiftIcon, HeartIcon, LockIcon, PhoneIcon, ShieldIcon, StarIcon, TruckIcon } from "@/components/icons";
 
-const ICONS: Record<TrustIcon, ReactNode> = {
-  delivery: <TruckIcon />, breakage: <ShieldIcon />, secure: <LockIcon size={22} />, whatsapp: <ChatIcon />, photo: <CameraIcon />, gift: <GiftIcon size={22} />,
-};
+/** The icon the owner picked in the dashboard; "none" shows nothing. */
+export function Icon({ name, size = 22 }: { name: TrustIcon; size?: number }) {
+  const icons: Record<TrustIcon, ReactNode> = {
+    none: null, delivery: <TruckIcon size={size} />, breakage: <ShieldIcon size={size} />, secure: <LockIcon size={size} />, whatsapp: <ChatIcon size={size} />,
+    photo: <CameraIcon size={size} />, gift: <GiftIcon size={size} />, check: <CheckMark size={size} />, star: <StarIcon size={size} />, heart: <HeartIcon size={size} />, phone: <PhoneIcon size={size} />,
+  };
+  return icons[name];
+}
+
+/** "UPI, GPay, PhonePe" → ["UPI", "GPay", "PhonePe"] */
+const list = (marks: string) => marks.split(",").map(mark => mark.trim()).filter(Boolean).slice(0, 10);
 
 /** The owner's promises with icons, under the Buy buttons. */
 export function TrustStrip({ strip }: { strip: ProductPageContent["trustStrip"] }) {
   if (!strip.show || !strip.items.length) return null;
   return <ul className="trust-strip" aria-label="Why shop with Kalacar">{strip.items.map((item, index) => <li key={`${index}-${item.title}`}>
-    <span className="trust-icon" aria-hidden="true">{ICONS[item.icon]}</span>
+    {item.icon !== "none" && <span className="trust-icon" aria-hidden="true"><Icon name={item.icon} /></span>}
     <b>{item.title}</b>{item.text && <small>{item.text}</small>}
   </li>)}</ul>;
 }
 
-/** "Free delivery · Breakage covered · Secure payment" above the bag's Checkout button. */
-export function TrustLine({ strip }: { strip: ProductPageContent["trustStrip"] }) {
-  if (!strip.show || !strip.items.length) return null;
-  return <p className="trust-line">{strip.items.map((item, index) => <span key={`${index}-${item.title}`}><ShieldDot />{item.title}</span>)}</p>;
+/** The trust strip's titles in one line, above the bag's Checkout button. */
+export function TrustLine({ page }: { page: ProductPageContent }) {
+  const { trustStrip } = page;
+  if (!page.bagTrust.showLine || !trustStrip.items.length) return null;
+  return <p className="trust-line">{trustStrip.items.map((item, index) => <span key={`${index}-${item.title}`}><CheckMark size={12} />{item.title}</span>)}</p>;
 }
-const ShieldDot = () => <svg aria-hidden="true" viewBox="0 0 16 16" width="13" height="13"><path d="M3.500 8.500 6.500 11.500 12.500 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-
-const METHODS = ["UPI", "GPay", "PhonePe", "Paytm", "Visa", "Mastercard", "RuPay"];
 
 /** Names of the ways to pay, as small labels. Text, not brand artwork, so they stay sharp and honest. */
-export function PaymentMarks({ only }: { only?: string[] }) {
-  const list = only ?? METHODS;
-  return <span className="payment-marks" aria-label={`Pay with ${list.join(", ")}`}>{list.map(name => <span key={name} aria-hidden="true">{name}</span>)}</span>;
+export function PaymentMarks({ marks }: { marks: string }) {
+  const names = list(marks);
+  if (!names.length) return null;
+  return <span className="payment-marks" aria-label={`Pay with ${names.join(", ")}`}>{names.map(name => <span key={name} aria-hidden="true">{name}</span>)}</span>;
+}
+
+/** The Buy now button's inside: icon, words and payment labels. */
+export function BuyNowLabel({ buyNow }: { buyNow: ProductPageContent["buyNow"] }) {
+  return <><span className="buy-now-label"><Icon name={buyNow.icon} size={15} />{buyNow.label}</span>{buyNow.showMarks && <PaymentMarks marks={buyNow.marks} />}</>;
 }
 
 /** Just above Pay: who handles the payment and that card and UPI details never reach the shop. */
-export function PaymentBox() {
+export function PaymentBox({ box }: { box: ProductPageContent["paymentBox"] }) {
+  if (!box.show) return null;
   return <div className="payment-box">
-    <p className="payment-box-title"><LockIcon /> Pay securely with Razorpay</p>
-    <PaymentMarks />
-    <p className="payment-box-note">You choose UPI, card or net banking in the next step. All payments are encrypted, and we never see or store your card or UPI details.</p>
+    <p className="payment-box-title"><Icon name={box.icon} size={15} />{box.title}</p>
+    <PaymentMarks marks={box.marks} />
+    {box.note && <p className="payment-box-note">{box.note}</p>}
   </div>;
 }
 
-/** "🔒 Secure checkout" with an (i) that explains how payment details are protected. */
-export function SecureCheckoutBadge() {
+/** The Pay button's words, with {total} filled in. */
+export function PayLabel({ pay, total }: { pay: ProductPageContent["payButton"]; total: string }) {
+  return <><Icon name={pay.icon} size={15} />{pay.label.replaceAll("{total}", total)}</>;
+}
+
+/** "Secure checkout" with an (i) that explains how payment details are protected. */
+export function SecureCheckoutBadge({ secure }: { secure: ProductPageContent["secureCheckout"] }) {
   const [open, setOpen] = useState(false);
+  if (!secure.show) return null;
   return <div className="secure-checkout">
-    <span className="secure-checkout-label"><LockIcon /> Secure checkout</span>
-    <button type="button" className="secure-checkout-info" aria-expanded={open} aria-controls="secure-checkout-text" aria-label="How we protect your payment" onClick={() => setOpen(value => !value)}>i</button>
-    {open && <p id="secure-checkout-text" className="secure-checkout-text" role="note">Payments are processed by Razorpay over an encrypted connection. We never see or store your card or UPI details, and we don&apos;t sell your information.</p>}
+    <span className="secure-checkout-label"><Icon name={secure.icon} size={15} />{secure.label}</span>
+    {secure.info && <button type="button" className="secure-checkout-info" aria-expanded={open} aria-controls="secure-checkout-text" aria-label="How we protect your payment" onClick={() => setOpen(value => !value)}>i</button>}
+    {open && secure.info && <p id="secure-checkout-text" className="secure-checkout-text" role="note">{secure.info}</p>}
   </div>;
 }
 
-/** Rows under the subtotal: the free gift and free delivery, both ₹0. */
+/** The free delivery row under the subtotal. */
 export function FreeRows({ page }: { page: ProductPageContent }) {
-  return <>
-    {page.freeGift.show && <div className="free-row"><span><GiftIcon size={15} /> Free gift: {page.freeGift.name}</span><span>FREE</span></div>}
-    {page.delivery.free.show && <div className="free-row"><span>Delivery</span><span>FREE</span></div>}
-  </>;
+  const row = page.bagTrust.delivery;
+  return row.show ? <div className="free-row"><span>{row.label}</span><span>{row.value}</span></div> : null;
 }
-export const TaxNote = () => <p className="tax-note">Inclusive of all taxes</p>;
+export function TaxNote({ page }: { page: ProductPageContent }) {
+  return page.bagTrust.taxNote.show ? <p className="tax-note">{page.bagTrust.taxNote.text}</p> : null;
+}
+export function YouSave({ page, amount }: { page: ProductPageContent; amount: string }) {
+  return page.bagTrust.youSave.show ? <p className="you-save">{page.bagTrust.youSave.text.replaceAll("{amount}", amount)}</p> : null;
+}

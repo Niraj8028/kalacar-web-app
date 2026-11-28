@@ -49,14 +49,37 @@ test("the WhatsApp button can be turned off, and the strip can be hidden", async
   await expect(page.locator(".trust-strip")).toHaveCount(0);
 });
 
-test("bag: free delivery and free gift rows, taxes included, and the trust line above checkout", async ({ page }) => {
-  await mockShop(page, { content: content({ freeGift: { show: true, name: "Blessing card" } }) });
+test("bag: free delivery row, taxes included, and the trust line above checkout", async ({ page }) => {
+  await mockShop(page, { content: content() });
   await page.addInitScript(() => localStorage.setItem("kalacar-demo-cart-v1", JSON.stringify([{ id: "ganesh", variantId: "plain", quantity: 1 }])));
   await page.goto("/cart");
   const totals = page.locator(".bag-page-side .bag-totals");
-  await expect(totals.locator(".free-row")).toHaveText(["Free gift: Blessing cardFREE", "DeliveryFREE"]);
+  await expect(totals.locator(".free-row")).toHaveText(["DeliveryFREE"]);
   await expect(totals.getByText("Inclusive of all taxes")).toBeVisible();
   await expect(page.locator(".bag-page-side .trust-line")).toContainText("Breakage covered");
+});
+
+test("every new line uses the owner's words and icons, and each can be hidden", async ({ page }) => {
+  await atCheckout(page, {
+    buyNow: { label: "Order now", icon: "star", showMarks: false, marks: "" },
+    payButton: { label: "Complete payment of {total}", icon: "none" },
+    secureCheckout: { show: false, icon: "secure", label: "", info: "" },
+    paymentBox: { show: true, icon: "check", title: "Safe payments", marks: "UPI, RuPay", note: "" },
+    bagTrust: { showLine: false, delivery: { show: true, label: "Shipping", value: "Free" }, taxNote: { show: false, text: "" }, youSave: { show: true, text: "" } },
+    deliveryDates: { show: true, cutoffHour: 14, text: "Pahunchega {from} se {to} tak.", note: "" },
+  });
+  await page.goto("/products/ganesh");
+  const buy = page.locator(".detail-copy").getByRole("button", { name: "Order now" });
+  await expect(buy).toBeVisible();
+  await expect(buy.locator(".payment-marks")).toHaveCount(0);
+  await expect(page.locator(".delivery-line")).toContainText("Pahunchega");
+  await page.goto("/checkout");
+  await expect(page.getByRole("button", { name: /^Complete payment of ₹999$/ })).toBeVisible();
+  await expect(page.locator(".secure-checkout")).toHaveCount(0);
+  await expect(page.locator(".payment-box")).toContainText("Safe payments");
+  await expect(page.locator(".payment-box .payment-marks span")).toHaveText(["UPI", "RuPay"]);
+  await expect(page.locator(".bag-page-side .bag-totals .free-row")).toHaveText(["ShippingFree"]);
+  await expect(page.locator(".tax-note")).toHaveCount(0);
 });
 
 test("checkout: name and mobile come first, the checkout is saved once they're typed, and payment is explained", async ({ page }) => {
@@ -82,11 +105,14 @@ test("closing the payment window asks why, once per visit, and sends the answer"
   await page.goto("/checkout");
   await fillAddress(page);
   await page.getByRole("button", { name: /^Pay / }).click();
-  const survey = page.getByRole("dialog", { name: "Before you go, what stopped you?" });
+  const survey = page.getByRole("dialog", { name: "Before you go" });
   await expect(survey).toBeVisible();
   await survey.getByLabel("I want Cash on Delivery").check();
   await survey.getByLabel("I have a question first").check();
-  await expect(survey.getByRole("link", { name: "Ask us on WhatsApp" })).toHaveAttribute("href", /wa\.me/);
+  // The big contact box comes before the questions.
+  await expect(survey.getByRole("heading", { name: "Talk to a real person" })).toBeVisible();
+  await expect(survey.getByRole("link", { name: "Chat on WhatsApp" })).toHaveAttribute("href", /wa\.me\/919561579131\?text=/);
+  await expect(survey.getByRole("link", { name: "Call us" })).toHaveAttribute("href", "tel:+919561579131");
   await survey.getByRole("button", { name: "Continue checkout", exact: true }).click();
   await expect(survey).toHaveCount(0);
   await expect.poll(() => feedback.length).toBe(1);
@@ -103,8 +129,9 @@ test("pressing Back on checkout asks first; Exit then leaves", async ({ page }) 
   await page.goto("/products/ganesh");
   await page.goto("/checkout");
   await expect(page.locator("form.bag-checkout")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window.history.state as { kalacarLeaveGuard?: boolean } | null)?.kalacarLeaveGuard)).toBe(true);
   await page.goBack();
-  const survey = page.getByRole("dialog", { name: "Before you go, what stopped you?" });
+  const survey = page.getByRole("dialog", { name: "Before you go" });
   await expect(survey).toBeVisible();
   await expect(page).toHaveURL(/\/checkout$/);
   await survey.getByRole("button", { name: "Exit" }).click();
@@ -112,10 +139,39 @@ test("pressing Back on checkout asks first; Exit then leaves", async ({ page }) 
 });
 
 test("the survey can be turned off", async ({ page }) => {
-  await atCheckout(page, { leaveSurvey: { show: false } });
+  await atCheckout(page, { leaveSurvey: { ...DEFAULT_PRODUCT_PAGE.leaveSurvey, show: false } });
   await page.goto("/checkout");
   await fillAddress(page);
   await page.getByRole("button", { name: /^Pay / }).click();
   await expect(page.getByText("Payment window closed.")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("leaving the shop from the page a visitor arrived on offers WhatsApp first; browsing inside the shop isn't stopped", async ({ page }) => {
+  await mockShop(page, { content: content() });
+  await page.goto("about:blank");
+  await page.goto("/products/ganesh");
+  await expect(page.locator(".detail-copy h1")).toBeVisible();
+  await page.locator(".shop-footer").getByRole("link", { name: "About Kalacar" }).click();
+  await expect(page).toHaveURL(/\/about$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/products\/ganesh$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // The next Back would leave the shop.
+  await page.goBack();
+  const panel = page.getByRole("dialog", { name: "Before you go" });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("link", { name: "Chat on WhatsApp" })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Keep browsing" })).toBeVisible();
+  await panel.getByRole("button", { name: "Exit" }).click();
+  await expect(page).toHaveURL("about:blank");
+});
+
+test("the leaving-the-shop question can be turned off", async ({ page }) => {
+  await mockShop(page, { content: content({ leaveSurvey: { ...DEFAULT_PRODUCT_PAGE.leaveSurvey, siteShow: false } }) });
+  await page.goto("about:blank");
+  await page.goto("/products/ganesh");
+  await expect(page.locator(".detail-copy h1")).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL("about:blank");
 });
