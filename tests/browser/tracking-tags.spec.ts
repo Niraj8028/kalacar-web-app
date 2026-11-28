@@ -61,10 +61,12 @@ test("shopping steps reach Meta and Google: view, add to bag, checkout, and one 
   // The thank-you page has its own URL, so Meta and Google can count it as a conversion page too.
   await expect(page).toHaveURL(new RegExp(`/order-confirmed\\?order=${ORDER}$`));
   await expect(page.getByText("Thank you, your order is confirmed")).toBeVisible();
+  // Opening checkout reaches Meta as a custom ViewCheckout event.
+  expect(await page.evaluate(() => (window as unknown as { fbq: { queue: unknown[][] } }).fbq.queue.filter(args => args[0] === "trackCustom").map(args => args[1]))).toEqual(["ViewCheckout"]);
   // Buy now adds to the bag too. The purchase carries the amount paid and the order ID, so Meta can drop repeats.
   await expect.poll(tracked).toEqual({
-    meta: ["ViewContent 999", "AddToCart 999", "InitiateCheckout 999", `Purchase 1798 purchase-${ORDER}`],
-    google: ["view_item 999", "add_to_cart 999", "begin_checkout 999", "purchase 1798"],
+    meta: ["ViewContent 999", "AddToCart 999", "InitiateCheckout 999", "AddPaymentInfo 1798", `Purchase 1798 purchase-${ORDER}`],
+    google: ["view_item 999", "add_to_cart 999", "view_checkout 999", "begin_checkout 999", "add_payment_info 1798", "purchase 1798"],
   });
   // Showing the confirmation again doesn't report the purchase twice.
   await page.reload();

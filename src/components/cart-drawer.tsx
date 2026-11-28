@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { BagLines, GiftChoice, money } from "@/components/bag-lines";
 import { CHECKOUT_PATHS, useCart } from "@/components/cart-provider";
 import { ArrowRight, BagIcon, CloseMark } from "@/components/icons";
+import { useSiteContent } from "@/components/site-content-provider";
+import { FreeRows, TaxNote, TrustLine } from "@/components/trust";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])';
 
@@ -13,6 +15,7 @@ const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:n
 export default function CartDrawer() {
   const { drawerOpen, closeDrawer, resolved, count, subtotal, giftOffer, wantGift, catalogueLoading, catalogueError } = useCart();
   const pathname = usePathname();
+  const { productPage } = useSiteContent();
   const open = drawerOpen && !CHECKOUT_PATHS.includes(pathname);
   const panel = useRef<HTMLDivElement>(null);
   const previousPath = useRef(pathname);
@@ -62,8 +65,11 @@ export default function CartDrawer() {
           <div className="bag-totals">
             <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
             {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
+            <FreeRows page={productPage} />
             <div className="bag-total"><span>Total</span><strong>{money(subtotal + giftTotal)}</strong></div>
+            <TaxNote />
           </div>
+          <TrustLine strip={productPage.trustStrip} />
           <Link className="checkout-demo-button" href="/checkout" onClick={leave}>Proceed to checkout <ArrowRight /></Link>
           <button type="button" className="bag-text-link" onClick={() => closeDrawer()}>Continue shopping</button>
         </footer>}

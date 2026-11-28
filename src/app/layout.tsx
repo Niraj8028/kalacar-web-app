@@ -7,6 +7,7 @@ import { SiteContentProvider } from "@/components/site-content-provider";
 import { TrackingTags } from "@/components/tracking-tags";
 import CartDrawer from "@/components/cart-drawer";
 import StoreGate from "@/components/store-gate";
+import { WhatsappFloat } from "@/components/whatsapp-float";
 import { cachedSeo } from "@/lib/seo-cache";
 import { siteOrigin } from "@/lib/seo";
 import "./globals.css";
@@ -31,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-theme="light" data-scroll-behavior="smooth" className={`${display.variable} ${body.variable}`}>
-      <body><CartProvider><SiteContentProvider><TrackingTags /><FestiveOverlay /><StoreGate>{children}</StoreGate><CartDrawer /></SiteContentProvider></CartProvider></body>
+      <body><CartProvider><SiteContentProvider><TrackingTags /><FestiveOverlay /><StoreGate>{children}</StoreGate><CartDrawer /><WhatsappFloat /></SiteContentProvider></CartProvider></body>
     </html>
   );
 }

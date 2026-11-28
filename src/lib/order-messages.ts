@@ -3,9 +3,9 @@ import { addressDb } from "@/lib/catalogue-db";
 
 // Messages the owner sends by hand from Orders. Each delivery status has its own templates, saved
 // in its own settings row, so saving one status can never overwrite another. "unpaid" is for orders
-// that were never paid (awaiting payment, payment failed, cancelled).
+// that were never paid (awaiting payment, payment failed, cancelled); "abandoned" for checkouts left before Pay.
 
-export const MESSAGE_STATUSES = ["unfulfilled", "processing", "dispatched", "completed", "unpaid"] as const;
+export const MESSAGE_STATUSES = ["unfulfilled", "processing", "dispatched", "completed", "unpaid", "abandoned"] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
 export type MessageTemplate = { whatsapp: string; sms: string; emailSubject: string; emailBody: string };
 
@@ -58,7 +58,13 @@ export const DEFAULT_TEMPLATES: Record<MessageStatus, MessageTemplate> = {
     sms: "{shop_name}: Hi {first_name}, your order {order_id} wasn't paid. Reply or WhatsApp us and we'll help you complete it.",
     emailSubject: "Complete your {shop_name} order",
     emailBody: `Hi {customer_name},\n\nWe saw you tried to order {product_names} ({order_total}), but the payment didn't go through. If you'd still like it, reply to this email or message us on WhatsApp and we'll help you complete your order.${signOff}`,
+  },  abandoned: {
+    whatsapp: "Hi {first_name}, this is {shop_name}. We saw you were about to order {product_names} ({order_total}). Do you have any questions? We're happy to help, and we send you a photo of your actual murti before dispatch.",
+    sms: "{shop_name}: Hi {first_name}, you left {product_names} in your bag. Any questions? WhatsApp us and we'll help.",
+    emailSubject: "Your {shop_name} bag is waiting",
+    emailBody: `Hi {customer_name},\n\nWe saw you were about to order {product_names} ({order_total}). If you have any questions, reply to this email or message us on WhatsApp and we'll help.${signOff}`,
   },
+
 };
 
 type MessageOrder = { id: string; customerName: string; total: number; items: { name: string; variant?: string | null; quantity: number }[] };

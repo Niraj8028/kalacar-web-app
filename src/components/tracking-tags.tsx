@@ -9,8 +9,10 @@ type MetaPixel = ((...args: unknown[]) => void) & { callMethod?: (...args: unkno
 declare global { interface Window { fbq?: MetaPixel; _fbq?: MetaPixel; dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void } }
 
 export type TrackedItem = { id: string; name: string; variant?: string; price: number; quantity: number };
-type ShopEvent = "view_item" | "add_to_cart" | "begin_checkout" | "purchase";
-const META_NAMES: Record<ShopEvent, string> = { view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout", purchase: "Purchase" };
+type ShopEvent = "view_item" | "add_to_cart" | "view_checkout" | "begin_checkout" | "add_payment_info" | "purchase";
+// view_checkout (opened the checkout page) has no Meta standard event, so it is sent as a custom one.
+const META_NAMES: Record<ShopEvent, string> = { view_item: "ViewContent", add_to_cart: "AddToCart", view_checkout: "ViewCheckout", begin_checkout: "InitiateCheckout", add_payment_info: "AddPaymentInfo", purchase: "Purchase" };
+const META_CUSTOM = new Set<ShopEvent>(["view_checkout"]);
 
 // Events wait here until the saved tags start; if none are saved they are dropped.
 let tags: { meta: boolean; gtm: boolean; gtag: boolean } | null = null;
@@ -19,7 +21,7 @@ let waiting: [ShopEvent, TrackedItem[], Extra][] = [];
 
 function send(event: ShopEvent, items: TrackedItem[], { orderId, value = items.reduce((sum, item) => sum + item.price * item.quantity, 0) }: Extra) {
   if (!tags) return;
-  if (tags.meta) window.fbq?.("track", META_NAMES[event], { content_ids: items.map(item => item.id), content_type: "product", contents: items.map(item => ({ id: item.id, quantity: item.quantity })), num_items: items.reduce((sum, item) => sum + item.quantity, 0), value, currency: "INR" }, orderId ? { eventID: `${event}-${orderId}` } : undefined);
+  if (tags.meta) window.fbq?.(META_CUSTOM.has(event) ? "trackCustom" : "track", META_NAMES[event], { content_ids: items.map(item => item.id), content_type: "product", contents: items.map(item => ({ id: item.id, quantity: item.quantity })), num_items: items.reduce((sum, item) => sum + item.quantity, 0), value, currency: "INR" }, orderId ? { eventID: `${event}-${orderId}` } : undefined);
   const ecommerce = { currency: "INR", value, ...(orderId ? { transaction_id: orderId } : {}), items: items.map(item => ({ item_id: item.id, item_name: item.name, item_variant: item.variant ?? "", price: item.price, quantity: item.quantity })) };
   // Tag Manager reads plain dataLayer events; gtag.js IDs get the same event through gtag().
   if (tags.gtm) { window.dataLayer?.push({ ecommerce: null }); window.dataLayer?.push({ event, ecommerce }); }
@@ -31,6 +33,14 @@ function send(event: ShopEvent, items: TrackedItem[], { orderId, value = items.r
 export function trackShopEvent(event: ShopEvent, items: TrackedItem[], extra: Extra = {}) {
   if (!items.length) return;
   if (tags) send(event, items, extra); else waiting.push([event, items, extra]);
+}
+
+/** A one-off event with no products, such as an answer to the leaving survey. Dropped if no tags are set up. */
+export function trackOtherEvent(event: string, params: Record<string, string | number>) {
+  if (!tags) return;
+  if (tags.meta) window.fbq?.("trackCustom", event.replace(/(^|_)(\w)/g, (_, __, letter: string) => letter.toUpperCase()), params);
+  if (tags.gtm) window.dataLayer?.push({ event, ...params });
+  if (tags.gtag) window.gtag?.("event", event, params);
 }
 
 function startEvents(next: { meta: boolean; gtm: boolean; gtag: boolean }) {

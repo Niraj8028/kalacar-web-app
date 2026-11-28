@@ -11,9 +11,10 @@ import { useRouter } from "next/navigation";
 import { AddToBagButton, CartLink, useCart } from "@/components/cart-provider";
 import type { StoreItem } from "@/data/catalogue";
 import { ProductDetailAccordions } from "@/components/product-detail-accordions";
+import { PaymentMarks, TrustStrip } from "@/components/trust";
 import { DeliveryLine, FreeDeliveryNote, ProductHighlights, SpecCards } from "@/components/product-facts";
 import { RecommendedProducts } from "@/components/recommended-products";
-import { ArrowLeft, UserCircle } from "@/components/icons";
+import { ArrowLeft, LockIcon, UserCircle } from "@/components/icons";
 import { BundleBox, CommonFaqs, EndOfPageLink, HowItsMade, LiveViewers, OfferBox, RecentSaleNotice, SoldThisWeek, StickyBuyBar, WhatsappHelp, useSocialProof } from "@/components/product-extras";
 import { ProductReviews, RatingLine } from "@/components/reviews";
 import { GoogleReviews } from "@/components/google-reviews";
@@ -117,10 +118,11 @@ export default function ProductDetailClient({ slug, initialColour = "" }: { slug
           {stockMessage.tone !== "out" && <FreeDeliveryNote delivery={productPage.delivery} />}
           <div className="buy-buttons" ref={buyButtons}>
             <AddToBagButton id={item.id} variantId={colour?.id} quantity={qty} className="detail-add-button" label="Add to bag" />
-            <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}>Buy now</button>
+            <button type="button" className="buy-now-button" disabled={canBuy < 1} onClick={buyNow}><span className="buy-now-label"><LockIcon /> Buy now</span><PaymentMarks only={["UPI", "GPay", "PhonePe", "Paytm"]} /></button>
           </div>
+          <TrustStrip strip={productPage.trustStrip} />
           <OfferBox />
-          <DeliveryLine delivery={productPage.delivery} />
+          <DeliveryLine page={productPage} />
           <ProductHighlights items={item.highlights ?? []} />
         </div>
       </div>

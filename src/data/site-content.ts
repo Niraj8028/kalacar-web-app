@@ -50,7 +50,23 @@ export type ProductPageContent = {
   delivery: { estimate: string; note: string; free: { show: boolean; text: string }; freeUnderStock: { show: boolean } };
   /** Off hides the green "In stock" in the buy box; low stock and out of stock messages still show. */
   inStock: { show: boolean };
+  /** Icons with a short promise each, under the Buy buttons. Their titles also form the line above Checkout in the bag. */
+  trustStrip: { show: boolean; items: TrustItem[] };
+  /** "Get it between Tue 2 Dec – Sat 6 Dec" from the delivery time, skipping Sundays. Orders after `cutoffHour` (India time) count from the next day. */
+  deliveryDates: { show: boolean; cutoffHour: number };
+  /** A free gift with every order, shown as a ₹0 line in the bag and at checkout. */
+  freeGift: { show: boolean; name: string };
+  /** Round WhatsApp button on every page, with a small bubble the shopper can close. */
+  whatsappFloat: { show: boolean; label: string };
+  /** "Why are you leaving checkout?" asked once per visit. Answers appear in the dashboard. */
+  leaveSurvey: { show: boolean };
+  /** Promise shown on the order confirmed page, e.g. a photo of the murti on WhatsApp before dispatch. */
+  preDispatch: { show: boolean; text: string };
 };
+export const TRUST_ICONS = ["delivery", "breakage", "secure", "whatsapp", "photo", "gift"] as const;
+export type TrustIcon = typeof TRUST_ICONS[number];
+export type TrustItem = { icon: TrustIcon; title: string; text: string };
+export const MAX_TRUST_ITEMS = 4;
 
 export const DEFAULT_HERO_SLIDE: HeroSlide = { productId: "", backgroundImage: "", desktopImage: "", showEyebrow: true, eyebrow: "THE KALACAR SHOP", showTitle: true, title: "Small murtis, close to home.", showDescription: true, description: "A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.", buy: { show: true, label: "Buy now", showPrice: true }, explore: { show: true, label: "Explore collections", link: "#catalogue" } };
 export const DEFAULT_HOME: HomeContent = {
@@ -82,6 +98,17 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   googleReviews: { show: true },
   delivery: { estimate: "3–7 business days", note: "Carefully chosen, packed and shipped by us.", free: { show: true, text: "Free delivery across India" }, freeUnderStock: { show: false } },
   inStock: { show: true },
+  trustStrip: { show: true, items: [
+    { icon: "delivery", title: "Free delivery", text: "Across India" },
+    { icon: "breakage", title: "Breakage covered", text: "Free replacement" },
+    { icon: "photo", title: "Photo before dispatch", text: "Of your actual murti, on WhatsApp" },
+    { icon: "secure", title: "Secure payment", text: "UPI, cards and net banking" },
+  ] },
+  deliveryDates: { show: true, cutoffHour: 14 },
+  freeGift: { show: false, name: "" },
+  whatsappFloat: { show: true, label: "Questions? Chat with us" },
+  leaveSurvey: { show: true },
+  preDispatch: { show: true, text: "Before we ship, we'll WhatsApp you a photo of your actual murti, so you can see exactly what you're getting." },
 };
 
 export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; showOnProduct: boolean; published: boolean };

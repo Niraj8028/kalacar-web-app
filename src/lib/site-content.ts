@@ -6,8 +6,8 @@ import { getInstagram } from "@/lib/instagram";
 import { getBrand } from "@/lib/brand";
 import { getTracking } from "@/lib/tracking";
 import { listCategories } from "@/lib/categories";
-import { DEFAULT_FOOTER, DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_FOOTER_LINKS, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
-import type { BusinessDetails, FooterSettings, HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
+import { MAX_TRUST_ITEMS, TRUST_ICONS, DEFAULT_FOOTER, DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_FOOTER_LINKS, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
+import type { TrustIcon, BusinessDetails, FooterSettings, HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
 
 const text = (value: unknown, max: number, fallback = "") => typeof value === "string" ? value.trim().slice(0, max) : fallback;
 const bool = (value: unknown, fallback: boolean) => typeof value === "boolean" ? value : fallback;
@@ -73,6 +73,12 @@ export function parseProductPage(body: unknown): ProductPageContent {
     googleReviews: { show: bool(googleReviews.show, d.googleReviews.show) },
     delivery: { estimate: text(delivery.estimate, 60, d.delivery.estimate) || d.delivery.estimate, note: text(delivery.note, 160, d.delivery.note), free: { show: bool(free.show, d.delivery.free.show), text: text(free.text, 60, d.delivery.free.text) || d.delivery.free.text }, freeUnderStock: { show: bool(freeUnderStock.show, d.delivery.freeUnderStock.show) } },
     inStock: { show: bool(inStock.show, d.inStock.show) },
+    trustStrip: parseTrustStrip(input.trustStrip),
+    deliveryDates: { show: bool(obj(input.deliveryDates).show, d.deliveryDates.show), cutoffHour: whole(obj(input.deliveryDates).cutoffHour, 0, 23, d.deliveryDates.cutoffHour) },
+    freeGift: { show: bool(obj(input.freeGift).show, d.freeGift.show) && Boolean(text(obj(input.freeGift).name, 80)), name: text(obj(input.freeGift).name, 80) },
+    whatsappFloat: { show: bool(obj(input.whatsappFloat).show, d.whatsappFloat.show), label: text(obj(input.whatsappFloat).label, 60, d.whatsappFloat.label) },
+    leaveSurvey: { show: bool(obj(input.leaveSurvey).show, d.leaveSurvey.show) },
+    preDispatch: { show: bool(obj(input.preDispatch).show, d.preDispatch.show), text: text(obj(input.preDispatch).text, 300, d.preDispatch.text) || d.preDispatch.text },
   };
 }
 
@@ -85,6 +91,15 @@ async function readRow(name: string) {
 async function writeRow(name: string, value: unknown) {
   const db = await addressDb();
   await db.execute("INSERT INTO kalacar_settings (name,value) VALUES (?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)", [name, JSON.stringify(value)]);
+}
+/** Up to 4 promises with a known icon. A saved empty list stays empty; missing means the defaults. */
+function parseTrustStrip(body: unknown): ProductPageContent["trustStrip"] {
+  const input = obj(body), d = DEFAULT_PRODUCT_PAGE.trustStrip;
+  const items = Array.isArray(input.items) ? input.items.slice(0, MAX_TRUST_ITEMS).map(item => {
+    const icon = obj(item).icon;
+    return { icon: (TRUST_ICONS as readonly unknown[]).includes(icon) ? icon as TrustIcon : "secure", title: text(obj(item).title, 40), text: text(obj(item).text, 60) };
+  }).filter(item => item.title) : d.items;
+  return { show: bool(input.show, d.show), items };
 }
 /** Footer text and links. Links without a label or a safe address are dropped; null keeps the automatic list. */
 export function parseFooter(body: unknown): FooterSettings {

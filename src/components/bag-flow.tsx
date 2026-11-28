@@ -15,7 +15,9 @@ import type { AddressDraft, SavedAddress } from "@/components/address-fields";
 import { updatesGoTo } from "@/lib/store-info";
 import { trackShopEvent } from "@/components/tracking-tags";
 import { DeliveryLine } from "@/components/product-facts";
-import { ArrowRight, BagIcon, External } from "@/components/icons";
+import { LeaveSurvey, type LeaveSurveyHandle } from "@/components/leave-survey";
+import { FreeRows, PaymentBox, SecureCheckoutBadge, TaxNote, TrustLine } from "@/components/trust";
+import { ArrowRight, BagIcon, External, LockIcon } from "@/components/icons";
 
 
 type SavedCheckout = { fingerprint: string; idempotencyKey: string; orderId: string; razorpayOrderId: string; amount: number };
@@ -23,6 +25,8 @@ const SAVED_CHECKOUT_KEY = "kalacar.pending-checkout.v1";
 // A new address being typed at checkout, kept for this tab only so a refresh or back/forward doesn't lose it.
 const ADDRESS_DRAFT_KEY = "kalacar.checkout-draft.v1";
 type AddressDraftStore = { customer: AddressDraft; saveAddress: boolean };
+const LEAD_KEY = "kalacar.checkout-lead";
+
 function readAddressDraft(): AddressDraftStore | null {
   try {
     const raw = sessionStorage.getItem(ADDRESS_DRAFT_KEY);
@@ -93,6 +97,39 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
   const [paymentStatus, setPaymentStatus] = useState("");
   const lastAutoSyncAt = useRef(0);
   const products = resolved.map(({ key, product, colour, line }) => ({ key, item: product, colour, quantity: line.quantity }));
+  const survey = useRef<LeaveSurveyHandle>(null);
+  const [leadId, setLeadId] = useState("");
+  const lastLead = useRef("");
+
+  // One id per checkout visit, so typing more details updates the same saved checkout.
+  useEffect(() => {
+    if (step !== "checkout") return;
+    let id = "";
+    try { id = sessionStorage.getItem(LEAD_KEY) ?? ""; if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(LEAD_KEY, id); } } catch { id = crypto.randomUUID(); }
+    setLeadId(id);
+  }, [step]);
+
+  // Once a name and mobile number are typed, the checkout is saved for the owner to follow up if it isn't paid.
+  useEffect(() => {
+    if (step !== "checkout" || !leadId || !resolved.length) return;
+    const phone = customer.phone.replace(/\D/g, "").replace(/^(?:91|0)(?=\d{10}$)/, "");
+    if (customer.fullName.trim().length < 2 || !/^[6-9]\d{9}$/.test(phone)) return;
+    const body = JSON.stringify({ id: leadId, name: customer.fullName.trim(), phone, email: orderEmail, pincode: customer.pincode, items: resolved.map(({ product, colour, line }) => ({ id: product.id, variantId: colour.id, quantity: line.quantity })) });
+    if (body === lastLead.current) return;
+    const timer = setTimeout(() => {
+      lastLead.current = body;
+      void fetch("/api/checkout/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body }).catch(() => { lastLead.current = ""; });
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [step, leadId, customer.fullName, customer.phone, customer.pincode, orderEmail, resolved]);
+
+  // Opening the checkout page, before Pay: lets ads and analytics see where shoppers drop off.
+  const checkoutViewed = useRef(false);
+  useEffect(() => {
+    if (step !== "checkout" || checkoutViewed.current || !resolved.length) return;
+    checkoutViewed.current = true;
+    trackShopEvent("view_checkout", resolved.map(({ product, colour, line }) => ({ id: product.id, name: product.name, variant: colour.name, price: colour.price, quantity: line.quantity })));
+  }, [step, resolved]);
 
   useEffect(() => {
     if (!draftReady.current) return;
@@ -145,6 +182,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
   /** With the bag emptied, the order-confirmed page opens. If the bag still holds other items, a notice shows instead. */
   function confirmPaid(message: string, bagCleared: boolean, orderId: string) {
     if (!bagCleared) { setNotice(message); return; }
+    try { sessionStorage.removeItem(LEAD_KEY); } catch { /* fine */ }
     setOpeningOrder(true);
     router.replace(`/order-confirmed?order=${encodeURIComponent(orderId)}`);
   }
@@ -300,11 +338,12 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
       handler: (payment) => void verifyPayment(order.orderId, payment),
       modal: {
         backdropclose: false, escape: false, handleback: false, confirm_close: true,
-        ondismiss: () => { setError("Payment window closed. Your order is kept for 1 hour: use Retry payment to pay, or Cancel order."); void syncSavedCheckout(activeOrder, true); },
+        ondismiss: () => { setError("Payment window closed. Your order is kept for 1 hour: use Retry payment to pay, or Cancel order."); void syncSavedCheckout(activeOrder, true); survey.current?.open("payment"); },
       },
     });
     checkout.on("payment.failed", result => setError(result.error?.description || "Payment failed. You can try again."));
     checkout.open();
+    trackShopEvent("add_payment_info", resolved.map(({ product, colour, line }) => ({ id: product.id, name: product.name, variant: colour.name, price: colour.price, quantity: line.quantity })), { value: order.amount / 100 });
   }
 
   const total = subtotal - discount + giftTotal;
@@ -315,7 +354,10 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
     <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
     {discount > 0 && <div className="cart-discount"><span>Coupon {coupon?.code}</span><span>−{money(discount)}</span></div>}
     {giftTotal > 0 && <div><span>{giftOffer?.title}{count > 1 && ` × ${count}`}</span><span>{money(giftTotal)}</span></div>}
+    <FreeRows page={productPage} />
     <div className="bag-total"><span>Total</span><strong>{money(total)}</strong></div>
+    <TaxNote />
+    {discount > 0 && <p className="you-save">You save {money(discount)} on this order</p>}
   </div>;
   const unpaid = savedCheckout && <div className="bag-unpaid" role="status">
     <strong>{savedCheckout.orderId ? `Unpaid order ${savedCheckout.orderId.slice(0, 8).toUpperCase()}` : "Checkout started"}</strong>
@@ -333,6 +375,8 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
   return <div className="bag-page">
     <p className="eyebrow">{step === "cart" ? "YOUR SELECTION" : "SECURE CHECKOUT"}</p>
     <h1>{step === "cart" ? "Your bag" : "Checkout"}</h1>
+    {step === "checkout" && <SecureCheckoutBadge />}
+    {step === "checkout" && <LeaveSurvey ref={survey} enabled={productPage.leaveSurvey.show && resolved.length > 0} leadId={leadId} />}
     {testPayments && <p className="bag-test-note">Test mode: no real payment is taken.</p>}
     {notice && <p className="account-message" role="status">{notice}</p>}
     {unpaid}
@@ -350,9 +394,10 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
         <h2>Order summary</h2>
         <div className="checkout-form bag-checkout">
           <GiftChoice />
-          <DeliveryLine delivery={productPage.delivery} />
+          <DeliveryLine page={productPage} />
           {totals}
           <p className="bag-summary-note">Add delivery details and coupons on the next step.</p>
+          <TrustLine strip={productPage.trustStrip} />
           <Link className={`checkout-demo-button bag-pay${stockProblem ? " disabled" : ""}`} href="/checkout" aria-disabled={stockProblem || undefined} onClick={e => { if (stockProblem) e.preventDefault(); }}>Proceed to checkout <ArrowRight /></Link>
         </div>
       </aside> : <aside className="bag-page-side">
@@ -360,11 +405,7 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
         <form className="checkout-form bag-checkout" onSubmit={startCheckout}>
           <GiftChoice />
           {!accountLoaded ? <p className="demo-checkout-message" role="status">Loading…</p> : <>
-            {account ? <p className="account-checkout-note">{updatesGoTo(account.email, customer.phone || account.phone)}</p> : <div className="guest-checkout">
-              <p className="guest-signin">Have an account? <button type="button" className="address-link" onClick={signIn}>Sign in</button> for saved addresses.</p>
-              <label>Email<input type="email" required maxLength={190} autoComplete="email" inputMode="email" spellCheck={false} enterKeyHint="next" aria-describedby="guest-email-hint" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} /></label>
-              <p id="guest-email-hint" className="guest-email-hint">Your order confirmation and updates are sent here.</p>
-            </div>}
+            {account ? <p className="account-checkout-note">{updatesGoTo(account.email, customer.phone || account.phone)}</p> : <p className="guest-signin">Have an account? <button type="button" className="address-link" onClick={signIn}>Sign in</button> for saved addresses.</p>}
             {draftRestored && selectedAddress === "new" && <p className="draft-restored" role="status">We kept the address you were typing.<button type="button" className="address-link" onClick={() => { clearAddressDraft(); setDraftRestored(false); setCustomer(emptyAddress(account?.name, account?.phone)); }}>Clear it</button></p>}
             {account && savedAddresses.length > 0 && <fieldset className="checkout-address-picker">
               <legend>Deliver to</legend>
@@ -385,15 +426,20 @@ export default function BagFlow({ step }: { step: "cart" | "checkout" }) {
               <AddressFields idPrefix="checkout" value={customer} onChange={setCustomer} showLabel={Boolean(account) && saveAddress} />
               {account && <label className="address-check"><input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />Save this address for next time</label>}
             </>}
+            {!account && <div className="guest-checkout">
+              <label>Email<input type="email" required maxLength={190} autoComplete="email" inputMode="email" spellCheck={false} enterKeyHint="next" aria-describedby="guest-email-hint" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} /></label>
+              <p id="guest-email-hint" className="guest-email-hint">Your order confirmation and updates are sent here.</p>
+            </div>}
             <CouponBox items={items} giftWrap={Boolean(giftOffer && wantGift)} applied={coupon} disabled={busy} onChange={(next, message) => { setCoupon(next); setCouponNote(message ?? ""); }} />
             {couponNote && <p className="coupon-error" role="status">{couponNote}</p>}
-            <DeliveryLine delivery={productPage.delivery} />
+            <DeliveryLine page={productPage} />
           </>}
           {totals}
           {error && <p className="demo-checkout-message bag-error" role="alert">{error}</p>}
           {accountLoaded && <>
             {verificationData && <button className="checkout-retry-button" type="button" disabled={busy} onClick={() => void verifyPayment(verificationData.orderId, verificationData.payment)}>{busy ? "Checking payment…" : "Retry payment verification"}</button>}
-            <button className="checkout-demo-button bag-pay" type="submit" disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : `Pay ${money(total)}`}</button>
+            <PaymentBox />
+            <button className="checkout-demo-button bag-pay" type="submit" disabled={busy || stockProblem}>{busy ? "Starting secure checkout…" : <><LockIcon /> Pay {money(total)} securely</>}</button>
             <p className="checkout-policy-note">By paying, you agree to our <Link href="/terms">Terms</Link>. See <Link href="/shipping">Shipping</Link>, <Link href="/returns">Returns and refunds</Link> and <Link href="/privacy">Privacy</Link>.</p>
           </>}
         </form>
