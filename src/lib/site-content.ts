@@ -6,8 +6,8 @@ import { getInstagram } from "@/lib/instagram";
 import { getBrand } from "@/lib/brand";
 import { getTracking } from "@/lib/tracking";
 import { listCategories } from "@/lib/categories";
-import { DEFAULT_FOOTER, DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_FOOTER_LINKS, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
-import type { BusinessDetails, FooterSettings, HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
+import { MAX_TRUST_ITEMS, TRUST_ICONS, DEFAULT_FOOTER, DEFAULT_HERO_SLIDE, DEFAULT_HOME, DEFAULT_PRODUCT_PAGE, DEFAULT_TRACKING, MAX_FOOTER_LINKS, MAX_HERO_SLIDES, POPUP_SIZES, videoEmbed } from "@/data/site-content";
+import type { TrustIcon, BusinessDetails, FooterSettings, HeroSlide, HomeContent, ProductPageContent, Review, SiteContent } from "@/data/site-content";
 
 const text = (value: unknown, max: number, fallback = "") => typeof value === "string" ? value.trim().slice(0, max) : fallback;
 const bool = (value: unknown, fallback: boolean) => typeof value === "boolean" ? value : fallback;
@@ -73,6 +73,8 @@ export function parseProductPage(body: unknown): ProductPageContent {
     googleReviews: { show: bool(googleReviews.show, d.googleReviews.show) },
     delivery: { estimate: text(delivery.estimate, 60, d.delivery.estimate) || d.delivery.estimate, note: text(delivery.note, 160, d.delivery.note), free: { show: bool(free.show, d.delivery.free.show), text: text(free.text, 60, d.delivery.free.text) || d.delivery.free.text }, freeUnderStock: { show: bool(freeUnderStock.show, d.delivery.freeUnderStock.show) } },
     inStock: { show: bool(inStock.show, d.inStock.show) },
+    trustStrip: parseTrustStrip(input.trustStrip),
+    ...parseTrustSettings(input),
   };
 }
 
@@ -85,6 +87,50 @@ async function readRow(name: string) {
 async function writeRow(name: string, value: unknown) {
   const db = await addressDb();
   await db.execute("INSERT INTO kalacar_settings (name,value) VALUES (?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)", [name, JSON.stringify(value)]);
+}
+const icon = (value: unknown, fallback: TrustIcon) => (TRUST_ICONS as readonly unknown[]).includes(value) ? value as TrustIcon : fallback;
+/** Words the owner can edit: kept as typed (trimmed), or the default when missing or emptied. */
+const words = (value: unknown, max: number, fallback: string) => text(value, max) || fallback;
+
+/** Buy now, totals, secure checkout, payment box, Pay, WhatsApp button, leaving questions and the photo promise. */
+function parseTrustSettings(input: Record<string, unknown>): Pick<ProductPageContent, "deliveryDates" | "buyNow" | "bagTrust" | "secureCheckout" | "paymentBox" | "payButton" | "whatsappFloat" | "leaveSurvey" | "preDispatch"> {
+  const d = DEFAULT_PRODUCT_PAGE;
+  const dates = obj(input.deliveryDates), buy = obj(input.buyNow), bag = obj(input.bagTrust), secure = obj(input.secureCheckout), box = obj(input.paymentBox), pay = obj(input.payButton), wa = obj(input.whatsappFloat), leave = obj(input.leaveSurvey), contact = obj(leave.contact), photo = obj(input.preDispatch);
+  const bagRow = obj(bag.delivery), tax = obj(bag.taxNote), save = obj(bag.youSave);
+  const savedReasons = Array.isArray(leave.reasons) ? leave.reasons.map(obj) : [];
+  const ls = d.leaveSurvey, lc = ls.contact;
+  return {
+    deliveryDates: { show: bool(dates.show, d.deliveryDates.show), cutoffHour: whole(dates.cutoffHour, 0, 23, d.deliveryDates.cutoffHour), text: words(dates.text, 120, d.deliveryDates.text), note: text(dates.note, 120, d.deliveryDates.note) },
+    buyNow: { label: words(buy.label, 30, d.buyNow.label), icon: icon(buy.icon, d.buyNow.icon), showMarks: bool(buy.showMarks, d.buyNow.showMarks), marks: text(buy.marks, 100, d.buyNow.marks) },
+    bagTrust: {
+      showLine: bool(bag.showLine, d.bagTrust.showLine),
+      delivery: { show: bool(bagRow.show, d.bagTrust.delivery.show), label: words(bagRow.label, 30, d.bagTrust.delivery.label), value: words(bagRow.value, 20, d.bagTrust.delivery.value) },
+      taxNote: { show: bool(tax.show, d.bagTrust.taxNote.show), text: words(tax.text, 60, d.bagTrust.taxNote.text) },
+      youSave: { show: bool(save.show, d.bagTrust.youSave.show), text: words(save.text, 80, d.bagTrust.youSave.text) },
+    },
+    secureCheckout: { show: bool(secure.show, d.secureCheckout.show), icon: icon(secure.icon, d.secureCheckout.icon), label: words(secure.label, 40, d.secureCheckout.label), info: text(secure.info, 300, d.secureCheckout.info) },
+    paymentBox: { show: bool(box.show, d.paymentBox.show), icon: icon(box.icon, d.paymentBox.icon), title: words(box.title, 60, d.paymentBox.title), marks: text(box.marks, 150, d.paymentBox.marks), note: text(box.note, 300, d.paymentBox.note) },
+    payButton: { label: words(pay.label, 40, d.payButton.label), icon: icon(pay.icon, d.payButton.icon) },
+    whatsappFloat: { show: bool(wa.show, d.whatsappFloat.show), label: text(wa.label, 60, d.whatsappFloat.label), message: words(wa.message, 300, d.whatsappFloat.message), productMessage: words(wa.productMessage, 300, d.whatsappFloat.productMessage) },
+    leaveSurvey: {
+      show: bool(leave.show, ls.show), siteShow: bool(leave.siteShow, ls.siteShow), title: words(leave.title, 80, ls.title), intro: text(leave.intro, 200, ls.intro), siteIntro: text(leave.siteIntro, 200, ls.siteIntro),
+      contact: { show: bool(contact.show, lc.show), title: words(contact.title, 60, lc.title), text: text(contact.text, 300, lc.text), whatsappLabel: words(contact.whatsappLabel, 40, lc.whatsappLabel), whatsappMessage: words(contact.whatsappMessage, 300, lc.whatsappMessage), showCall: bool(contact.showCall, lc.showCall), callLabel: words(contact.callLabel, 40, lc.callLabel) },
+      showQuestions: bool(leave.showQuestions, ls.showQuestions),
+      // The reasons are fixed (the dashboard counts them); only their words and whether each shows can change.
+      reasons: ls.reasons.map(reason => { const saved = savedReasons.find(item => item.key === reason.key) ?? {}; return { key: reason.key, label: words(saved.label, 80, reason.label), show: bool(saved.show, reason.show) }; }),
+      continueLabel: words(leave.continueLabel, 40, ls.continueLabel), siteContinueLabel: words(leave.siteContinueLabel, 40, ls.siteContinueLabel), exitLabel: words(leave.exitLabel, 40, ls.exitLabel),
+    },
+    preDispatch: { show: bool(photo.show, d.preDispatch.show), title: words(photo.title, 60, d.preDispatch.title), text: words(photo.text, 300, d.preDispatch.text) },
+  };
+}
+
+/** Up to 4 promises with a known icon. A saved empty list stays empty; missing means the defaults. */
+function parseTrustStrip(body: unknown): ProductPageContent["trustStrip"] {
+  const input = obj(body), d = DEFAULT_PRODUCT_PAGE.trustStrip;
+  const items = Array.isArray(input.items) ? input.items.slice(0, MAX_TRUST_ITEMS).map(item => {
+    return { icon: icon(obj(item).icon, "secure"), title: text(obj(item).title, 40), text: text(obj(item).text, 60) };
+  }).filter(item => item.title) : d.items;
+  return { show: bool(input.show, d.show), items };
 }
 /** Footer text and links. Links without a label or a safe address are dropped; null keeps the automatic list. */
 export function parseFooter(body: unknown): FooterSettings {

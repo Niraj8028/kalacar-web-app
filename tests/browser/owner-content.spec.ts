@@ -143,11 +143,12 @@ test.describe("product page follows the dashboard", () => {
     await expect(page.getByText(/\b8\b.*(left|in stock)/)).toHaveCount(0);
   });
   test("free delivery and the owner's delivery time show by the buy buttons", async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-12-01T05:00:00Z")); // Tuesday 10:30 in India
     await mockShop(page, { content: content() });
     await page.goto("/products/ganesh");
-    await expect(page.locator(".delivery-line")).toContainText("Free delivery across India. Delivered in 3–7 business days.");
+    await expect(page.locator(".delivery-line")).toContainText("Free delivery across India. Order today, get it between Fri, 4 Dec – Wed, 9 Dec. Exact date depends on your PIN code.");
     await expect(page.locator(".free-delivery-note")).toHaveCount(0);
-    await mockShop(page, { content: content({}, { delivery: { estimate: "5–8 business days", note: "", free: { show: false, text: "Free delivery across India" }, freeUnderStock: { show: true } } }) });
+    await mockShop(page, { content: content({}, { delivery: { estimate: "5–8 business days", note: "", free: { show: false, text: "Free delivery across India" }, freeUnderStock: { show: true } }, deliveryDates: { show: false, cutoffHour: 14 } }) });
     await page.goto("/products/ganesh");
     await expect(page.locator(".delivery-line")).toHaveText("Delivered in 5–8 business days.");
     await expect(page.locator(".free-delivery-note")).toHaveText("Free delivery across India");

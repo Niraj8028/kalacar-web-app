@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import { deliveryWindow, shortDate } from "@/lib/delivery-dates";
 import type { ProductPageContent } from "@/data/site-content";
 
 const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -25,8 +28,34 @@ function iconFor(label: string) {
   return icons.other;
 }
 
-export function DeliveryLine({ delivery }: { delivery: ProductPageContent["delivery"] }) {
-  return <p className="delivery-line"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M3 7h11v9H3z M14 10h4l3 3v3h-7 M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01" {...stroke} /></svg><span>{delivery.free.show && <><b className="free-delivery">{delivery.free.text}.</b>{" "}</>}<b>Delivered in {delivery.estimate}.</b>{delivery.note && <> {delivery.note}</>}</span></p>;
+/** The delivery window for an order placed now. Worked out after the page loads, so it uses the shopper's clock, not the server's. */
+export function useDeliveryWindow(page: ProductPageContent) {
+  const [range, setRange] = useState<{ from: Date; to: Date } | null>(null);
+  const { estimate } = page.delivery, { show, cutoffHour } = page.deliveryDates;
+  useEffect(() => {
+    const update = () => setRange(show ? deliveryWindow(estimate, new Date(), cutoffHour) : null);
+    update();
+    const timer = setInterval(update, 60_000);
+    return () => clearInterval(timer);
+  }, [estimate, show, cutoffHour]);
+  return range;
+}
+
+/** "Free delivery. Order today, get it between Tue, 2 Dec – Sat, 6 Dec." or, with dates off, "Delivered in 3–7 business days." */
+export function DeliveryLine({ page }: { page: ProductPageContent }) {
+  const { delivery } = page;
+  const dates = useDeliveryWindow(page);
+  return <p className="delivery-line"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M3 7h11v9H3z M14 10h4l3 3v3h-7 M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01" {...stroke} /></svg><span>
+    {delivery.free.show && <><b className="free-delivery">{delivery.free.text}.</b>{" "}</>}
+    {dates ? <><b><DatesText text={page.deliveryDates.text} from={shortDate(dates.from)} to={shortDate(dates.to)} /></b>{page.deliveryDates.note && <> {page.deliveryDates.note}</>}</> : <b>Delivered in {delivery.estimate}.</b>}
+    {delivery.note && <> {delivery.note}</>}
+  </span></p>;
+}
+
+/** The owner's dates sentence, with the dates kept on one line. */
+function DatesText({ text, from, to }: { text: string; from: string; to: string }) {
+  const parts = text.split(/(\{from\}\s*[–-]\s*\{to\}|\{from\}|\{to\})/);
+  return <>{parts.map((part, index) => /^\{from\}\s*[–-]\s*\{to\}$/.test(part) ? <span className="delivery-dates" key={index}>{from} – {to}</span> : part === "{from}" ? <span className="delivery-dates" key={index}>{from}</span> : part === "{to}" ? <span className="delivery-dates" key={index}>{to}</span> : part)}</>;
 }
 
 /** The green "Free delivery" line under "In stock", when the owner turns it on. */

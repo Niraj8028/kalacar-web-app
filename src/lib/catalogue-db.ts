@@ -157,6 +157,18 @@ async function initialize() {
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL, email VARCHAR(190) NOT NULL, phone VARCHAR(20) NOT NULL DEFAULT '',
     message TEXT NOT NULL, handled TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Shoppers who typed a name and mobile number at checkout, so the owner can help those who didn't pay.
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_checkout_leads (
+    id CHAR(36) PRIMARY KEY, name VARCHAR(160) NOT NULL, phone CHAR(10) NOT NULL, email VARCHAR(190) NOT NULL DEFAULT '', pincode VARCHAR(12) NOT NULL DEFAULT '',
+    items JSON NOT NULL, total INT UNSIGNED NOT NULL, contacted TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY checkout_leads_updated (updated_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Answers to "Why are you leaving checkout?".
+  await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_checkout_feedback (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, lead_id CHAR(36) NULL, reasons JSON NOT NULL, other VARCHAR(300) NOT NULL DEFAULT '',
+    source VARCHAR(20) NOT NULL DEFAULT '', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, KEY checkout_feedback_created (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   // Real customer reviews entered by the owner. A review with no product is for the shop in general.
   await db.execute(`CREATE TABLE IF NOT EXISTS kalacar_reviews (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, product_id VARCHAR(64) NULL, author VARCHAR(80) NOT NULL, city VARCHAR(80) NOT NULL DEFAULT '',

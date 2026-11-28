@@ -1597,3 +1597,75 @@ body { overflow-x: clip; }
 .bag-summary-note { margin: 0; color: var(--muted); font-size: 13px; }
 .bag-page a.bag-pay { gap: 8px; text-decoration: none; }
 .bag-page a.bag-pay.disabled { opacity: .55; cursor: not-allowed; }
+
+/* Trust and checkout reassurance: trust strip, payment marks, free rows, secure checkout, floating WhatsApp, leaving survey. */
+.buy-now-button { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 12px; }
+.buy-now-label { display: inline-flex; align-items: center; gap: 7px; }
+.buy-now-button .payment-marks span { border-color: currentColor; opacity: .8; }
+.payment-marks { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.payment-marks span { padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: .02em; line-height: 1.5; }
+.trust-strip { margin: 14px 0 4px; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); border: 1px solid var(--line); border-radius: 8px; background: var(--page); }
+.trust-strip li { display: grid; justify-items: center; align-content: start; gap: 3px; padding: 12px 8px; text-align: center; font-size: 12px; line-height: 1.35; }
+.trust-strip li + li { border-left: 1px solid var(--line); }
+.trust-strip b { font-weight: 600; }
+.trust-strip small { color: var(--muted); font-size: 11px; }
+.trust-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--surface-soft); color: var(--accent); }
+@media (max-width: 560px) {
+  .trust-strip { grid-template-columns: 1fr 1fr; }
+  .trust-strip li:nth-child(3) { border-left: 0; }
+  .trust-strip li:nth-child(n + 3) { border-top: 1px solid var(--line); }
+}
+.trust-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
+.trust-line span { display: inline-flex; align-items: center; gap: 4px; }
+.trust-line svg { color: #3f6b3a; }
+.bag-totals .free-row span:last-child { color: #3f6b3a; font-weight: 600; }
+.bag-totals .free-row span:first-child { display: inline-flex; align-items: center; gap: 5px; }
+.tax-note { margin: 0; color: var(--muted); font-size: 12px; text-align: right; }
+.you-save { margin: 6px 0 0; padding: 7px 10px; border-radius: 6px; background: #e9f4e6; color: #2f5a2b; font-size: 13px; font-weight: 600; text-align: center; }
+:root[data-theme="dark"] .you-save { background: #1f3320; color: #b9dfb3; }
+:root[data-theme="dark"] .trust-line svg, :root[data-theme="dark"] .bag-totals .free-row span:last-child { color: #9fd296; }
+.delivery-dates { white-space: nowrap; }
+.secure-checkout { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -6px 0 16px; color: #3f6b3a; font-size: 13px; font-weight: 600; }
+:root[data-theme="dark"] .secure-checkout { color: #9fd296; }
+.secure-checkout-label { display: inline-flex; align-items: center; gap: 6px; }
+.secure-checkout-info { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 1px solid currentColor; border-radius: 50%; background: none; color: inherit; cursor: pointer; font: italic 600 12px/1 serif; }
+.secure-checkout-text { flex-basis: 100%; max-width: 520px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--page); color: var(--muted); font-weight: 400; line-height: 1.5; }
+.payment-box { display: grid; gap: 8px; margin: 12px 0 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); }
+.payment-box-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 600; }
+.payment-box .payment-marks { justify-content: flex-start; }
+.payment-box .payment-marks span { font-size: 11px; padding: 2px 7px; }
+.payment-box-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.bag-pay { gap: 7px; }
+.whatsapp-float { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 45; display: flex; align-items: flex-end; gap: 10px; }
+.whatsapp-float.raised { bottom: calc(86px + env(safe-area-inset-bottom)); }
+.whatsapp-float-button { display: grid; place-items: center; width: 54px; height: 54px; border: 0; border-radius: 50%; background: #1f8a4c; color: #fff; box-shadow: 0 6px 18px rgb(0 0 0 / 22%); cursor: pointer; }
+.whatsapp-float-button:hover { background: #18773f; }
+.whatsapp-bubble { position: relative; display: flex; align-items: center; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.whatsapp-bubble-text { padding: 9px 4px 9px 12px; border: 0; background: none; color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.whatsapp-bubble-close { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.leave-survey { position: fixed; inset: 0; z-index: 90; display: grid; place-items: end center; background: rgb(0 0 0 / 45%); }
+@media (min-width: 640px) { .leave-survey { place-items: center; } }
+.leave-survey-panel { position: relative; width: min(460px, 100%); max-height: 92vh; overflow-y: auto; padding: 22px 20px calc(18px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; background: var(--surface); color: var(--ink); outline: none; }
+@media (min-width: 640px) { .leave-survey-panel { border-radius: 14px; } }
+.leave-survey-panel h2 { margin: 0 36px 4px 0; font: 400 22px/1.25 var(--font-display); }
+.leave-survey-intro { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.leave-survey-close { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--surface-soft); color: var(--ink); cursor: pointer; }
+.leave-survey fieldset { display: grid; gap: 2px; margin: 0; padding: 0; border: 0; }
+.leave-survey-option { display: flex; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; cursor: pointer; }
+.leave-survey-option input { width: 18px; height: 18px; accent-color: var(--accent); }
+.leave-survey-whatsapp { display: inline-flex; margin: 6px 0 2px; color: #1f8a4c; font-size: 14px; font-weight: 600; }
+.leave-survey-other { display: grid; gap: 4px; margin-top: 8px; font-size: 13px; }
+.leave-survey-other textarea { padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--page); color: var(--ink); font: inherit; }
+.leave-survey-actions { display: grid; gap: 8px; margin-top: 16px; }
+.leave-survey-exit { min-height: 44px; border: 1px solid var(--line); border-radius: 6px; background: none; color: var(--ink); cursor: pointer; font-size: 14px; }
+.leave-contact { display: grid; gap: 8px; margin: 4px 0 16px; padding: 16px; border: 1px solid #b9d7b0; border-radius: 10px; background: #eef6eb; }
+:root[data-theme="dark"] .leave-contact { background: #1f2a1e; border-color: #3a5236; }
+.leave-contact h3 { margin: 0; font: 400 20px/1.25 var(--font-display); }
+.leave-contact p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.leave-contact-buttons { display: grid; gap: 8px; margin-top: 4px; }
+.leave-contact-whatsapp, .leave-contact-call { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 6px; font-size: 15px; font-weight: 600; text-decoration: none; }
+.leave-contact-whatsapp { background: #1f8a4c; color: #fff; }
+.leave-contact-whatsapp:hover { background: #18773f; }
+.leave-contact-call { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+@media (min-width: 480px) { .leave-contact-buttons { grid-template-columns: 1.4fr 1fr; } }
+.leave-survey-legend { margin-bottom: 4px; padding: 0; font-size: 14px; font-weight: 600; }

@@ -50,6 +50,40 @@ export type ProductPageContent = {
   delivery: { estimate: string; note: string; free: { show: boolean; text: string }; freeUnderStock: { show: boolean } };
   /** Off hides the green "In stock" in the buy box; low stock and out of stock messages still show. */
   inStock: { show: boolean };
+  /** Icons with a short promise each, under the Buy buttons. */
+  trustStrip: { show: boolean; items: TrustItem[] };
+  /** "Order today, get it between {from} – {to}." from the delivery time, skipping Sundays. Orders after `cutoffHour` (India time) count from the next day. */
+  deliveryDates: { show: boolean; cutoffHour: number; text: string; note: string };
+  /** The Buy now button: its words, an icon before them, and small payment labels under them. */
+  buyNow: { label: string; icon: TrustIcon; showMarks: boolean; marks: string };
+  /** Bag and checkout totals: the trust line above Checkout, the free delivery row, the tax note and the coupon saving. */
+  bagTrust: { showLine: boolean; delivery: { show: boolean; label: string; value: string }; taxNote: { show: boolean; text: string }; youSave: { show: boolean; text: string } };
+  /** "Secure checkout" at the top of checkout, with an (i) that opens `info`. */
+  secureCheckout: { show: boolean; icon: TrustIcon; label: string; info: string };
+  /** The box just above Pay: who handles payment, the ways to pay, and a short note. */
+  paymentBox: { show: boolean; icon: TrustIcon; title: string; marks: string; note: string };
+  /** The Pay button. {total} becomes the amount. */
+  payButton: { label: string; icon: TrustIcon };
+  /** Round WhatsApp button on every page. `label` is the small bubble (empty: none). {product} is the murti on product pages. */
+  whatsappFloat: { show: boolean; label: string; message: string; productMessage: string };
+  /** Asked when someone leaves: Back or closing payment at checkout (`show`), or Back on the page they arrived on (`siteShow`). */
+  leaveSurvey: LeaveSurveySettings;
+  /** A step on the order confirmed page, e.g. a photo of the murti on WhatsApp before dispatch. */
+  preDispatch: { show: boolean; title: string; text: string };
+};
+/** "none" shows no icon. */
+export const TRUST_ICONS = ["none", "delivery", "breakage", "secure", "whatsapp", "photo", "gift", "check", "star", "heart", "phone"] as const;
+export type TrustIcon = typeof TRUST_ICONS[number];
+export type TrustItem = { icon: TrustIcon; title: string; text: string };
+export const MAX_TRUST_ITEMS = 4;
+export const LEAVE_REASON_KEYS = ["cod", "trust", "delivery", "price", "payment", "question", "other"] as const;
+export type LeaveReasonKey = typeof LEAVE_REASON_KEYS[number];
+export type LeaveSurveySettings = {
+  show: boolean; siteShow: boolean; title: string; intro: string; siteIntro: string;
+  /** The big "talk to a real person" box above the questions. */
+  contact: { show: boolean; title: string; text: string; whatsappLabel: string; whatsappMessage: string; showCall: boolean; callLabel: string };
+  showQuestions: boolean; reasons: { key: LeaveReasonKey; label: string; show: boolean }[];
+  continueLabel: string; siteContinueLabel: string; exitLabel: string;
 };
 
 export const DEFAULT_HERO_SLIDE: HeroSlide = { productId: "", backgroundImage: "", desktopImage: "", showEyebrow: true, eyebrow: "THE KALACAR SHOP", showTitle: true, title: "Small murtis, close to home.", showDescription: true, description: "A focused collection of small devotional murtis for your car, Devghar, or a quiet corner at home.", buy: { show: true, label: "Buy now", showPrice: true }, explore: { show: true, label: "Explore collections", link: "#catalogue" } };
@@ -82,6 +116,35 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageContent = {
   googleReviews: { show: true },
   delivery: { estimate: "3–7 business days", note: "Carefully chosen, packed and shipped by us.", free: { show: true, text: "Free delivery across India" }, freeUnderStock: { show: false } },
   inStock: { show: true },
+  trustStrip: { show: true, items: [
+    { icon: "delivery", title: "Free delivery", text: "Across India" },
+    { icon: "breakage", title: "Breakage covered", text: "Free replacement" },
+    { icon: "photo", title: "Photo before dispatch", text: "Of your actual murti, on WhatsApp" },
+    { icon: "secure", title: "Secure payment", text: "UPI, cards and net banking" },
+  ] },
+  deliveryDates: { show: true, cutoffHour: 14, text: "Order today, get it between {from} – {to}.", note: "Exact date depends on your PIN code." },
+  buyNow: { label: "Buy now", icon: "secure", showMarks: true, marks: "UPI, GPay, PhonePe, Paytm" },
+  bagTrust: { showLine: true, delivery: { show: true, label: "Delivery", value: "FREE" }, taxNote: { show: true, text: "Inclusive of all taxes" }, youSave: { show: true, text: "You save {amount} on this order" } },
+  secureCheckout: { show: true, icon: "secure", label: "Secure checkout", info: "Payments are processed by Razorpay over an encrypted connection. We never see or store your card or UPI details, and we don't sell your information." },
+  paymentBox: { show: true, icon: "secure", title: "Pay securely with Razorpay", marks: "UPI, GPay, PhonePe, Paytm, Visa, Mastercard, RuPay", note: "You choose UPI, card or net banking in the next step. All payments are encrypted, and we never see or store your card or UPI details." },
+  payButton: { label: "Pay {total} securely", icon: "secure" },
+  whatsappFloat: { show: true, label: "Questions? Chat with us", message: "Hi Kalacar, I have a question.", productMessage: "Hi Kalacar, I have a question about {product}." },
+  leaveSurvey: {
+    show: true, siteShow: true, title: "Before you go", intro: "Your bag is saved. Tell us what stopped you, or talk to us first.", siteIntro: "Have a question before you decide? Talk to us, or tell us what's missing.",
+    contact: { show: true, title: "Talk to a real person", text: "Have a question about the murti, delivery or payment? We reply on WhatsApp, usually within minutes.", whatsappLabel: "Chat on WhatsApp", whatsappMessage: "Hi Kalacar, I have a question before ordering.", showCall: true, callLabel: "Call us" },
+    showQuestions: true,
+    reasons: [
+      { key: "cod", label: "I want Cash on Delivery", show: true },
+      { key: "trust", label: "Not sure about the quality or the shop", show: true },
+      { key: "delivery", label: "Delivery takes too long", show: true },
+      { key: "price", label: "The price feels high", show: true },
+      { key: "payment", label: "Payment didn't work", show: true },
+      { key: "question", label: "I have a question first", show: true },
+      { key: "other", label: "Something else", show: true },
+    ],
+    continueLabel: "Continue checkout", siteContinueLabel: "Keep browsing", exitLabel: "Exit",
+  },
+  preDispatch: { show: true, title: "We send you a photo", text: "Before we ship, we'll WhatsApp you a photo of your actual murti, so you can see exactly what you're getting." },
 };
 
 export type Review = { id: number; productId: string | null; author: string; city: string; rating: number; text: string; photos: string[]; videoUrl: string; showOnHome: boolean; showOnProduct: boolean; published: boolean };

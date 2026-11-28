@@ -90,6 +90,7 @@ export function OrderConfirmation({ orderId, email }: { orderId: string; email?:
         <h2>What happens next</h2>
         <ol className="order-next">
           <li><b>We choose your murti</b><span>We pick out your murti and check it carefully.</span></li>
+          {productPage.preDispatch.show && <li><b>{productPage.preDispatch.title}</b><span>{productPage.preDispatch.text}</span></li>}
           <li><b>We pack and dispatch it</b><span>It is packed safely and handed to the courier. Tracking details appear on your order once it ships.</span></li>
           <li><b>We ship it to you</b><span>It is delivered to your address in {productPage.delivery.estimate}.</span></li>
         </ol>
